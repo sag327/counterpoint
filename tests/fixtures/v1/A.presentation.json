@@ -1,0 +1,402 @@
+{
+  "contract": "1.0.0",
+  "origin": "analytic-test-only",
+  "throughMs": 720,
+  "events": [
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e1",
+      "seq": 1,
+      "tMs": 0,
+      "type": "stimulus_attempted",
+      "nodeId": "R0",
+      "source": "stimulus",
+      "triggerId": "S1"
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e2",
+      "seq": 2,
+      "tMs": 0,
+      "type": "activation",
+      "nodeId": "R0",
+      "causeIds": [
+        "e1"
+      ],
+      "incomingLinkIds": [],
+      "source": "stimulus",
+      "priorActivationMs": null,
+      "intervalMs": null,
+      "erpMs": 180,
+      "refractoryUntilMs": 180,
+      "recoveryBefore": 1
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e3",
+      "seq": 3,
+      "tMs": 0,
+      "type": "conduction_launched",
+      "transitId": "t1",
+      "activationId": "e2",
+      "linkId": "L0",
+      "linkGeneration": 0,
+      "fromNodeId": "R0",
+      "toNodeId": "R1",
+      "departureMs": 0,
+      "arrivalMs": 60
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e4",
+      "seq": 4,
+      "tMs": 0,
+      "type": "conduction_launched",
+      "transitId": "t2",
+      "activationId": "e2",
+      "linkId": "L7",
+      "linkGeneration": 0,
+      "fromNodeId": "R0",
+      "toNodeId": "R7",
+      "departureMs": 0,
+      "arrivalMs": 60
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e5",
+      "seq": 5,
+      "tMs": 60,
+      "type": "conduction_arrived",
+      "nodeId": "R1",
+      "linkId": "L0",
+      "transitId": "t1"
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e6",
+      "seq": 6,
+      "tMs": 60,
+      "type": "conduction_arrived",
+      "nodeId": "R7",
+      "linkId": "L7",
+      "transitId": "t2"
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e7",
+      "seq": 7,
+      "tMs": 60,
+      "type": "activation",
+      "nodeId": "R1",
+      "causeIds": [
+        "e5"
+      ],
+      "incomingLinkIds": [
+        "L0"
+      ],
+      "source": "conduction",
+      "priorActivationMs": null,
+      "intervalMs": null,
+      "erpMs": 300,
+      "refractoryUntilMs": 360,
+      "recoveryBefore": 1
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e8",
+      "seq": 8,
+      "tMs": 60,
+      "type": "activation",
+      "nodeId": "R7",
+      "causeIds": [
+        "e6"
+      ],
+      "incomingLinkIds": [
+        "L7"
+      ],
+      "source": "conduction",
+      "priorActivationMs": null,
+      "intervalMs": null,
+      "erpMs": 200,
+      "refractoryUntilMs": 260,
+      "recoveryBefore": 1
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e9",
+      "seq": 9,
+      "tMs": 60,
+      "type": "conduction_launched",
+      "transitId": "t3",
+      "activationId": "e7",
+      "linkId": "L1",
+      "linkGeneration": 0,
+      "fromNodeId": "R1",
+      "toNodeId": "R2",
+      "departureMs": 60,
+      "arrivalMs": 120
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e10",
+      "seq": 10,
+      "tMs": 60,
+      "type": "conduction_launched",
+      "transitId": "t4",
+      "activationId": "e8",
+      "linkId": "L6",
+      "linkGeneration": 0,
+      "fromNodeId": "R7",
+      "toNodeId": "R6",
+      "departureMs": 60,
+      "arrivalMs": 120
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e11",
+      "seq": 11,
+      "tMs": 120,
+      "type": "conduction_arrived",
+      "nodeId": "R2",
+      "linkId": "L1",
+      "transitId": "t3"
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e12",
+      "seq": 12,
+      "tMs": 120,
+      "type": "conduction_arrived",
+      "nodeId": "R6",
+      "linkId": "L6",
+      "transitId": "t4"
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e13",
+      "seq": 13,
+      "tMs": 120,
+      "type": "activation",
+      "nodeId": "R2",
+      "causeIds": [
+        "e11"
+      ],
+      "incomingLinkIds": [
+        "L1"
+      ],
+      "source": "conduction",
+      "priorActivationMs": null,
+      "intervalMs": null,
+      "erpMs": 220,
+      "refractoryUntilMs": 340,
+      "recoveryBefore": 1
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e14",
+      "seq": 14,
+      "tMs": 120,
+      "type": "activation",
+      "nodeId": "R6",
+      "causeIds": [
+        "e12"
+      ],
+      "incomingLinkIds": [
+        "L6"
+      ],
+      "source": "conduction",
+      "priorActivationMs": null,
+      "intervalMs": null,
+      "erpMs": 220,
+      "refractoryUntilMs": 340,
+      "recoveryBefore": 1
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e15",
+      "seq": 15,
+      "tMs": 120,
+      "type": "conduction_launched",
+      "transitId": "t5",
+      "activationId": "e13",
+      "linkId": "L2",
+      "linkGeneration": 0,
+      "fromNodeId": "R2",
+      "toNodeId": "R3",
+      "departureMs": 120,
+      "arrivalMs": 180
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e16",
+      "seq": 16,
+      "tMs": 120,
+      "type": "conduction_launched",
+      "transitId": "t6",
+      "activationId": "e14",
+      "linkId": "L5",
+      "linkGeneration": 0,
+      "fromNodeId": "R6",
+      "toNodeId": "R5",
+      "departureMs": 120,
+      "arrivalMs": 180
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e17",
+      "seq": 17,
+      "tMs": 180,
+      "type": "conduction_arrived",
+      "nodeId": "R3",
+      "linkId": "L2",
+      "transitId": "t5"
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e18",
+      "seq": 18,
+      "tMs": 180,
+      "type": "conduction_arrived",
+      "nodeId": "R5",
+      "linkId": "L5",
+      "transitId": "t6"
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e19",
+      "seq": 19,
+      "tMs": 180,
+      "type": "activation",
+      "nodeId": "R3",
+      "causeIds": [
+        "e17"
+      ],
+      "incomingLinkIds": [
+        "L2"
+      ],
+      "source": "conduction",
+      "priorActivationMs": null,
+      "intervalMs": null,
+      "erpMs": 220,
+      "refractoryUntilMs": 400,
+      "recoveryBefore": 1
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e20",
+      "seq": 20,
+      "tMs": 180,
+      "type": "activation",
+      "nodeId": "R5",
+      "causeIds": [
+        "e18"
+      ],
+      "incomingLinkIds": [
+        "L5"
+      ],
+      "source": "conduction",
+      "priorActivationMs": null,
+      "intervalMs": null,
+      "erpMs": 220,
+      "refractoryUntilMs": 400,
+      "recoveryBefore": 1
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e21",
+      "seq": 21,
+      "tMs": 180,
+      "type": "conduction_launched",
+      "transitId": "t7",
+      "activationId": "e19",
+      "linkId": "L3",
+      "linkGeneration": 0,
+      "fromNodeId": "R3",
+      "toNodeId": "R4",
+      "departureMs": 180,
+      "arrivalMs": 240
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e22",
+      "seq": 22,
+      "tMs": 180,
+      "type": "conduction_launched",
+      "transitId": "t8",
+      "activationId": "e20",
+      "linkId": "L4",
+      "linkGeneration": 0,
+      "fromNodeId": "R5",
+      "toNodeId": "R4",
+      "departureMs": 180,
+      "arrivalMs": 240
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e23",
+      "seq": 23,
+      "tMs": 240,
+      "type": "conduction_arrived",
+      "nodeId": "R4",
+      "linkId": "L3",
+      "transitId": "t7"
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e24",
+      "seq": 24,
+      "tMs": 240,
+      "type": "conduction_arrived",
+      "nodeId": "R4",
+      "linkId": "L4",
+      "transitId": "t8"
+    },
+    {
+      "worldId": "circulation",
+      "runId": "study-A",
+      "eventId": "e25",
+      "seq": 25,
+      "tMs": 240,
+      "type": "activation",
+      "nodeId": "R4",
+      "causeIds": [
+        "e23",
+        "e24"
+      ],
+      "incomingLinkIds": [
+        "L3",
+        "L4"
+      ],
+      "source": "conduction",
+      "priorActivationMs": null,
+      "intervalMs": null,
+      "erpMs": 220,
+      "refractoryUntilMs": 460,
+      "recoveryBefore": 1
+    }
+  ]
+}

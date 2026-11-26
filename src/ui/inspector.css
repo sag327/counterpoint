@@ -1,0 +1,214 @@
+.counterpoint-inspector {
+  --inspector-line: #3b464c;
+  --raster-accepted: #83d2ba;
+  --raster-blocked: #eca29a;
+  --raster-stimulus: #e6c287;
+  min-width: 0;
+}
+
+.counterpoint-inspector [hidden] {
+  display: none !important;
+}
+
+.counterpoint-inspector #metrics {
+  display: block;
+  margin-bottom: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.inspector-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.inspector-panel {
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--inspector-line);
+  border-radius: 6px;
+  background: #10181e;
+}
+
+.inspector-wide {
+  grid-column: 1 / -1;
+}
+
+.inspector-panel h3 {
+  margin: 0 0 10px;
+  color: var(--ink, #eee5d5);
+  font: 20px Georgia, serif;
+}
+
+.inspector-panel p {
+  margin: 8px 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.inspector-panel dl {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 6px 10px;
+  margin: 12px 0;
+  font-size: 13px;
+}
+
+.inspector-panel dt {
+  color: var(--muted, #aaadae);
+}
+
+.inspector-panel dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.inspector-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.inspector-panel select {
+  max-width: 65%;
+}
+
+.inspector-panel input[type="number"] {
+  width: 5.8em;
+  min-height: 44px;
+  padding: 5px 8px;
+  color: inherit;
+  background: #151b20;
+  border: 1px solid #677176;
+  border-radius: 6px;
+}
+
+.inspector-panel input[type="number"][aria-invalid="true"] {
+  border-color: var(--raster-blocked);
+}
+
+.inspector-panel .inspector-error {
+  color: var(--raster-blocked);
+}
+
+.inspector-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.inspector-actions button {
+  text-align: left;
+}
+
+.inspector-legend,
+.inspector-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 6px 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted, #aaadae);
+  border: 0;
+  font-size: 12px;
+}
+
+.inspector-legend span {
+  display: inline-block;
+  width: 12px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.raster-key-accepted { color: var(--raster-accepted); }
+.raster-key-blocked { color: var(--raster-blocked); }
+.raster-key-stimulus { color: var(--raster-stimulus); }
+
+.inspector-filters legend {
+  padding: 0;
+  font-size: 13px;
+}
+
+.inspector-filters label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  gap: 4px;
+}
+
+.inspector-filters input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--gold, #d6b880);
+}
+
+.inspector-scroll {
+  max-width: 100%;
+  overflow: auto;
+}
+
+.inspector-scroll:focus-visible {
+  outline: 2px solid var(--gold, #d6b880);
+  outline-offset: 2px;
+}
+
+.inspector-scroll svg {
+  width: 100%;
+  min-width: 28rem;
+  display: block;
+  overflow: visible;
+}
+
+.inspector-scroll svg text {
+  fill: #bfc8ca;
+  font: 12px system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.inspector-scroll svg .raster-site {
+  fill: var(--ink, #eee5d5);
+}
+
+.raster-selected { fill: #203039; }
+.raster-guide { stroke: #50606a; }
+.raster-cursor { stroke: #dbe4e9; stroke-dasharray: 3 3; }
+.raster-accepted { stroke: var(--raster-accepted); stroke-width: 2; }
+.raster-blocked { stroke: var(--raster-blocked); stroke-width: 1.5; fill: none; }
+.raster-stimulus { fill: var(--raster-stimulus); }
+
+.inspector-log-scroll {
+  max-height: 18rem;
+}
+
+.inspector-log-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+  white-space: nowrap;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+
+.inspector-log-scroll th,
+.inspector-log-scroll td {
+  padding: 5px 7px;
+  border-bottom: 1px solid var(--inspector-line);
+}
+
+.inspector-log-scroll th {
+  position: sticky;
+  top: 0;
+  background: #19262e;
+}
+
+.inspector-log-scroll tr[data-group="blocked"] td:nth-child(3) {
+  color: var(--raster-blocked);
+}
+
+@media (max-width: 640px) {
+  .inspector-grid { grid-template-columns: 1fr; }
+}

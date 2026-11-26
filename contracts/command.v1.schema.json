@@ -1,0 +1,208 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "stimulate"
+          ]
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "commandId",
+        "runId",
+        "tMs",
+        "type",
+        "nodeId"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "setLinkEnabled"
+          ]
+        },
+        "linkId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "commandId",
+        "runId",
+        "tMs",
+        "type",
+        "linkId",
+        "enabled"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "setNodeERP"
+          ]
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "erpMs": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "commandId",
+        "runId",
+        "tMs",
+        "type",
+        "nodeId",
+        "erpMs"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "setDirectionDelay"
+          ]
+        },
+        "linkId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "direction": {
+          "enum": [
+            "ab",
+            "ba"
+          ]
+        },
+        "delayMs": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "commandId",
+        "runId",
+        "tMs",
+        "type",
+        "linkId",
+        "direction",
+        "delayMs"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "setAutomaticity"
+          ]
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cycleMs": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "commandId",
+        "runId",
+        "tMs",
+        "type",
+        "nodeId",
+        "cycleMs"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

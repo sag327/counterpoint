@@ -1,0 +1,32 @@
+[
+  {
+    "type": "stimulate",
+    "commandId": "S1",
+    "runId": "study-C",
+    "tMs": 0,
+    "nodeId": "R0"
+  },
+  {
+    "type": "stimulate",
+    "commandId": "S2",
+    "runId": "study-C",
+    "tMs": 240,
+    "nodeId": "R0"
+  },
+  {
+    "type": "setLinkEnabled",
+    "commandId": "cut",
+    "runId": "study-C",
+    "tMs": 1000,
+    "linkId": "L4",
+    "enabled": false
+  },
+  {
+    "type": "setLinkEnabled",
+    "commandId": "restore",
+    "runId": "study-C",
+    "tMs": 1500,
+    "linkId": "L4",
+    "enabled": true
+  }
+]

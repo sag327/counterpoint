@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Ccircle cx=%2232%22 cy=%2232%22 r=%2221%22 fill=%22none%22 stroke=%22%23d4b888%22 stroke-width=%222%22/%3E%3C/svg%3E">
+  <title>Counterpoint · Study No. 1</title>
+  <style>/* INLINE_STYLES */</style>
+</head>
+<body>
+  <header>
+    <div class="brand">Counterpoint<span>STUDY NO. 1</span></div>
+    <button id="lab-toggle" aria-expanded="false" aria-controls="lab">Laboratory</button>
+  </header>
+  <main>
+    <nav id="worlds" aria-label="Worlds">
+      <button type="button" data-world="conduction" aria-pressed="true">Conduction</button>
+      <button type="button" data-world="circulation" aria-pressed="false">Circulation</button>
+      <button type="button" data-world="duality" aria-pressed="false">Duality</button>
+    </nav>
+    <div id="stage">
+      <canvas id="canvas" role="img"></canvas>
+      <div id="sites" role="group" aria-label="Stimulate a site"></div>
+      <div id="status" aria-live="polite"></div>
+    </div>
+    <section id="intro" aria-label="Begin">
+      <div class="begin-actions">
+        <button id="begin" class="primary">Begin · enable sound</button>
+        <button id="silent">Begin in silence</button>
+      </div>
+    </section>
+    <section id="performance" class="controls" aria-label="Performance controls" hidden>
+      <div class="actions">
+        <button id="pause" disabled>Pause</button>
+        <button id="single" disabled hidden>One impulse</button>
+        <button id="guide" disabled hidden>Find a rhythm</button>
+        <button id="premature" disabled hidden>Premature impulse</button>
+        <button id="reset" disabled>Reset</button>
+      </div>
+      <p id="protocol-hint" class="hint" aria-live="off"></p>
+      <div class="settings">
+        <label>Time dilation <select id="dilation"><option value="1">1×</option><option value="2">2×</option><option value="3">3×</option><option value="4" selected>4×</option><option value="5">5×</option><option value="6">6×</option><option value="7">7×</option><option value="8">8×</option></select></label>
+        <label>Palette <select id="palette"><option value="chamber">Chamber</option><option value="atmosphere">Atmosphere</option><option value="minimalism">Minimalism</option></select></label>
+        <label id="voicing-control" hidden>Chamber voicing <select id="voicing"><option value="balanced">Balanced</option><option value="open">Open</option><option value="suspended">Suspended</option></select></label>
+        <button id="mute" aria-pressed="false">Mute</button>
+        <label>Volume <input id="volume" type="range" min="0" max="0.7" step="0.01" value="0.3"></label>
+      </div>
+      <details>
+        <summary>Connections</summary>
+        <div id="cuts" class="cuts"></div>
+        <button id="restore">Restore all connections</button>
+      </details>
+    </section>
+    <aside id="lab" aria-label="Laboratory" hidden>
+      <h2>Laboratory</h2>
+      <div id="lab-content"></div>
+      <button id="export">Export event history</button>
+    </aside>
+  </main>
+  <footer>An instrument made of electrophysiology<span>Experimental artwork · phenomenological model</span></footer>
+  <script>/* INLINE_APP */</script>
+</body>
+</html>

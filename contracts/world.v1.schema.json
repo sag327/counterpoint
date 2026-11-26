@@ -1,0 +1,190 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "worldId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "erpMs": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "recoveryTailMs": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "automaticity": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "cycleMs": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "firstAttemptMs": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "resetOnCapture": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "cycleMs",
+                  "firstAttemptMs",
+                  "resetOnCapture"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "erpMs",
+          "recoveryTailMs",
+          "automaticity"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "a": {
+            "type": "string",
+            "minLength": 1
+          },
+          "b": {
+            "type": "string",
+            "minLength": 1
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "ab": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "delayMs": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "decrement": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "maxExtraMs": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "tauMs": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "required": [
+                      "maxExtraMs",
+                      "tauMs"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "enabled",
+              "delayMs",
+              "decrement"
+            ],
+            "additionalProperties": false
+          },
+          "ba": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "delayMs": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "decrement": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "maxExtraMs": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "tauMs": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "required": [
+                      "maxExtraMs",
+                      "tauMs"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "enabled",
+              "delayMs",
+              "decrement"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "a",
+          "b",
+          "enabled",
+          "ab",
+          "ba"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "worldId",
+    "nodes",
+    "links"
+  ],
+  "additionalProperties": false
+}

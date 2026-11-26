@@ -1,0 +1,3641 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Ccircle cx=%2232%22 cy=%2232%22 r=%2221%22 fill=%22none%22 stroke=%22%23d4b888%22 stroke-width=%222%22/%3E%3C/svg%3E">
+  <title>Counterpoint · Study No. 1</title>
+  <style>:root{color-scheme:dark;--ink:#eee5d5;--muted:#aaadae;--line:#34383b;--gold:#d6b880}*{box-sizing:border-box}body{margin:0;background:#080c10;color:var(--ink);font:14px system-ui,sans-serif}button,select,input{font:inherit}button,select{color:inherit;background:#151b20;border:1px solid #41464a;border-radius:6px;padding:10px 15px;min-height:44px;cursor:pointer}button:hover{border-color:var(--gold);background:#20272c}button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid #dfbd78;outline-offset:4px}button:disabled{opacity:.35;cursor:default}header{display:flex;justify-content:space-between;align-items:center;padding:26px 5vw}.brand{font:28px Georgia,serif;letter-spacing:1px}.brand span{display:block;font:10px system-ui;letter-spacing:2.6px;color:var(--muted);margin-top:7px}#stage{position:relative;height:min(65vh,650px);min-height:380px;width:100%;overflow:hidden}canvas{width:100%;height:100%;display:block}#intro{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:radial-gradient(ellipse,#080c10c9,transparent 65%);pointer-events:none}#intro>*{pointer-events:auto}h1{font:clamp(25px,3vw,40px) Georgia,serif;font-weight:normal;margin:12px}#intro p{color:var(--muted);margin:0 0 22px}#intro button{margin:5px}.primary{background:#d4b888;color:#11171a;border-color:#d4b888}#status{position:absolute;bottom:12px;left:20%;right:20%;text-align:center;font:13px Georgia,serif;color:#b5b7b7;pointer-events:none}.site{position:absolute;transform:translate(-50%,-50%);width:44px;height:44px;border:0;background:transparent!important;padding:0;border-radius:50%;color:transparent;z-index:1}.site:hover{outline:1px solid #d8b57566}.site:focus-visible{outline:2px solid var(--gold)}.controls{max-width:900px;margin:18px auto 35px;padding:0 24px}.actions,.settings{display:flex;justify-content:center;flex-wrap:wrap;gap:10px}.guide-note{text-align:center;font-size:11px;color:var(--muted);margin:9px 0 22px}.settings{align-items:center;gap:20px}.settings label{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px}input[type=range]{width:100px;accent-color:#d4b888}details{margin:25px auto 0;max-width:640px;color:var(--muted)}summary{cursor:pointer;min-height:44px;padding:12px;text-align:center}.cuts{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.cuts button{flex:1;font-size:12px;white-space:nowrap}.cuts button[aria-pressed=true]{border-style:dashed;color:#c6a888}#restore{display:block;margin:auto}aside{max-width:900px;margin:20px auto;padding:24px;background:#10171c;border:1px solid #30383e;border-radius:10px}h2{font:24px Georgia,serif}aside p,output{color:var(--muted)}pre{max-height:280px;overflow:auto;font:11px monospace;line-height:1.7}footer{padding:22px 5vw;border-top:1px solid #20292e;color:var(--muted);font:12px Georgia,serif;display:flex;justify-content:space-between;gap:10px}footer span{font:10px system-ui}@media(max-width:600px){header{padding:20px}.brand{font-size:24px}header button{font-size:12px;padding:8px}#stage{height:54vh;min-height:360px}#intro h1{font-size:25px}.controls{padding:0 15px;margin-top:6px}.actions{gap:6px}.actions button{font-size:12px;padding:9px}.settings{gap:10px 16px}footer{flex-direction:column}#status{left:12%;right:12%}}
+
+#intro{position:static;inset:auto;background:none;padding:0 20px 20px;text-align:center}#intro h1{font-size:28px}#intro p{margin-bottom:15px}#intro button{min-width:200px}
+
+[hidden]{display:none!important}
+#worlds{display:flex;justify-content:center;gap:clamp(5px,2vw,22px);padding:0 12px}
+#worlds button{min-width:0;padding:8px 12px;border-color:transparent;background:transparent;color:var(--muted)}
+#worlds button:hover{color:var(--ink)}
+#worlds button[aria-pressed=true]{color:var(--ink);box-shadow:inset 0 -1px var(--gold);border-radius:0}
+#stage{touch-action:none;user-select:none;height:min(54vh,600px);min-height:320px}
+#sites{position:absolute;inset:0;pointer-events:none}
+.site{pointer-events:auto;touch-action:none}
+.site:disabled{pointer-events:none}
+#status{bottom:13px;left:10%;right:10%}
+#intro{padding:0 12px 23px;pointer-events:auto}
+.begin-actions{display:flex;justify-content:center;flex-wrap:wrap;gap:8px}
+#intro button{margin:0;min-width:0}
+button.primary:hover{background:#e1c695;color:#11171a}
+.hint{text-align:center;font-size:12px;line-height:1.5;color:var(--muted);margin:10px 0 21px}
+.controls{margin-top:8px}
+.settings select{max-width:144px}
+#lab{margin-inline:auto;width:min(94%,900px)}
+#export{margin-top:13px}
+@media(max-width:600px){
+  #stage{min-height:305px;height:48vh}
+  .hint{max-width:32ch;margin-inline:auto}
+  .controls{margin-bottom:24px}
+  #lab{padding:15px}
+}
+
+.counterpoint-inspector {
+  --inspector-line: #3b464c;
+  --raster-accepted: #83d2ba;
+  --raster-blocked: #eca29a;
+  --raster-stimulus: #e6c287;
+  min-width: 0;
+}
+
+.counterpoint-inspector [hidden] {
+  display: none !important;
+}
+
+.counterpoint-inspector #metrics {
+  display: block;
+  margin-bottom: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.inspector-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.inspector-panel {
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--inspector-line);
+  border-radius: 6px;
+  background: #10181e;
+}
+
+.inspector-wide {
+  grid-column: 1 / -1;
+}
+
+.inspector-panel h3 {
+  margin: 0 0 10px;
+  color: var(--ink, #eee5d5);
+  font: 20px Georgia, serif;
+}
+
+.inspector-panel p {
+  margin: 8px 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.inspector-panel dl {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 6px 10px;
+  margin: 12px 0;
+  font-size: 13px;
+}
+
+.inspector-panel dt {
+  color: var(--muted, #aaadae);
+}
+
+.inspector-panel dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.inspector-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.inspector-panel select {
+  max-width: 65%;
+}
+
+.inspector-panel input[type="number"] {
+  width: 5.8em;
+  min-height: 44px;
+  padding: 5px 8px;
+  color: inherit;
+  background: #151b20;
+  border: 1px solid #677176;
+  border-radius: 6px;
+}
+
+.inspector-panel input[type="number"][aria-invalid="true"] {
+  border-color: var(--raster-blocked);
+}
+
+.inspector-panel .inspector-error {
+  color: var(--raster-blocked);
+}
+
+.inspector-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.inspector-actions button {
+  text-align: left;
+}
+
+.inspector-legend,
+.inspector-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 6px 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted, #aaadae);
+  border: 0;
+  font-size: 12px;
+}
+
+.inspector-legend span {
+  display: inline-block;
+  width: 12px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.raster-key-accepted { color: var(--raster-accepted); }
+.raster-key-blocked { color: var(--raster-blocked); }
+.raster-key-stimulus { color: var(--raster-stimulus); }
+
+.inspector-filters legend {
+  padding: 0;
+  font-size: 13px;
+}
+
+.inspector-filters label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  gap: 4px;
+}
+
+.inspector-filters input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--gold, #d6b880);
+}
+
+.inspector-scroll {
+  max-width: 100%;
+  overflow: auto;
+}
+
+.inspector-scroll:focus-visible {
+  outline: 2px solid var(--gold, #d6b880);
+  outline-offset: 2px;
+}
+
+.inspector-scroll svg {
+  width: 100%;
+  min-width: 28rem;
+  display: block;
+  overflow: visible;
+}
+
+.inspector-scroll svg text {
+  fill: #bfc8ca;
+  font: 12px system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.inspector-scroll svg .raster-site {
+  fill: var(--ink, #eee5d5);
+}
+
+.raster-selected { fill: #203039; }
+.raster-guide { stroke: #50606a; }
+.raster-cursor { stroke: #dbe4e9; stroke-dasharray: 3 3; }
+.raster-accepted { stroke: var(--raster-accepted); stroke-width: 2; }
+.raster-blocked { stroke: var(--raster-blocked); stroke-width: 1.5; fill: none; }
+.raster-stimulus { fill: var(--raster-stimulus); }
+
+.inspector-log-scroll {
+  max-height: 18rem;
+}
+
+.inspector-log-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+  white-space: nowrap;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+
+.inspector-log-scroll th,
+.inspector-log-scroll td {
+  padding: 5px 7px;
+  border-bottom: 1px solid var(--inspector-line);
+}
+
+.inspector-log-scroll th {
+  position: sticky;
+  top: 0;
+  background: #19262e;
+}
+
+.inspector-log-scroll tr[data-group="blocked"] td:nth-child(3) {
+  color: var(--raster-blocked);
+}
+
+@media (max-width: 640px) {
+  .inspector-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">Counterpoint<span>STUDY NO. 1</span></div>
+    <button id="lab-toggle" aria-expanded="false" aria-controls="lab">Laboratory</button>
+  </header>
+  <main>
+    <nav id="worlds" aria-label="Worlds">
+      <button type="button" data-world="conduction" aria-pressed="true">Conduction</button>
+      <button type="button" data-world="circulation" aria-pressed="false">Circulation</button>
+      <button type="button" data-world="duality" aria-pressed="false">Duality</button>
+    </nav>
+    <div id="stage">
+      <canvas id="canvas" role="img"></canvas>
+      <div id="sites" role="group" aria-label="Stimulate a site"></div>
+      <div id="status" aria-live="polite"></div>
+    </div>
+    <section id="intro" aria-label="Begin">
+      <div class="begin-actions">
+        <button id="begin" class="primary">Begin · enable sound</button>
+        <button id="silent">Begin in silence</button>
+      </div>
+    </section>
+    <section id="performance" class="controls" aria-label="Performance controls" hidden>
+      <div class="actions">
+        <button id="pause" disabled>Pause</button>
+        <button id="single" disabled hidden>One impulse</button>
+        <button id="guide" disabled hidden>Find a rhythm</button>
+        <button id="premature" disabled hidden>Premature impulse</button>
+        <button id="reset" disabled>Reset</button>
+      </div>
+      <p id="protocol-hint" class="hint" aria-live="off"></p>
+      <div class="settings">
+        <label>Time dilation <select id="dilation"><option value="1">1×</option><option value="2">2×</option><option value="3">3×</option><option value="4" selected>4×</option><option value="5">5×</option><option value="6">6×</option><option value="7">7×</option><option value="8">8×</option></select></label>
+        <label>Palette <select id="palette"><option value="chamber">Chamber</option><option value="atmosphere">Atmosphere</option><option value="minimalism">Minimalism</option></select></label>
+        <label id="voicing-control" hidden>Chamber voicing <select id="voicing"><option value="balanced">Balanced</option><option value="open">Open</option><option value="suspended">Suspended</option></select></label>
+        <button id="mute" aria-pressed="false">Mute</button>
+        <label>Volume <input id="volume" type="range" min="0" max="0.7" step="0.01" value="0.3"></label>
+      </div>
+      <details>
+        <summary>Connections</summary>
+        <div id="cuts" class="cuts"></div>
+        <button id="restore">Restore all connections</button>
+      </details>
+    </section>
+    <aside id="lab" aria-label="Laboratory" hidden>
+      <h2>Laboratory</h2>
+      <div id="lab-content"></div>
+      <button id="export">Export event history</button>
+    </aside>
+  </main>
+  <footer>An instrument made of electrophysiology<span>Experimental artwork · phenomenological model</span></footer>
+  <script>const __modules = {};
+__modules["src/engine/agenda.js"] = (()=>{
+function earlier(a, b) {
+  return a.tick - b.tick || a.phase - b.phase || a.order - b.order ||
+    (a.secondOrder ?? 0) - (b.secondOrder ?? 0);
+}
+
+class Agenda {
+  #items = [];
+
+  get size() {
+    return this.#items.length;
+  }
+
+  peek() {
+    return this.#items[0];
+  }
+
+  push(item) {
+    const items = this.#items;
+    let index = items.length;
+    while (index > 0) {
+      const parent = Math.floor((index - 1) / 2);
+      if (earlier(item, items[parent]) >= 0) break;
+      items[index] = items[parent];
+      index = parent;
+    }
+    items[index] = item;
+  }
+
+  pop() {
+    const items = this.#items;
+    const first = items[0];
+    const last = items.pop();
+    if (items.length === 0) return first;
+    let index = 0;
+    while (index * 2 + 1 < items.length) {
+      let child = index * 2 + 1;
+      if (child + 1 < items.length && earlier(items[child + 1], items[child]) < 0) child++;
+      if (earlier(last, items[child]) <= 0) break;
+      items[index] = items[child];
+      index = child;
+    }
+    items[index] = last;
+    return first;
+  }
+}
+
+return {Agenda};
+})();
+__modules["src/engine/time.js"] = (()=>{
+const TICKS_PER_MS = 1000;
+
+function toTick(value, label) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    throw new RangeError(`${label} must be a finite nonnegative number`);
+  }
+  // Shift the decimal wire value before rounding. Binary multiplication can put
+  // a decimal half-tick such as 0.5005 ms just below its intended tie.
+  const [mantissa, exponent = '0'] = String(value).split('e');
+  const [whole, fraction = ''] = mantissa.split('.');
+  const digits = BigInt(whole + fraction);
+  const shift = Number(exponent) + 3 - fraction.length;
+  let tick;
+  if (shift >= 0) {
+    tick = digits * 10n ** BigInt(shift);
+  } else {
+    const divisor = 10n ** BigInt(-shift);
+    tick = (2n * digits + divisor) / (2n * divisor);
+  }
+  if (tick > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new RangeError(`${label} exceeds the safe simulation timeline`);
+  }
+  return Number(tick);
+}
+
+function toMs(tick) {
+  return tick === null ? null : tick / TICKS_PER_MS;
+}
+
+function addTicks(tick, duration) {
+  const result = tick + duration;
+  if (!Number.isSafeInteger(result)) {
+    throw new RangeError('Scheduled instant exceeds the safe simulation timeline');
+  }
+  return result;
+}
+
+function clampUnit(value) {
+  return Math.max(0, Math.min(1, value));
+}
+
+return {TICKS_PER_MS,toTick,toMs,addTicks,clampUnit};
+})();
+__modules["src/engine/history.js"] = (()=>{
+const { clampUnit, toMs } = __modules["src/engine/time.js"];
+
+const CHECKPOINT_INTERVAL = 64;
+
+function nodeState(node) {
+  return { erp: node.erp, tail: node.tail, last: node.last, until: node.until };
+}
+
+function directionState(direction) {
+  const decrement = direction.decrement === null ? null : Object.freeze({
+    maxExtraMs: toMs(direction.decrement.maxExtra),
+    tauMs: toMs(direction.decrement.tau),
+  });
+  return Object.freeze({
+    enabled: direction.enabled,
+    delayMs: toMs(direction.delay),
+    decrement,
+  });
+}
+
+function linkState(link) {
+  return Object.freeze({
+    a: link.a,
+    b: link.b,
+    enabled: link.enabled,
+    generation: link.generation,
+    ab: directionState(link.ab),
+    ba: directionState(link.ba),
+  });
+}
+
+function recoveryAt(node, tick) {
+  return node.last === null ? 1 : clampUnit((tick - node.until) / node.tail);
+}
+
+function copyState(state) {
+  return {
+    nodes: new Map(state.nodes),
+    links: new Map(state.links),
+    transits: new Map(state.transits),
+  };
+}
+
+function applyChanges(state, { nodes, links, transits }) {
+  for (const [id, value] of nodes) state.nodes.set(id, value);
+  for (const [id, value] of links) state.links.set(id, value);
+  for (const [id, value] of transits) {
+    if (value === null) state.transits.delete(id);
+    else state.transits.set(id, value);
+  }
+}
+
+function readSnapshot(run, tick, state) {
+  const nodes = Array.from(state.nodes, ([id, node]) => [id, Object.freeze({
+    lastActivationMs: toMs(node.last),
+    refractoryUntilMs: toMs(node.until),
+    erpMs: toMs(node.erp),
+    recoveryTailMs: toMs(node.tail),
+    recovery: recoveryAt(node, tick),
+    excitable: node.until === null || tick >= node.until,
+  })]);
+  return Object.freeze({
+    runId: run.id,
+    worldId: run.worldId,
+    tMs: toMs(tick),
+    nodes: Object.freeze(Object.fromEntries(nodes)),
+    links: Object.freeze(Object.fromEntries(state.links)),
+    activeTransits: Object.freeze(Array.from(state.transits.values())),
+  });
+}
+
+class History {
+  #floor = 0;
+  #batches = [];
+  #count = 0;
+  #base;
+  #head;
+  #limit;
+
+  constructor(run, limit) {
+    this.#limit = limit;
+    this.#base = {
+      nodes: new Map(Array.from(run.nodes, ([id, node]) => [id, nodeState(node)])),
+      links: new Map(Array.from(run.links, ([id, link]) => [id, linkState(link)])),
+      transits: new Map(),
+    };
+    this.#head = copyState(this.#base);
+  }
+
+  get size() {
+    return this.#batches.length;
+  }
+
+  get earliestTick() {
+    return this.#floor;
+  }
+
+  record(tick, batch) {
+    if (batch.nodes.size === 0 && batch.links.size === 0 && batch.transits.size === 0) return;
+    const entry = {
+      tick,
+      nodes: Array.from(batch.nodes, node => [node.id, nodeState(node)]),
+      links: Array.from(batch.links, link => [link.id, linkState(link)]),
+      transits: batch.transits,
+      checkpoint: null,
+    };
+    applyChanges(this.#head, entry);
+    this.#count++;
+    if (this.#count % CHECKPOINT_INTERVAL === 0) entry.checkpoint = copyState(this.#head);
+    this.#batches.push(entry);
+    if (this.#batches.length > this.#limit) {
+      const oldest = this.#batches.shift();
+      applyChanges(this.#base, oldest);
+      this.#floor = oldest.tick;
+    }
+  }
+
+  snapshot(run, tick) {
+    if (tick < this.#floor) throw new RangeError('Read time is outside retained simulation history');
+    const batches = this.#batches;
+    let lower = 0;
+    let upper = batches.length;
+    while (lower < upper) {
+      const middle = Math.floor((lower + upper) / 2);
+      if (batches[middle].tick <= tick) lower = middle + 1;
+      else upper = middle;
+    }
+    const end = lower;
+    let checkpoint = end - 1;
+    while (checkpoint >= 0 && batches[checkpoint].checkpoint === null) checkpoint--;
+    const state = copyState(batches[checkpoint]?.checkpoint ?? this.#base);
+    for (let index = checkpoint + 1; index < end; index++) applyChanges(state, batches[index]);
+    return readSnapshot(run, tick, state);
+  }
+}
+
+return {recoveryAt,History};
+})();
+__modules["src/engine/input.js"] = (()=>{
+const { addTicks, toTick } = __modules["src/engine/time.js"];
+
+const ERP_EDIT = [50, 1000];
+const DELAY_EDIT = [1, 500];
+const CYCLE_EDIT = [200, 3000];
+const commonCommandKeys = ['commandId', 'runId', 'tMs', 'type'];
+const commandKeys = new Map([
+  ['stimulate', ['nodeId']],
+  ['setLinkEnabled', ['linkId', 'enabled']],
+  ['setNodeERP', ['nodeId', 'erpMs']],
+  ['setDirectionDelay', ['linkId', 'direction', 'delayMs']],
+  ['setAutomaticity', ['nodeId', 'cycleMs']],
+]);
+
+function objectWithKeys(value, keys, label) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value) ||
+      Object.keys(value).length !== keys.length || !keys.every(key => Object.hasOwn(value, key))) {
+    throw new TypeError(`${label} must have fields ${keys.join(', ')}`);
+  }
+}
+
+function requireId(value, label) {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new TypeError(`${label} must be a nonempty string`);
+  }
+}
+
+function requireBoolean(value, label) {
+  if (typeof value !== 'boolean') throw new TypeError(`${label} must be boolean`);
+}
+
+function positiveTick(value, label, minimumMs = 0) {
+  const tick = toTick(value, label);
+  if (tick <= 0 || value < minimumMs) throw new RangeError(`${label} is outside its duration range`);
+  return tick;
+}
+
+function editTick(value, label, [minimum, maximum]) {
+  const tick = positiveTick(value, label, minimum);
+  if (value > maximum) throw new RangeError(`${label} must be no more than ${maximum} ms`);
+  return tick;
+}
+
+function uniqueId(id, seen, label) {
+  requireId(id, label);
+  if (seen.has(id)) throw new RangeError(`Duplicate ${label}: ${id}`);
+  seen.add(id);
+}
+
+function direction(value, label) {
+  objectWithKeys(value, ['enabled', 'delayMs', 'decrement'], label);
+  requireBoolean(value.enabled, `${label}.enabled`);
+  const delay = positiveTick(value.delayMs, `${label}.delayMs`, 1);
+  let decrement = null;
+  if (value.decrement !== null) {
+    objectWithKeys(value.decrement, ['maxExtraMs', 'tauMs'], `${label}.decrement`);
+    const maxExtra = toTick(value.decrement.maxExtraMs, `${label}.decrement.maxExtraMs`);
+    const tau = positiveTick(value.decrement.tauMs, `${label}.decrement.tauMs`);
+    addTicks(delay, maxExtra);
+    decrement = { maxExtra, tau };
+  }
+  return { enabled: value.enabled, delay, decrement, generation: 0 };
+}
+
+function automaticity(value) {
+  if (value === null) return { cycle: null, firstAttempt: null, resetOnCapture: true };
+  objectWithKeys(value, ['cycleMs', 'firstAttemptMs', 'resetOnCapture'], 'automaticity');
+  requireBoolean(value.resetOnCapture, 'automaticity.resetOnCapture');
+  return {
+    cycle: positiveTick(value.cycleMs, 'automaticity.cycleMs'),
+    firstAttempt: toTick(value.firstAttemptMs, 'automaticity.firstAttemptMs'),
+    resetOnCapture: value.resetOnCapture,
+  };
+}
+
+function readWorld(world, { maxNodes, maxLinks }) {
+  objectWithKeys(world, ['worldId', 'nodes', 'links'], 'world');
+  requireId(world.worldId, 'worldId');
+  if (!Array.isArray(world.nodes) || !Array.isArray(world.links)) {
+    throw new TypeError('World nodes and links must be arrays');
+  }
+  if (world.nodes.length > maxNodes || world.links.length > maxLinks) {
+    throw new RangeError('World exceeds the configured topology limits');
+  }
+  const nodeIds = new Set();
+  const nodes = [];
+  for (const node of world.nodes) {
+    objectWithKeys(node, ['id', 'erpMs', 'recoveryTailMs', 'automaticity'], 'node');
+    uniqueId(node.id, nodeIds, 'node ID');
+    nodes.push({
+      id: node.id,
+      erp: positiveTick(node.erpMs, `Node ${node.id} ERP`),
+      tail: positiveTick(node.recoveryTailMs, `Node ${node.id} recovery tail`),
+      last: null,
+      until: null,
+      erpGeneration: 0,
+      cycleGeneration: 0,
+      auto: { ...automaticity(node.automaticity), token: null },
+      incident: [],
+    });
+  }
+  const linkIds = new Set();
+  const links = [];
+  for (const link of world.links) {
+    objectWithKeys(link, ['id', 'a', 'b', 'enabled', 'ab', 'ba'], 'link');
+    uniqueId(link.id, linkIds, 'link ID');
+    if (link.a === link.b || !nodeIds.has(link.a) || !nodeIds.has(link.b)) {
+      throw new RangeError(`Link ${link.id} must connect two distinct existing nodes`);
+    }
+    requireBoolean(link.enabled, `Link ${link.id} enabled`);
+    links.push({
+      id: link.id,
+      a: link.a,
+      b: link.b,
+      enabled: link.enabled,
+      generation: 0,
+      ab: direction(link.ab, `Link ${link.id} ab`),
+      ba: direction(link.ba, `Link ${link.id} ba`),
+      active: new Map(),
+      collision: null,
+    });
+  }
+  return { worldId: world.worldId, nodes, links };
+}
+
+function readCommand(command, run) {
+  const keys = commandKeys.get(command?.type);
+  if (keys === undefined) throw new TypeError('Unknown command type');
+  objectWithKeys(command, [...commonCommandKeys, ...keys], 'command');
+  requireId(command.commandId, 'commandId');
+  if (command.runId !== run.id) throw new RangeError('Command belongs to a different run');
+  if (run.commandIds.has(command.commandId)) throw new RangeError('Duplicate command ID');
+  const tick = toTick(command.tMs, 'Command time');
+  if (run.committed !== null && tick <= run.committed) {
+    throw new RangeError('Command time must follow the committed horizon');
+  }
+  const targetId = command.nodeId ?? command.linkId;
+  const target = (keys[0] === 'nodeId' ? run.nodes : run.links).get(targetId);
+  if (target === undefined) throw new RangeError(`Unknown command target: ${targetId}`);
+
+  const accepted = { tick, commandId: command.commandId, target, type: command.type };
+  switch (command.type) {
+    case 'setLinkEnabled':
+      requireBoolean(command.enabled, 'enabled');
+      accepted.value = command.enabled;
+      break;
+    case 'setNodeERP':
+      accepted.value = editTick(command.erpMs, 'ERP', ERP_EDIT);
+      break;
+    case 'setDirectionDelay':
+      if (command.direction !== 'ab' && command.direction !== 'ba') {
+        throw new TypeError('Direction must be ab or ba');
+      }
+      accepted.direction = command.direction;
+      accepted.value = editTick(command.delayMs, 'Direction delay', DELAY_EDIT);
+      addTicks(accepted.value, target[accepted.direction].decrement?.maxExtra ?? 0);
+      break;
+    case 'setAutomaticity':
+      accepted.value = command.cycleMs === null ? null : editTick(command.cycleMs, 'Automaticity cycle', CYCLE_EDIT);
+      if (accepted.value !== null) addTicks(tick, accepted.value);
+      break;
+  }
+  return accepted;
+}
+
+return {requireId,readWorld,readCommand};
+})();
+__modules["src/engine/index.js"] = (()=>{
+const { Agenda } = __modules["src/engine/agenda.js"];
+const { History, recoveryAt } = __modules["src/engine/history.js"];
+const { readCommand, readWorld, requireId } = __modules["src/engine/input.js"];
+const { addTicks, clampUnit, toMs, toTick } = __modules["src/engine/time.js"];
+
+const EDIT = 0;
+const COLLISION = 1;
+const STIMULUS = 2;
+const AUTOMATIC = 3;
+const ARRIVAL = 4;
+const EMPTY_EVENTS = Object.freeze([]);
+
+function byId(a, b) {
+  if (a.id < b.id) return -1;
+  if (a.id > b.id) return 1;
+  return 0;
+}
+
+class ProcessingBudgetError extends Error {}
+
+class SimulationFault extends Error {
+  constructor(cause, tick, committed, events) {
+    super(`Simulation stopped at ${toMs(tick)} ms. ${cause.message}`, { cause });
+    this.name = 'SimulationFault';
+    this.code = cause instanceof ProcessingBudgetError ? 'PROCESSING_BUDGET' : 'SIMULATION_FAULT';
+    this.tMs = toMs(tick);
+    this.committedThroughMs = toMs(committed);
+    this.events = Object.freeze(events);
+  }
+}
+
+function charge(batch) {
+  if (--batch.budget.remaining < 0) throw new ProcessingBudgetError('Processing budget exhausted. Reset the run to continue.');
+}
+
+function emit(run, batch, type, payload) {
+  charge(batch);
+  const seq = ++run.eventSeq;
+  const event = Object.freeze({
+    runId: run.id,
+    worldId: run.worldId,
+    seq,
+    eventId: `e${seq}`,
+    tMs: toMs(batch.tick),
+    type,
+    ...payload,
+  });
+  batch.events.push(event);
+  return event;
+}
+
+function scheduleAutomatic(run, node, tick) {
+  const token = {};
+  node.auto.token = token;
+  run.agenda.push({ tick, phase: AUTOMATIC, order: node.order, node, token });
+}
+
+function scheduleNextAutomatic(run, node, tick) {
+  scheduleAutomatic(run, node, addTicks(tick, node.auto.cycle));
+}
+
+function removeTransit(batch, transit) {
+  transit.link.active.delete(transit.ordinal);
+  batch.transits.set(transit.event.transitId, null);
+}
+
+function transitPosition(transit, tick) {
+  const progress = clampUnit((tick - transit.departure) / (transit.arrival - transit.departure));
+  return transit.direction === 'ab' ? progress : 1 - progress;
+}
+
+function applyEdit(run, batch, command) {
+  const { commandId, direction, target, type, value } = command;
+  if (type === 'setLinkEnabled') {
+    if (target.enabled === value) return;
+    const previous = target.enabled;
+    target.enabled = value;
+    const generation = ++target.generation;
+    batch.links.add(target);
+    emit(run, batch, 'link_changed', { linkId: target.id, previous, value, generation, commandId });
+    if (!value) {
+      target.collision = null;
+      for (const transit of target.active.values()) {
+        emit(run, batch, 'conduction_canceled', {
+          linkId: target.id,
+          transitId: transit.event.transitId,
+          cause: 'cut',
+          position: transitPosition(transit, batch.tick),
+        });
+        removeTransit(batch, transit);
+      }
+    }
+    return;
+  }
+
+  const targetRef = type === 'setDirectionDelay' ? { linkId: target.id, direction } : { nodeId: target.id };
+  let parameter;
+  let previous;
+  let generation;
+  switch (type) {
+    case 'setNodeERP':
+      previous = target.erp;
+      if (previous === value) return;
+      target.erp = value;
+      parameter = 'erpMs';
+      generation = ++target.erpGeneration;
+      batch.nodes.add(target);
+      break;
+    case 'setDirectionDelay':
+      previous = target[direction].delay;
+      if (previous === value) return;
+      target[direction].delay = value;
+      parameter = 'delayMs';
+      generation = ++target[direction].generation;
+      batch.links.add(target);
+      break;
+    case 'setAutomaticity':
+      previous = target.auto.cycle;
+      if (previous === value) return;
+      target.auto.cycle = value;
+      target.auto.token = null;
+      parameter = 'cycleMs';
+      generation = ++target.cycleGeneration;
+      if (value !== null) scheduleNextAutomatic(run, target, batch.tick);
+      break;
+  }
+  emit(run, batch, 'parameter_changed', {
+    parameter, commandId, generation, ...targetRef, previous: toMs(previous), value: toMs(value),
+  });
+}
+
+function intersection(a, b) {
+  if (a.direction === b.direction ||
+      Math.max(a.departure, b.departure) >= Math.min(a.arrival, b.arrival)) return null;
+  const [ab, ba] = a.direction === 'ab' ? [a, b] : [b, a];
+  const abDuration = BigInt(ab.arrival - ab.departure);
+  const baDuration = BigInt(ba.arrival - ba.departure);
+  // The exact rational keeps endpoint classification and half-tick rounding stable.
+  const positionNumerator = BigInt(ba.arrival - ab.departure);
+  const denominator = abDuration + baDuration;
+  const elapsed = (2n * abDuration * positionNumerator + denominator) / (2n * denominator);
+  const tick = ab.departure + Number(elapsed);
+  return {
+    tick,
+    phase: COLLISION,
+    order: Math.min(a.ordinal, b.ordinal),
+    secondOrder: Math.max(a.ordinal, b.ordinal),
+    first: a.ordinal < b.ordinal ? a : b,
+    second: a.ordinal < b.ordinal ? b : a,
+    position: Number(positionNumerator) / Number(denominator),
+  };
+}
+
+function considerCollision(run, batch, link, a, b) {
+  charge(batch);
+  const candidate = intersection(a, b);
+  if (candidate === null) return;
+  const current = link.collision;
+  if (current !== null && (candidate.tick - current.tick || candidate.order - current.order ||
+    candidate.secondOrder - current.secondOrder) >= 0) return;
+  link.collision = candidate;
+  run.agenda.push(candidate);
+}
+
+function recomputeCollisions(run, batch, link) {
+  const ab = [];
+  const ba = [];
+  for (const transit of link.active.values()) (transit.direction === 'ab' ? ab : ba).push(transit);
+  for (const a of ab) {
+    for (const b of ba) considerCollision(run, batch, link, a, b);
+  }
+}
+
+function applyCollision(run, batch, collision) {
+  const { first, second, position } = collision;
+  const link = first.link;
+  if (link.collision !== collision) return;
+  link.collision = null;
+  removeTransit(batch, first);
+  removeTransit(batch, second);
+  emit(run, batch, 'conduction_collision', {
+    linkId: link.id,
+    transitIds: Object.freeze([first.event.transitId, second.event.transitId]),
+    position,
+  });
+  recomputeCollisions(run, batch, link);
+}
+
+function addCause(batch, node, event, source) {
+  let causes = batch.causes.get(node);
+  if (causes === undefined) {
+    causes = { ids: [], sources: new Set(), links: new Set() };
+    batch.causes.set(node, causes);
+  }
+  causes.ids.push(event.eventId);
+  causes.sources.add(source);
+  if (event.type === 'conduction_arrived') causes.links.add(event.linkId);
+}
+
+function attempt(run, batch, node, source, triggerId) {
+  const event = emit(run, batch, 'stimulus_attempted', { nodeId: node.id, source, triggerId });
+  addCause(batch, node, event, source);
+}
+
+function arrive(run, batch, transit) {
+  const link = transit.link;
+  if (!link.active.has(transit.ordinal)) return;
+  removeTransit(batch, transit);
+  const event = emit(run, batch, 'conduction_arrived', {
+    nodeId: transit.to.id,
+    linkId: link.id,
+    transitId: transit.event.transitId,
+  });
+  addCause(batch, transit.to, event, 'conduction');
+}
+
+function determineOutcomes(run, batch) {
+  const captures = [];
+  for (const node of [...batch.causes.keys()].sort(byId)) {
+    const causes = batch.causes.get(node);
+    const common = {
+      nodeId: node.id,
+      source: causes.sources.size === 1 ? causes.sources.values().next().value : 'mixed',
+      causeIds: Object.freeze(causes.ids),
+      incomingLinkIds: Object.freeze([...causes.links].sort()),
+    };
+    if (node.until !== null && batch.tick < node.until) {
+      emit(run, batch, 'activation_blocked', {
+        ...common,
+        cause: 'refractory',
+        remainingErpMs: toMs(node.until - batch.tick),
+        refractoryUntilMs: toMs(node.until),
+      });
+      continue;
+    }
+    const priorUntil = node.until;
+    const previous = node.last;
+    const recoveryBefore = recoveryAt(node, batch.tick);
+    node.last = batch.tick;
+    node.until = addTicks(batch.tick, node.erp);
+    batch.nodes.add(node);
+    const activation = emit(run, batch, 'activation', {
+      ...common,
+      priorActivationMs: toMs(previous),
+      intervalMs: previous === null ? null : toMs(batch.tick - previous),
+      erpMs: toMs(node.erp),
+      refractoryUntilMs: toMs(node.until),
+      recoveryBefore,
+    });
+    captures.push({ node, activation, priorUntil, incoming: causes.links });
+  }
+  return captures;
+}
+
+function transitDuration(settings, tick, priorUntil) {
+  const { decrement, delay } = settings;
+  if (decrement === null || priorUntil === null) return delay;
+  const recoveryInterval = Math.max(0, tick - priorUntil);
+  return addTicks(delay, Math.round(decrement.maxExtra * Math.exp(-recoveryInterval / decrement.tau)));
+}
+
+function launch(run, batch, capture, link, direction) {
+  const ordinal = ++run.transitSeq;
+  const departure = batch.tick;
+  const arrival = addTicks(departure, transitDuration(link[direction], departure, capture.priorUntil));
+  const to = run.nodes.get(direction === 'ab' ? link.b : link.a);
+  const event = emit(run, batch, 'conduction_launched', {
+    transitId: `t${ordinal}`,
+    activationId: capture.activation.eventId,
+    linkId: link.id,
+    linkGeneration: link.generation,
+    fromNodeId: capture.node.id,
+    toNodeId: to.id,
+    departureMs: toMs(departure),
+    arrivalMs: toMs(arrival),
+  });
+  const transit = { ordinal, event, direction, departure, arrival, link, to };
+  for (const existing of link.active.values()) considerCollision(run, batch, link, existing, transit);
+  link.active.set(ordinal, transit);
+  batch.transits.set(event.transitId, event);
+  run.agenda.push({ tick: arrival, phase: ARRIVAL, order: ordinal, transit });
+}
+
+function drain(run, batch, phase, process) {
+  while (run.agenda.peek()?.tick === batch.tick && run.agenda.peek().phase === phase) {
+    charge(batch);
+    process(run.agenda.pop());
+  }
+}
+
+function processBatch(run, tick, budget) {
+  const batch = { tick, budget, events: [], nodes: new Set(), links: new Set(), transits: new Map(), causes: new Map() };
+  drain(run, batch, EDIT, edit => applyEdit(run, batch, edit));
+  drain(run, batch, COLLISION, collision => applyCollision(run, batch, collision));
+  drain(run, batch, STIMULUS, item => attempt(run, batch, item.target, 'stimulus', item.commandId));
+  const dueAutomatic = [];
+  drain(run, batch, AUTOMATIC, ({ node, token }) => {
+    if (node.auto.token !== token) return;
+    dueAutomatic.push(node);
+    attempt(run, batch, node, 'automaticity', `auto${++run.autoSeq}`);
+  });
+  drain(run, batch, ARRIVAL, item => arrive(run, batch, item.transit));
+  const captures = determineOutcomes(run, batch);
+  const resetAutomatic = new Set();
+  for (const capture of captures) {
+    for (const { link, direction } of capture.node.incident) {
+      charge(batch);
+      if (link.enabled && link[direction].enabled && !capture.incoming.has(link.id)) {
+        launch(run, batch, capture, link, direction);
+      }
+    }
+    if (capture.node.auto.cycle !== null && capture.node.auto.resetOnCapture) resetAutomatic.add(capture.node);
+  }
+  // A just-launched wave can meet another wave within half a tick of departure.
+  // Finish that collision in this batch after its causal launch.
+  drain(run, batch, COLLISION, collision => applyCollision(run, batch, collision));
+  for (const node of dueAutomatic) resetAutomatic.add(node);
+  for (const node of resetAutomatic) scheduleNextAutomatic(run, node, tick);
+  return batch;
+}
+
+function requireLimit(value, label) {
+  if (!Number.isSafeInteger(value) || value <= 0) throw new RangeError(`${label} must be a positive safe integer`);
+  return value;
+}
+
+class Engine {
+  #run = null;
+  #options;
+
+  constructor({ processingBudget = 10_000, historyBatches = 4096, maxNodes = 4096, maxLinks = 8192 } = {}) {
+    this.#options = {
+      processingBudget: requireLimit(processingBudget, 'Processing budget'),
+      historyBatches: requireLimit(historyBatches, 'History batch limit'),
+      maxNodes: requireLimit(maxNodes, 'Maximum nodes'),
+      maxLinks: requireLimit(maxLinks, 'Maximum links'),
+    };
+  }
+
+  reset(world, freshRunId) {
+    requireId(freshRunId, 'runId');
+    const { worldId, nodes, links } = readWorld(world, this.#options);
+    nodes.sort(byId);
+    links.sort(byId);
+    const run = {
+      id: freshRunId,
+      worldId,
+      nodes: new Map(nodes.map(node => [node.id, node])),
+      links: new Map(links.map(link => [link.id, link])),
+      committed: null,
+      commandIds: new Set(),
+      agenda: new Agenda(),
+      eventSeq: 0,
+      transitSeq: 0,
+      autoSeq: 0,
+      fault: null,
+    };
+    for (const link of links) {
+      run.nodes.get(link.a).incident.push({ link, direction: 'ab' });
+      run.nodes.get(link.b).incident.push({ link, direction: 'ba' });
+    }
+    for (const [order, node] of nodes.entries()) {
+      node.order = order;
+      if (node.auto.firstAttempt !== null) scheduleAutomatic(run, node, node.auto.firstAttempt);
+    }
+    run.history = new History(run, this.#options.historyBatches);
+    const initial = run.history.snapshot(run, 0);
+    this.#run = run;
+    return initial;
+  }
+
+  #requireRun() {
+    if (this.#run === null) throw new Error('Reset the engine with a world to start a run');
+    return this.#run;
+  }
+
+  #running() {
+    const run = this.#requireRun();
+    if (run.fault !== null) throw new Error('Run is faulted. Reset the engine to continue.', { cause: run.fault });
+    return run;
+  }
+
+  enqueue(command) {
+    const run = this.#running();
+    const accepted = readCommand(command, run);
+    const order = run.commandIds.size;
+    run.commandIds.add(accepted.commandId);
+    run.agenda.push({ ...accepted, order, phase: accepted.type === 'stimulate' ? STIMULUS : EDIT });
+  }
+
+  advanceTo(tMs) {
+    const run = this.#running();
+    const horizon = toTick(tMs, 'Horizon');
+    if (run.committed !== null && horizon < run.committed) throw new RangeError('Horizon cannot move backward');
+    if (horizon === run.committed) return EMPTY_EVENTS;
+    const events = [];
+    const budget = { remaining: this.#options.processingBudget };
+    while (run.agenda.peek()?.tick <= horizon) {
+      const tick = run.agenda.peek().tick;
+      try {
+        const batch = processBatch(run, tick, budget);
+        run.history.record(tick, batch);
+        for (const event of batch.events) events.push(event);
+        run.committed = tick;
+      } catch (error) {
+        run.fault = new SimulationFault(error, tick, run.committed, events);
+        throw run.fault;
+      }
+    }
+    run.committed = horizon;
+    return Object.freeze(events);
+  }
+
+  committedThroughMs() {
+    return toMs(this.#run?.committed ?? null);
+  }
+
+  readAt(tMs) {
+    const run = this.#requireRun();
+    const tick = toTick(tMs, 'Read time');
+    if (run.committed === null || tick > run.committed) throw new RangeError('Read time is beyond the committed horizon');
+    return run.history.snapshot(run, tick);
+  }
+
+  diagnostics() {
+    const run = this.#requireRun();
+    const fault = run.fault;
+    return Object.freeze({
+      runId: run.id,
+      committedThroughMs: toMs(run.committed),
+      retainedFromMs: toMs(run.history.earliestTick),
+      retainedBatches: run.history.size,
+      pendingItems: fault === null ? run.agenda.size : null,
+      fault: fault === null ? null : Object.freeze({ code: fault.code, tMs: fault.tMs, message: fault.message }),
+    });
+  }
+}
+
+function createEngine(options) {
+  return new Engine(options);
+}
+
+return {SimulationFault,Engine,createEngine};
+})();
+__modules["src/worlds/circulation.js"] = (()=>{
+const nodeErps = [180, 300, 220, 220, 220, 220, 220, 200];
+const direction = Object.freeze({ enabled: true, delayMs: 60, decrement: null });
+
+const circulationWorld = Object.freeze({
+  worldId: 'circulation',
+  nodes: Object.freeze(nodeErps.map((erpMs, index) => Object.freeze({
+    id: `R${index}`,
+    erpMs,
+    recoveryTailMs: 120,
+    automaticity: null,
+  }))),
+  links: Object.freeze(nodeErps.map((_, index) => Object.freeze({
+    id: `L${index}`,
+    a: `R${index}`,
+    b: `R${(index + 1) % nodeErps.length}`,
+    enabled: true,
+    ab: direction,
+    ba: direction,
+  }))),
+});
+
+function createCirculationWorld() {
+  return {
+    worldId: circulationWorld.worldId,
+    nodes: circulationWorld.nodes.map(node => ({ ...node })),
+    links: circulationWorld.links.map(link => ({ ...link, ab: { ...link.ab }, ba: { ...link.ba } })),
+  };
+}
+
+return {circulationWorld,createCirculationWorld};
+})();
+__modules["src/worlds/feedforward.js"] = (()=>{
+function directedLink(id, a, b, delayMs, decrement = null) {
+  return {
+    id,
+    a,
+    b,
+    enabled: true,
+    ab: { enabled: true, delayMs, decrement },
+    ba: { enabled: false, delayMs, decrement: null },
+  };
+}
+
+function freezePreset(value) {
+  if (value !== null && typeof value === 'object') {
+    for (const child of Object.values(value)) freezePreset(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+return {directedLink,freezePreset};
+})();
+__modules["src/worlds/conduction.js"] = (()=>{
+const { directedLink, freezePreset } = __modules["src/worlds/feedforward.js"];
+
+function createConductionWorld() {
+  return {
+    worldId: 'conduction',
+    nodes: [
+      { id: 'S', erpMs: 200, recoveryTailMs: 120, automaticity: { cycleMs: 800, firstAttemptMs: 0, resetOnCapture: true } },
+      { id: 'A', erpMs: 220, recoveryTailMs: 120, automaticity: null },
+      { id: 'N', erpMs: 250, recoveryTailMs: 120, automaticity: null },
+      { id: 'H', erpMs: 180, recoveryTailMs: 120, automaticity: null },
+      { id: 'V1', erpMs: 260, recoveryTailMs: 120, automaticity: null },
+      { id: 'V2', erpMs: 260, recoveryTailMs: 120, automaticity: null },
+    ],
+    links: [
+      directedLink('SA', 'S', 'A', 25),
+      directedLink('AN', 'A', 'N', 35),
+      directedLink('NH', 'N', 'H', 65, { maxExtraMs: 90, tauMs: 120 }),
+      directedLink('HV1', 'H', 'V1', 25),
+      directedLink('HV2', 'H', 'V2', 45),
+    ],
+  };
+}
+
+const conductionWorld = freezePreset(createConductionWorld());
+
+return {createConductionWorld,conductionWorld};
+})();
+__modules["src/worlds/duality.js"] = (()=>{
+const { directedLink, freezePreset } = __modules["src/worlds/feedforward.js"];
+
+function createDualityWorld() {
+  return {
+    worldId: 'duality',
+    nodes: [
+      { id: 'A', erpMs: 180, recoveryTailMs: 150, automaticity: { cycleMs: 720, firstAttemptMs: 0, resetOnCapture: true } },
+      { id: 'A1', erpMs: 200, recoveryTailMs: 150, automaticity: null },
+      { id: 'A2', erpMs: 220, recoveryTailMs: 150, automaticity: null },
+      { id: 'B', erpMs: 240, recoveryTailMs: 150, automaticity: { cycleMs: 1030, firstAttemptMs: 170, resetOnCapture: true } },
+      { id: 'B1', erpMs: 240, recoveryTailMs: 150, automaticity: null },
+      { id: 'B2', erpMs: 240, recoveryTailMs: 150, automaticity: null },
+    ],
+    links: [
+      directedLink('AA1', 'A', 'A1', 45),
+      directedLink('AA2', 'A', 'A2', 85),
+      directedLink('BB1', 'B', 'B1', 60),
+      directedLink('BB2', 'B', 'B2', 110),
+    ],
+  };
+}
+
+const dualityWorld = freezePreset(createDualityWorld());
+
+return {createDualityWorld,dualityWorld};
+})();
+__modules["src/runtime/transport.js"] = (()=>{
+const DEFAULT_DILATION = 4;
+const WAKE_WALL_MS = 25;
+const LOOKAHEAD_WALL_MS = 60;
+const INPUT_MARGIN_WALL_MS = 5;
+const COMMAND_LOG_LIMIT = 4096;
+
+const TICKS_PER_MS = 1_000;
+const clockTolerance = (sec) => 8 * Number.EPSILON * Math.max(1, Math.abs(sec));
+// Comparisons at a microsecond boundary allow for subtraction of large clock anchors.
+const tickTolerance = (sec) => 1e-7 + clockTolerance(sec) * 1_000 * TICKS_PER_MS;
+const floorTick = (ms, audioSec = 0) => Math.floor(ms * TICKS_PER_MS + tickTolerance(audioSec));
+const ceilTick = (ms, audioSec = 0) => Math.ceil(ms * TICKS_PER_MS - tickTolerance(audioSec));
+
+function createTransport({
+  engine,
+  dilation = DEFAULT_DILATION,
+  nowSec = () => performance.now() / 1_000,
+  setTimer = (callback, delay) => setTimeout(callback, delay),
+  clearTimer = (handle) => clearTimeout(handle),
+  onCommit = () => {},
+  onReset = () => {},
+  onSilence = () => {},
+  onFault = () => {},
+  onStateChange = () => {},
+}) {
+  if (!Number.isFinite(dilation) || dilation < 1 || dilation > 8) {
+    throw new RangeError('Dilation must be between 1 and 8');
+  }
+
+  const usedRunIds = new Set();
+  let status = 'idle';
+  let runId = null;
+  let restedSnapshot = null;
+  let timer = null;
+  let segments = [];
+  let committedTick = null;
+  let lastFrameMs = 0;
+  let pendingEvents = [];
+  let acceptedCommands = [];
+  let discardedCommandCount = 0;
+  let commandIds = new Set();
+  let nextCommandOrdinal = 1;
+  let reason = null;
+  let error = null;
+  let lastInterruption = null;
+
+  function committedThroughMs() {
+    return committedTick === null ? null : committedTick / TICKS_PER_MS;
+  }
+
+  function pendingDilation() {
+    const selected = segments.at(-1)?.dilation ?? dilation;
+    return selected === dilation ? null : selected;
+  }
+
+  function state() {
+    return { status, runId, dilation, pendingDilation: pendingDilation(), reason, error };
+  }
+
+  function emitState() {
+    onStateChange(state());
+  }
+
+  function audioSecAt(tMs) {
+    if (segments.length === 0) throw new Error('Transport has no time anchor');
+    let index = segments.length - 1;
+    while (index > 0 && tMs < segments[index].simMs) index--;
+    const segment = segments[index];
+    return segment.audioSec + (tMs - segment.simMs) * segment.dilation / 1_000;
+  }
+
+  function projectMs(audioSec) {
+    let index = segments.length - 1;
+    while (index > 0 && audioSec < segments[index].audioSec) index--;
+    const segment = segments[index];
+    return segment.simMs + (audioSec - segment.audioSec) * 1_000 / segment.dilation;
+  }
+
+  function isPlaying() {
+    return status === 'running' || status === 'pausing';
+  }
+
+  function presentedAt(audioSec) {
+    const boundary = committedThroughMs() ?? 0;
+    if (!isPlaying()) return boundary;
+    if (audioSec + clockTolerance(audioSec) >= audioSecAt(boundary)) return boundary;
+    return Math.max(segments[0].simMs, projectMs(audioSec));
+  }
+
+  function presentedMs() {
+    return presentedAt(isPlaying() ? nowSec() : 0);
+  }
+
+  function earliestAt(presented) {
+    const playing = isPlaying();
+    const marginSec = playing ? audioSecAt(presented) + INPUT_MARGIN_WALL_MS / 1_000 : 0;
+    const marginMs = playing ? projectMs(marginSec) : presented + INPUT_MARGIN_WALL_MS / dilation;
+    return Math.max((committedTick ?? -1) + 1, ceilTick(marginMs, marginSec)) / TICKS_PER_MS;
+  }
+
+  function earliestInputMs() {
+    return runId === null ? null : earliestAt(presentedMs());
+  }
+
+  function cancelWake() {
+    if (timer === null) return;
+    const { handle } = timer;
+    timer = null;
+    clearTimer(handle);
+  }
+
+  function armWake() {
+    if (timer !== null || !isPlaying()) return;
+    const token = {};
+    timer = token;
+    token.handle = setTimer(() => {
+      if (timer !== token) return;
+      timer = null;
+      wake();
+    }, WAKE_WALL_MS);
+  }
+
+  function silence(stopReason) {
+    onSilence({ runId, reason: stopReason });
+  }
+
+  function finishPause(pauseReason) {
+    dilation = segments.at(-1).dilation;
+    status = 'paused';
+    reason = pauseReason;
+    cancelWake();
+    silence(pauseReason);
+    emitState();
+  }
+
+  function interruptAt(interruptionReason, audioSec) {
+    const throughMs = committedThroughMs() ?? 0;
+    lastInterruption = Object.freeze({
+      runId,
+      reason: interruptionReason,
+      fromMs: lastFrameMs,
+      throughMs,
+      discardedEvents: pendingEvents.length,
+      overdueWallMs: Math.max(0, (audioSec - audioSecAt(throughMs)) * 1_000),
+    });
+    pendingEvents = [];
+    finishPause(interruptionReason);
+  }
+
+  function refresh(audioSec) {
+    if (!isPlaying()) return;
+    const boundary = committedThroughMs() ?? 0;
+    const boundarySec = audioSecAt(boundary);
+    const tolerance = clockTolerance(audioSec);
+    if (status === 'running' && committedTick !== null && audioSec > boundarySec + tolerance) {
+      interruptAt('late-wake', audioSec);
+      return;
+    }
+    if (status === 'pausing' && audioSec + tolerance >= boundarySec) {
+      finishPause('pause');
+      return;
+    }
+    while (segments.length > 1 && audioSec + tolerance >= segments[1].audioSec) {
+      segments.shift();
+    }
+    if (dilation !== segments[0].dilation) {
+      dilation = segments[0].dilation;
+      emitState();
+    }
+  }
+
+  function fault(failure) {
+    if (failure && Object.hasOwn(failure, 'committedThroughMs')) {
+      committedTick = failure.committedThroughMs === null ? null : floorTick(failure.committedThroughMs);
+    }
+    status = 'faulted';
+    reason = 'fault';
+    error = failure;
+    pendingEvents = [];
+    cancelWake();
+    silence(reason);
+    onFault(failure);
+    emitState();
+  }
+
+  function commit(audioSec) {
+    const horizonSec = audioSec + LOOKAHEAD_WALL_MS / 1_000;
+    const horizonTick = floorTick(projectMs(horizonSec), horizonSec);
+    if (committedTick !== null && horizonTick <= committedTick) return;
+    try {
+      const events = engine.advanceTo(horizonTick / TICKS_PER_MS);
+      committedTick = horizonTick;
+      if (events.length > 0) {
+        pendingEvents = pendingEvents.concat(events);
+        onCommit(events);
+      }
+    } catch (failure) {
+      fault(failure);
+    }
+  }
+
+  function wake() {
+    if (!isPlaying()) return;
+    const audioSec = nowSec();
+    refresh(audioSec);
+    if (status === 'running') commit(audioSec);
+    armWake();
+  }
+
+  function resume() {
+    if (runId === null || (status !== 'idle' && status !== 'paused')) return false;
+    const audioSec = nowSec();
+    segments = [{ simMs: committedThroughMs() ?? 0, audioSec, dilation }];
+    status = 'running';
+    reason = null;
+    commit(audioSec);
+    if (status === 'running') emitState();
+    armWake();
+    return status === 'running';
+  }
+
+  function pause() {
+    if (status !== 'running') return false;
+    const audioSec = nowSec();
+    refresh(audioSec);
+    if (status !== 'running') return false;
+    status = 'pausing';
+    reason = 'pause';
+    emitState();
+    refresh(audioSec);
+    armWake();
+    return true;
+  }
+
+  function interrupt(interruptionReason = 'interrupted') {
+    if (!isPlaying()) return false;
+    interruptAt(interruptionReason, nowSec());
+    return true;
+  }
+
+  function setDilation(value) {
+    if (!Number.isFinite(value) || value < 1 || value > 8) {
+      throw new RangeError('Dilation must be between 1 and 8');
+    }
+    if (isPlaying()) refresh(nowSec());
+    if (value === (pendingDilation() ?? dilation)) return false;
+    if (isPlaying()) {
+      const simMs = committedThroughMs() ?? 0;
+      const audioSec = audioSecAt(simMs);
+      if (segments.at(-1).simMs === simMs) segments.pop();
+      if (segments.at(-1)?.dilation !== value) segments.push({ simMs, audioSec, dilation: value });
+    } else {
+      dilation = value;
+      if (segments.length > 0) {
+        const simMs = committedThroughMs() ?? 0;
+        segments = [{ simMs, audioSec: audioSecAt(simMs), dilation }];
+      }
+    }
+    emitState();
+    return true;
+  }
+
+  function rememberCommand(command) {
+    const accepted = Object.freeze(command);
+    engine.enqueue(accepted);
+    commandIds.add(accepted.commandId);
+    acceptedCommands.push(accepted);
+    if (acceptedCommands.length > COMMAND_LOG_LIMIT) {
+      acceptedCommands.shift();
+      discardedCommandCount++;
+    }
+    return accepted;
+  }
+
+  function reset(world, freshRunId, { commands = [], start = false } = {}) {
+    if (usedRunIds.has(freshRunId)) throw new Error('Reset requires a fresh run ID');
+    const nextSnapshot = engine.reset(world, freshRunId);
+    const selected = pendingDilation() ?? dilation;
+    cancelWake();
+    if (runId !== null) silence('reset');
+    usedRunIds.add(freshRunId);
+    runId = freshRunId;
+    restedSnapshot = nextSnapshot;
+    status = 'idle';
+    dilation = selected;
+    reason = null;
+    error = null;
+    segments = [];
+    committedTick = null;
+    lastFrameMs = 0;
+    pendingEvents = [];
+    acceptedCommands = [];
+    discardedCommandCount = 0;
+    commandIds = new Set();
+    nextCommandOrdinal = 1;
+    lastInterruption = null;
+    onReset(restedSnapshot);
+    try {
+      for (const command of commands) rememberCommand({ ...command, runId });
+    } catch (failure) {
+      fault(failure);
+      throw failure;
+    }
+    if (start) resume();
+    else emitState();
+    return restedSnapshot;
+  }
+
+  function submit(fields) {
+    if (status !== 'running') return null;
+    const audioSec = nowSec();
+    refresh(audioSec);
+    if (status !== 'running') return null;
+    let { commandId } = fields;
+    if (commandId === undefined) {
+      do commandId = `live-${nextCommandOrdinal++}`;
+      while (commandIds.has(commandId));
+    }
+    return rememberCommand({ ...fields, commandId, runId, tMs: earliestAt(presentedAt(audioSec)) });
+  }
+
+  function frame() {
+    const audioSec = isPlaying() ? nowSec() : 0;
+    refresh(audioSec);
+    const tMs = presentedAt(audioSec);
+    const tick = floorTick(tMs, audioSec);
+    let due = 0;
+    while (due < pendingEvents.length && floorTick(pendingEvents[due].tMs) <= tick) due++;
+    const snapshot = committedTick === null ? restedSnapshot : engine.readAt(tick / TICKS_PER_MS);
+    lastFrameMs = tMs;
+    return { runId, presentedMs: tMs, snapshot, events: pendingEvents.splice(0, due) };
+  }
+
+  return {
+    get status() { return status; },
+    get runId() { return runId; },
+    get dilation() { return dilation; },
+    get pendingDilation() { return pendingDilation(); },
+    get lastInterruption() { return lastInterruption; },
+    get discardedCommandCount() { return discardedCommandCount; },
+    state,
+    reset,
+    resume,
+    pause,
+    interrupt,
+    setDilation,
+    submit,
+    wake,
+    frame,
+    presentedMs,
+    committedThroughMs,
+    earliestInputMs,
+    audioSecAt,
+    commandLog: () => acceptedCommands.slice(),
+  };
+}
+
+return {DEFAULT_DILATION,WAKE_WALL_MS,LOOKAHEAD_WALL_MS,INPUT_MARGIN_WALL_MS,COMMAND_LOG_LIMIT,createTransport};
+})();
+__modules["src/visuals/renderer.js"] = (()=>{
+const GROUND = '#080C13';
+const BRASS = '#C8A878';
+const ICE = '#83A9C8';
+const FLASH = '#FFF1D1';
+const COOL_FLASH = '#D9F1FF';
+const INPUT = '#B0BCC6';
+const TURN = Math.PI * 2;
+const SAMPLES = 64;
+const GLYPH_LIFETIME = 74;
+const HIT_RADIUS = 22;
+const CROSSING_EPSILON = 1e-7;
+const ECHOES = [
+  { offset: -1.02, twist: 0.5, width: 0.44, alpha: 0.36 },
+  { offset: -0.46, twist: -0.78, width: 0.51, alpha: 0.31 },
+  { offset: 0.40, twist: 0.57, width: 0.51, alpha: 0.42 },
+  { offset: 1.12, twist: -0.62, width: 0.44, alpha: 0.34 },
+];
+
+const clamp = (value) => Math.max(0, Math.min(1, value));
+const mix = (a, b, t) => a + (b - a) * t;
+const ease = (value) => value * value * (3 - 2 * value);
+
+// Node positions and cubic handles are relative to the center and stage radius.
+const SCULPTURES = {
+  conduction: {
+    nodes: {
+      S: [-0.30, -1.08, ICE], A: [-0.09, -0.59, ICE], N: [0.20, -0.14, ICE],
+      H: [0.02, 0.32, ICE], V1: [-0.60, 1.08, BRASS], V2: [0.76, 0.94, BRASS],
+    },
+    handles: {
+      SA: [-0.31, -0.86, -0.10, -0.78], AN: [-0.08, -0.35, 0.19, -0.36],
+      NH: [0.24, 0.04, 0.00, 0.14], HV1: [0.02, 0.59, -0.60, 0.80],
+      HV2: [0.03, 0.57, 0.71, 0.72],
+    },
+  },
+  duality: {
+    nodes: {
+      A: [-0.96, -0.62, BRASS], A1: [-0.57, 0.61, BRASS], A2: [0.37, 0.36, BRASS],
+      B: [0.65, -0.60, ICE], B1: [-0.23, -0.16, ICE], B2: [0.87, 0.75, ICE],
+    },
+    handles: {
+      AA1: [-0.96, -0.12, -0.89, 0.51], AA2: [-0.88, -0.16, -0.14, 0.16],
+      BB1: [0.62, -0.28, 0.13, -0.14], BB2: [0.63, -0.16, 0.55, 0.54],
+    },
+  },
+};
+
+function cubicPosition(start, end, handle1, handle2, u, offset) {
+  const v = 1 - u;
+  const x = v ** 3 * start.x + 3 * v * v * u * handle1.x + 3 * v * u * u * handle2.x + u ** 3 * end.x;
+  const y = v ** 3 * start.y + 3 * v * v * u * handle1.y + 3 * v * u * u * handle2.y + u ** 3 * end.y;
+  const dx = v * v * (handle1.x - start.x) + 2 * v * u * (handle2.x - handle1.x) + u * u * (end.x - handle2.x);
+  const dy = v * v * (handle1.y - start.y) + 2 * v * u * (handle2.y - handle1.y) + u * u * (end.y - handle2.y);
+  const magnitude = Math.hypot(dx, dy) || 1;
+  return { x: x - offset * dy / magnitude, y: y + offset * dx / magnitude };
+}
+
+function cssColor(hex, opacity) {
+  return `${hex}${Math.round(clamp(opacity) * 255).toString(16).padStart(2, '0')}`;
+}
+
+function makeCurve(positionAt) {
+  const points = [{ ...positionAt(0), distance: 0 }];
+  for (let i = 1; i <= SAMPLES; i += 1) {
+    const position = positionAt(i / SAMPLES);
+    const previous = points[i - 1];
+    points.push({
+      ...position,
+      distance: previous.distance + Math.hypot(position.x - previous.x, position.y - previous.y),
+    });
+  }
+  return { points, length: points[SAMPLES].distance };
+}
+
+function atFraction(curve, fraction) {
+  const target = curve.length * clamp(fraction);
+  let first = 0;
+  let last = SAMPLES;
+  while (last - first > 1) {
+    const middle = Math.floor((first + last) / 2);
+    if (curve.points[middle].distance < target) first = middle;
+    else last = middle;
+  }
+  const a = curve.points[first];
+  const b = curve.points[last];
+  const t = (target - a.distance) / (b.distance - a.distance || 1);
+  return { x: mix(a.x, b.x, t), y: mix(a.y, b.y, t) };
+}
+
+function awayFromNodes(x, y, from, to, clearance) {
+  return Math.hypot(x - from.x, y - from.y) > clearance && Math.hypot(x - to.x, y - to.y) > clearance;
+}
+
+function crossesAtJoin(points, start, end, previous) {
+  for (let i = 1; i < points.length; i += 1) {
+    const a = points[i - 1];
+    const b = points[i];
+    const length = b.distance - a.distance;
+    if (!length) continue;
+    const dx = (b.x - a.x) / length;
+    const dy = (b.y - a.y) / length;
+    const x = start.x - a.x;
+    const y = start.y - a.y;
+    const along = dx * x + dy * y;
+    if (Math.abs(dx * y - dy * x) > CROSSING_EPSILON
+        || along < -CROSSING_EPSILON || along >= length - CROSSING_EPSILON) continue;
+
+    const before = along > CROSSING_EPSILON ? a : points[i - 2];
+    if (!before) continue;
+    const forwardAngle = Math.atan2(b.y - start.y, b.x - start.x);
+    const angleFromForward = ({ x, y }) => (Math.atan2(y - start.y, x - start.x) - forwardAngle + TURN) % TURN;
+    const backwardAngle = angleFromForward(before);
+    const entryAngle = angleFromForward(previous);
+    const exitAngle = angleFromForward(end);
+    // The two gesture legs must alternate with the two path legs around the join.
+    const onPath = (angle) => angle <= CROSSING_EPSILON || angle >= TURN - CROSSING_EPSILON
+      || Math.abs(angle - backwardAngle) <= CROSSING_EPSILON;
+    if (!onPath(entryAngle) && !onPath(exitAngle) && (entryAngle < backwardAngle) !== (exitAngle < backwardAngle)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function firstCrossing(curve, gesture, from, to, previousSample) {
+  const { start, dx, dy, length } = gesture;
+  const nodeClearance = Math.min(HIT_RADIUS, curve.length / 3);
+  if (previousSample && awayFromNodes(start.x, start.y, from, to, nodeClearance)
+      && crossesAtJoin(curve.points, start, gesture.end, previousSample)) return 0;
+  let previous;
+  let previousSide = 0;
+  let pointOnLine;
+  let pointsOnLine = 0;
+  let first = Infinity;
+  for (const point of curve.points) {
+    const side = dx * (point.y - start.y) - dy * (point.x - start.x);
+    if (Math.abs(side) <= CROSSING_EPSILON) {
+      pointOnLine = point;
+      pointsOnLine += 1;
+      continue;
+    }
+    // A single vertex on the swipe counts if the sides change. A tangent or
+    // a segment following the filament doesn't cross it.
+    if (previousSide * side < 0 && pointsOnLine <= 1) {
+      const t = previousSide / (previousSide - side);
+      const x = pointsOnLine ? pointOnLine.x : mix(previous.x, point.x, t);
+      const y = pointsOnLine ? pointOnLine.y : mix(previous.y, point.y, t);
+      const along = dx * (x - start.x) + dy * (y - start.y);
+      if (along > CROSSING_EPSILON && along < length - CROSSING_EPSILON
+          && awayFromNodes(x, y, from, to, nodeClearance)) {
+        first = Math.min(first, along);
+      }
+    }
+    previous = point;
+    previousSide = side;
+    pointsOnLine = 0;
+  }
+  return first;
+}
+
+function makeGeometry(world, width, height) {
+  const cx = width / 2;
+  const cy = height / 2;
+  const radius = Math.min(width, height) * 0.33;
+  const filamentSpread = Math.max(4, Math.min(12, radius * 0.056));
+  const isRing = world.nodes.length === 8 && world.nodes.every(({ id }) => /^R[0-7]$/.test(id));
+  const sculpture = Object.hasOwn(SCULPTURES, world.worldId) ? SCULPTURES[world.worldId] : null;
+  const stagePoint = (x, y) => ({ x: cx + x * radius, y: cy + y * radius });
+  const nodes = new Map(world.nodes.map(({ id }, index) => {
+    const placement = sculpture?.nodes[id];
+    if (Array.isArray(placement)) {
+      const [x, y, color] = placement;
+      return [id, { ...stagePoint(x, y), angle: Math.atan2(y, x), color }];
+    }
+    const angle = (isRing ? Number(id.slice(1)) : index) * TURN / world.nodes.length - Math.PI / 2;
+    return [id, { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius,
+      angle, color: Math.cos(angle) > 0.08 ? ICE : BRASS }];
+  }));
+  const links = new Map(world.links.map(({ id, a, b, enabled }) => {
+    const start = nodes.get(a);
+    const end = nodes.get(b);
+    const sweep = Math.atan2(Math.sin(end.angle - start.angle), Math.cos(end.angle - start.angle));
+    const handles = sculpture?.handles[id];
+    const hasHandles = Array.isArray(handles);
+    const handle1 = hasHandles ? stagePoint(handles[0], handles[1]) : null;
+    const handle2 = hasHandles ? stagePoint(handles[2], handles[3]) : null;
+    const color = hasHandles ? end.color : (Math.cos(start.angle + sweep / 2) > 0.08 ? ICE : BRASS);
+    const positionAt = (u, offset = 0) => {
+      if (isRing) {
+        const theta = start.angle + sweep * u;
+        return { x: cx + Math.cos(theta) * (radius + offset), y: cy + Math.sin(theta) * (radius + offset) };
+      }
+      if (hasHandles) return cubicPosition(start, end, handle1, handle2, u, offset);
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const length = Math.hypot(dx, dy) || 1;
+      return { x: mix(start.x, end.x, u) - dy * offset / length,
+        y: mix(start.y, end.y, u) + dx * offset / length };
+    };
+    return [id, { a, b, enabled, color, curve: makeCurve(positionAt),
+      echoes: ECHOES.map((thread, i) => ({
+        ...thread,
+        color: i === 1 || i === 3 ? (color === BRASS ? ICE : BRASS) : color,
+        curve: makeCurve((u) => positionAt(u, filamentSpread * Math.sin(Math.PI * u)
+          * (thread.offset + thread.twist * Math.sin(TURN * u + start.angle + i * 0.43)))),
+      })),
+    }];
+  }));
+  return { nodes, links, cx, cy, radius };
+}
+
+function strokeCurve(ctx, curve, start, end, color, width) {
+  const a = atFraction(curve, start);
+  const b = atFraction(curve, end);
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  for (const point of curve.points) {
+    const fraction = point.distance / curve.length;
+    if (fraction > start && fraction < end) ctx.lineTo(point.x, point.y);
+  }
+  ctx.lineTo(b.x, b.y);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.stroke();
+}
+
+function dot(ctx, x, y, radius, color) {
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, TURN);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function arc(ctx, x, y, radius, start, end, color, width = 1) {
+  ctx.beginPath();
+  ctx.arc(x, y, radius, start, end);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.stroke();
+}
+
+function halo(ctx, x, y, radius, color, intensity) {
+  const glow = ctx.createRadialGradient(x, y, 0, x, y, radius);
+  glow.addColorStop(0, cssColor(color, intensity));
+  glow.addColorStop(0.33, cssColor(color, intensity * 0.29));
+  glow.addColorStop(1, cssColor(color, 0));
+  ctx.fillStyle = glow;
+  ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+}
+
+function drawBackdrop(ctx, geometry, links, width, height) {
+  ctx.fillStyle = GROUND;
+  ctx.fillRect(0, 0, width, height);
+  const { cx, cy, radius } = geometry;
+  const ambient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius * 1.65);
+  ambient.addColorStop(0, '#090D15');
+  ambient.addColorStop(0.53, '#0A1019');
+  ambient.addColorStop(0.65, '#0D1520');
+  ambient.addColorStop(0.83, '#090F17');
+  ambient.addColorStop(1, GROUND);
+  ctx.fillStyle = ambient;
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.lineCap = 'round';
+  for (const [id, link] of geometry.links) {
+    const enabled = links[id]?.enabled ?? link.enabled;
+    const gap = Math.min(0.31, 8 / link.curve.length);
+    const spans = enabled ? [[0, 1]] : [[0, 0.5 - gap], [0.5 + gap, 1]];
+    const dim = enabled ? 1 : 0.53;
+    for (const [start, end] of spans) {
+      for (const thread of link.echoes) {
+        strokeCurve(ctx, thread.curve, start, end, cssColor(thread.color, thread.alpha * dim), thread.width);
+      }
+      strokeCurve(ctx, link.curve, start, end, cssColor(link.color, 0.09 * dim), 3.5);
+      strokeCurve(ctx, link.curve, start, end, cssColor(link.color, 0.68 * dim), 0.89);
+    }
+    if (!enabled) {
+      for (const fraction of [0.5 - gap, 0.5 + gap]) {
+        const point = atFraction(link.curve, fraction);
+        dot(ctx, point.x, point.y, 1.07, cssColor(link.color, 0.72));
+      }
+    }
+  }
+}
+
+function drawTransit(ctx, link, transit, tMs, reducedMotion) {
+  const progress = (tMs - transit.departureMs) / (transit.arrivalMs - transit.departureMs);
+  if (progress < 0 || progress >= 1) return;
+  if (reducedMotion) {
+    strokeCurve(ctx, link.curve, 0, 1, cssColor(link.color, 0.83), 1.5);
+    const endpoint = atFraction(link.curve, transit.fromNodeId === link.a ? 0 : 1);
+    dot(ctx, endpoint.x, endpoint.y, 1.9, cssColor(link.color, 0.92));
+    return;
+  }
+  const forward = transit.fromNodeId === link.a;
+  for (let i = 0; i < 8; i += 1) {
+    const start = Math.max(0, progress - 0.23 + 0.23 * (i / 8));
+    const end = Math.max(0, progress - 0.23 + 0.23 * ((i + 1) / 8));
+    if (start >= end) continue;
+    const opacity = (i + 1) / 8;
+    const from = forward ? start : 1 - end;
+    const to = forward ? end : 1 - start;
+    strokeCurve(ctx, link.curve, from, to, cssColor(link.color, 0.23 * opacity), 2.4 + 1.2 * opacity);
+    strokeCurve(ctx, link.curve, from, to, cssColor(link.color, 0.72 * opacity), 0.8 + opacity);
+  }
+  const head = atFraction(link.curve, forward ? progress : 1 - progress);
+  halo(ctx, head.x, head.y, 13, link.color, 0.49);
+  dot(ctx, head.x, head.y, 2.4, link.color === BRASS ? FLASH : COOL_FLASH);
+}
+
+function drawNode(ctx, node, state) {
+  const { x, y, color } = node;
+  const recovery = ease(clamp(state?.recovery ?? 1));
+  const excitable = state?.excitable ?? true;
+  const edge = excitable ? 0.23 : 0.13;
+  const core = color === BRASS ? FLASH : COOL_FLASH;
+  dot(ctx, x, y, 2.8, GROUND);
+  halo(ctx, x, y, 11.5, color, 0.10 + recovery * 0.30);
+  arc(ctx, x, y, 4.3 + recovery * 1.5, 0, TURN, cssColor(color, edge + recovery * 0.24), 0.72);
+  dot(ctx, x, y, 1.27 + recovery * 1.19, cssColor(color, 0.37 + recovery * 0.63));
+  if (recovery > 0) dot(ctx, x - 0.42, y - 0.51, 0.72, cssColor(core, recovery * 0.91));
+}
+
+function drawEvent(ctx, geometry, event, tMs, reducedMotion) {
+  const age = tMs - event.tMs;
+  const node = geometry.nodes.get(event.nodeId);
+  if (event.type === 'activation' && age < 54 && node) {
+    const t = age / 54;
+    const flash = (1 - t) ** 2.7;
+    const color = node.color === BRASS ? FLASH : COOL_FLASH;
+    halo(ctx, node.x, node.y, 17, color, 0.78 * flash);
+    dot(ctx, node.x, node.y, 3.1, cssColor(color, flash));
+    arc(ctx, node.x, node.y, reducedMotion ? 9 : 7.5 + 11 * ease(t), 0, TURN,
+      cssColor(color, 0.85 * (1 - t) ** 1.6), 0.95);
+  }
+  if (event.type === 'activation_blocked' && node) {
+    const { x, y, angle } = node;
+    const toward = event.incomingLinkIds.map((id) => {
+      const link = geometry.links.get(id);
+      if (!link) return null;
+      const near = atFraction(link.curve, link.a === event.nodeId ? 0.12 : 0.88);
+      return Math.atan2(near.y - y, near.x - x);
+    }).filter((direction) => direction !== null);
+    if (toward.length === 0) toward.push(angle);
+    const distance = reducedMotion ? 0 : 5 * ease(age / GLYPH_LIFETIME);
+    const opacity = (1 - age / GLYPH_LIFETIME) ** 1.6;
+    for (const direction of toward) {
+      arc(ctx, x, y, 8.2 + distance, direction - 0.53, direction + 0.53, cssColor(COOL_FLASH, 0.92 * opacity), 1.2);
+      arc(ctx, x, y, 12.4 + distance, direction - 0.43, direction + 0.43, cssColor(COOL_FLASH, 0.7 * opacity), 1);
+    }
+  }
+  if (event.type === 'conduction_collision' || event.type === 'conduction_canceled') {
+    const link = geometry.links.get(event.linkId);
+    if (!link) return;
+    const { x, y } = atFraction(link.curve, event.position);
+    const t = age / GLYPH_LIFETIME;
+    const opacity = (1 - t) ** 1.8;
+    if (event.type === 'conduction_collision') {
+      const radius = reducedMotion ? 6.2 : 4.4 + ease(t) * 8;
+      arc(ctx, x, y, radius, 0, TURN, cssColor(COOL_FLASH, opacity * 0.92), 1.05);
+      halo(ctx, x, y, 12, FLASH, opacity * 0.31);
+    } else {
+      arc(ctx, x, y, 5.6, -1.39, -0.02, cssColor(INPUT, opacity * 0.66));
+      arc(ctx, x, y, 5.6, 1.75, 3.12, cssColor(INPUT, opacity * 0.66));
+    }
+  }
+}
+
+function createRenderer(canvas, world, { reducedMotion = false } = {}) {
+  const ctx = canvas.getContext('2d', { alpha: false });
+  if (!ctx) throw new Error('Counterpoint requires Canvas 2D.');
+  const backdropCanvas = canvas.ownerDocument.createElement('canvas');
+  const backdrop = backdropCanvas.getContext('2d', { alpha: false });
+  if (!backdrop) throw new Error('Counterpoint requires a Canvas 2D backdrop.');
+  const gestures = new Map();
+  let geometry;
+  let width = 1;
+  let height = 1;
+  let ratio = 1;
+  let backdropKey;
+
+  function resize(cssWidth, cssHeight, dpr) {
+    const size = canvas.getBoundingClientRect();
+    const nextWidth = Math.max(1, cssWidth ?? size.width);
+    const nextHeight = Math.max(1, cssHeight ?? size.height);
+    const nextRatio = Math.min(2, Math.max(1, dpr ?? canvas.ownerDocument.defaultView?.devicePixelRatio ?? 1));
+    if (geometry && width === nextWidth && height === nextHeight && ratio === nextRatio) return;
+    width = nextWidth;
+    height = nextHeight;
+    ratio = nextRatio;
+    backdropCanvas.width = canvas.width = Math.round(width * ratio);
+    backdropCanvas.height = canvas.height = Math.round(height * ratio);
+    geometry = makeGeometry(world, width, height);
+    backdropKey = null;
+  }
+
+  function render(snapshot, events = [], tMs = snapshot.tMs) {
+    const enabledKey = [...geometry.links].map(([id, link]) => (snapshot.links[id]?.enabled ?? link.enabled) ? '1' : '0').join('');
+    if (backdropKey !== enabledKey) {
+      backdrop.setTransform(ratio, 0, 0, ratio, 0, 0);
+      drawBackdrop(backdrop, geometry, snapshot.links, width + 1, height + 1);
+      backdropKey = enabledKey;
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(backdropCanvas, 0, 0);
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.lineCap = 'round';
+
+    for (const [id, node] of geometry.nodes) drawNode(ctx, node, snapshot.nodes[id]);
+    for (const transit of snapshot.activeTransits) {
+      const link = geometry.links.get(transit.linkId);
+      if (link) drawTransit(ctx, link, transit, tMs, reducedMotion);
+    }
+
+    // History is ordered by time and may include the committed lookahead.
+    for (let i = events.length - 1; i >= 0; i -= 1) {
+      const event = events[i];
+      if (event.tMs > tMs || event.runId !== snapshot.runId) continue;
+      if (event.tMs <= tMs - GLYPH_LIFETIME) break;
+      drawEvent(ctx, geometry, event, tMs, reducedMotion);
+      if (event.type === 'stimulus_attempted') gestures.delete(event.triggerId);
+    }
+    for (const [commandId, gesture] of gestures) {
+      if (gesture.runId !== snapshot.runId || tMs >= gesture.targetMs) {
+        gestures.delete(commandId);
+        continue;
+      }
+      const node = geometry.nodes.get(gesture.nodeId);
+      ctx.setLineDash([1.2, 3.5]);
+      arc(ctx, node.x, node.y, 15, 0, TURN, cssColor(INPUT, 0.74));
+      ctx.setLineDash([]);
+    }
+  }
+
+  function hitTest(x, y) {
+    let closest = null;
+    let limit = HIT_RADIUS;
+    for (const [id, node] of geometry.nodes) {
+      const distance = Math.hypot(x - node.x, y - node.y);
+      if (distance <= limit) {
+        closest = id;
+        limit = distance;
+      }
+    }
+    return closest;
+  }
+
+  function nodePosition(nodeId) {
+    const node = geometry.nodes.get(nodeId);
+    return node ? { x: node.x, y: node.y } : null;
+  }
+
+  function crossedLinks(start, end, previousSample) {
+    const x = end.x - start.x;
+    const y = end.y - start.y;
+    const length = Math.hypot(x, y);
+    if (!Number.isFinite(length) || length <= CROSSING_EPSILON) return [];
+    const incomingLength = previousSample && Math.hypot(start.x - previousSample.x, start.y - previousSample.y);
+    const previous = Number.isFinite(incomingLength) && incomingLength > CROSSING_EPSILON ? previousSample : null;
+    const gesture = { start, end, dx: x / length, dy: y / length, length };
+    const hits = [];
+    for (const [id, link] of geometry.links) {
+      const along = firstCrossing(link.curve, gesture, geometry.nodes.get(link.a), geometry.nodes.get(link.b), previous);
+      if (Number.isFinite(along)) hits.push({ id, along });
+    }
+    hits.sort((a, b) => a.along - b.along);
+    return hits.map(({ id }) => id);
+  }
+
+  function markGesture(nodeId, commandId, targetMs, runId) {
+    if (geometry.nodes.has(nodeId)) gestures.set(commandId, { nodeId, targetMs, runId });
+  }
+
+  resize();
+  return { resize, render, hitTest, nodePosition, crossedLinks, markGesture,
+    setReducedMotion(value) { reducedMotion = value; },
+    clearGestures() { gestures.clear(); },
+  };
+}
+
+return {createRenderer};
+})();
+__modules["src/music/mapping.js"] = (()=>{
+const worldAssignments = {
+  circulation: {
+    R0: [62, "felt", 0],
+    R1: [65, "pluck", 0.25],
+    R2: [69, "felt", 0.40],
+    R3: [72, "glass", 0.25],
+    R4: [74, "glass", 0],
+    R5: [69, "pluck", -0.25],
+    R6: [67, "felt", -0.40],
+    R7: [65, "bow", -0.25],
+  },
+  conduction: {
+    S: [62, "felt", 0],
+    A: [69, "pluck", -0.15],
+    N: [65, "glass", 0.12],
+    H: [72, "pluck", 0],
+    V1: [50, "bow", -0.22],
+    V2: [57, "felt", 0.22],
+  },
+  duality: {
+    A: [62, "felt", -0.23],
+    A1: [65, "pluck", -0.28],
+    A2: [69, "glass", -0.18],
+    B: [50, "bow", 0.23],
+    B1: [55, "felt", 0.28],
+    B2: [60, "glass", 0.18],
+  },
+};
+
+const voicingPitches = {
+  balanced: {},
+  open: { R2: 67, R3: 69, R5: 57, R6: 60 },
+  suspended: { R1: 67, R2: 72, R3: 76, R4: 69, R7: 65 },
+};
+
+const CHAMBER_VOICINGS = Object.freeze(Object.keys(voicingPitches));
+
+const voiceSettings = {
+  felt: { gain: 0.23, attackSec: 0.007, releaseSec: 0.85, brightness: 0.68, reverbSend: 0.18 },
+  pluck: { gain: 0.22, attackSec: 0.004, releaseSec: 0.58, brightness: 0.76, reverbSend: 0.14 },
+  bow: { gain: 0.24, attackSec: 0.066, releaseSec: 1.0, brightness: 0.51, reverbSend: 0.21 },
+  glass: { gain: 0.19, attackSec: 0.018, releaseSec: 0.93, brightness: 0.63, reverbSend: 0.23 },
+};
+
+const paletteSettings = {
+  chamber: { gain: 1, attack: 1, release: 1, brightness: 1, reverb: 1 },
+  atmosphere: { gain: 0.8, attack: 2.5, release: 1.65, brightness: 0.70, reverb: 1.7 },
+  minimalism: { gain: 0.96, attack: 0.6, release: 0.58, brightness: 1.16, reverb: 0.28 },
+};
+
+const PALETTES = Object.freeze(Object.keys(paletteSettings));
+
+function describeNodeMusic(worldId, nodeId, { voicing = "balanced", nodes } = {}) {
+  const pitches = Object.hasOwn(voicingPitches, voicing) && voicingPitches[voicing];
+  if (!pitches) throw new RangeError("Unknown musical voicing");
+
+  const assignments = nodes || (Object.hasOwn(worldAssignments, worldId) && worldAssignments[worldId]);
+  const assignment = assignments ? (Object.hasOwn(assignments, nodeId) ? assignments[nodeId] : undefined) : undefined;
+  if (assignment === null) return null;
+  if (!assignment) throw new RangeError(`Missing music assignment for ${worldId}/${nodeId}`);
+
+  const [midi, voice, pan] = assignment;
+  if (!Object.hasOwn(voiceSettings, voice) || !Number.isFinite(midi) || !Number.isFinite(pan) || Math.abs(pan) > 1) {
+    throw new RangeError(`Invalid music assignment for ${nodeId}`);
+  }
+  const pitchMidi = !nodes && worldId === "circulation" ? pitches[nodeId] ?? midi : midi;
+  return Object.freeze({ pitchMidi, pitchHz: 440 * 2 ** ((pitchMidi - 69) / 12), voice, pan });
+}
+
+function mapActivation(event, { voicing = "balanced", palette = "chamber", nodes } = {}) {
+  if (event.type !== "activation") return null;
+  const scale = Object.hasOwn(paletteSettings, palette) && paletteSettings[palette];
+  if (!scale) throw new RangeError("Unknown musical palette");
+
+  const identity = describeNodeMusic(event.worldId, event.nodeId, { voicing, nodes });
+  if (!identity) return null;
+  const { pitchHz, voice, pan } = identity;
+  const settings = voiceSettings[voice];
+  const recovery = Math.min(1, Math.max(0, event.recoveryBefore));
+  const smoothRecovery = recovery * recovery * (3 - 2 * recovery);
+
+  return Object.freeze({
+    runId: event.runId,
+    eventId: event.eventId,
+    tMs: event.tMs,
+    pitchHz,
+    voice,
+    gain: settings.gain * scale.gain * (0.55 + 0.45 * recovery),
+    attackSec: settings.attackSec * scale.attack,
+    releaseSec: settings.releaseSec * scale.release * (0.65 + 0.35 * recovery),
+    brightness: settings.brightness * scale.brightness * (0.55 + 0.45 * smoothRecovery),
+    pan,
+    reverbSend: settings.reverbSend * scale.reverb,
+  });
+}
+
+return {CHAMBER_VOICINGS,PALETTES,describeNodeMusic,mapActivation};
+})();
+__modules["src/music/synthesis.js"] = (()=>{
+const voices = {
+  felt: {
+    // Ratio, level, exponential decay. Mildly stretched upper strings.
+    partials: [[1, 0.76, 3.8], [2.002, 0.14, 7], [3.011, 0.065, 13], [4.027, 0.026, 19]],
+    noise: 0.045, noiseDecay: 120, noiseHz: 1900, body: 1,
+  },
+  pluck: {
+    partials: [[1, 0.62, 4.2], [2, 0.20, 5.8], [3, 0.10, 9], [4, 0.042, 12], [5, 0.024, 16]],
+    noise: 0.035, noiseDecay: 140, noiseHz: 2600, body: 1,
+  },
+  bow: {
+    partials: [[1, 0.66, 2.4], [2, 0.20, 3.1], [3, 0.085, 4.8], [4, 0.037, 7]],
+    noise: 0, noiseDecay: 1, noiseHz: 1, body: 1.15, vibrato: 0.035,
+  },
+  glass: {
+    partials: [[1, 0.80, 3.4], [2.005, 0.095, 5.4], [2.73, 0.044, 8], [3.99, 0.029, 14]],
+    noise: 0, noiseDecay: 1, noiseHz: 1, body: 0.86,
+  },
+};
+
+const ROOM_SEC = 1.8;
+const ROOM_TAPS = 160;
+
+function smoothstep(value) {
+  const x = Math.max(0, Math.min(1, value));
+  return x * x * (3 - 2 * x);
+}
+
+function seededNoise(seed) {
+  return () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 2147483648 - 1;
+  };
+}
+
+// A voice is one buffer source. The waveform contains its own time-varying
+// spectrum and release, so resource use does not depend on the partial count.
+function renderVoiceSamples(note, sampleRate) {
+  const profile = voices[note.voice];
+  const seconds = note.attackSec + note.releaseSec;
+  const samples = new Float32Array(Math.ceil(seconds * sampleRate));
+  const radiansPerSample = 2 * Math.PI / sampleRate;
+  const partials = profile.partials
+    .filter(([ratio]) => note.pitchHz * ratio < sampleRate * 0.45)
+    .map(([ratio, level, decay], i) => ({
+      advance: note.pitchHz * ratio * radiansPerSample,
+      ratio,
+      level: i === 0 ? level : level * note.brightness,
+      decay: Math.exp(-decay / (note.releaseSec * sampleRate)),
+    }));
+
+  const jitter = seededNoise(624137);
+  const noiseFilter = 1 - Math.exp(-profile.noiseHz * radiansPerSample);
+  const noiseDecay = Math.exp(-profile.noiseDecay / sampleRate);
+  let noiseLevel = profile.noise * note.brightness;
+  let filteredNoise = 0;
+  for (let i = 1; i < samples.length - 1; i++) {
+    const time = i / sampleRate;
+    const envelope = smoothstep(time / note.attackSec) * smoothstep((seconds - time) / (0.30 * note.releaseSec));
+    const vibrato = profile.vibrato
+      ? profile.vibrato * smoothstep(time / 0.18) * Math.sin(2 * Math.PI * 4.6 * time)
+      : 0;
+    let signal = 0;
+    if (noiseLevel > 0.00001) {
+      filteredNoise += (jitter() - filteredNoise) * noiseFilter;
+      signal += filteredNoise * noiseLevel;
+      noiseLevel *= noiseDecay;
+    }
+    for (const partial of partials) {
+      signal += partial.level * Math.sin(i * partial.advance + partial.ratio * vibrato);
+      partial.level *= partial.decay;
+    }
+    samples[i] = signal * envelope * profile.body;
+  }
+  return samples;
+}
+
+// The shared impulse is locally generated and decorrelated between channels.
+// Its low reflection gains preserve the distinction between an attack and its room.
+function roomTaps(sampleRate, channel) {
+  const noise = seededNoise(200719 + channel * 839);
+  const predelay = 0.017;
+  return Array.from({ length: ROOM_TAPS }, (_, i) => {
+    const fraction = (i + (noise() + 1) / 2) / ROOM_TAPS;
+    const time = predelay + fraction * (ROOM_SEC - predelay);
+    const decay = (1 - fraction) ** 1.7 * Math.exp(-2.8 * fraction);
+    return [Math.floor(time * sampleRate), noise() * decay * 0.095];
+  });
+}
+
+function protectPeak(sample) {
+  const magnitude = Math.min(1, Math.abs(sample));
+  return magnitude <= 0.76
+    ? sample
+    : Math.sign(sample) * (0.76 + 0.17 * Math.tanh((magnitude - 0.76) / 0.17));
+}
+
+return {ROOM_SEC,ROOM_TAPS,renderVoiceSamples,roomTaps,protectPeak};
+})();
+__modules["src/music/mixer.js"] = (()=>{
+const { protectPeak, renderVoiceSamples, roomTaps, ROOM_SEC } = __modules["src/music/synthesis.js"];
+
+const CONTROL_RAMP_SEC = 0.035;
+const FENCE_RAMP_SEC = 0.012;
+const STOLEN_RAMP_SEC = 0.008;
+const CACHE_LIMIT = 48;
+const JOURNAL_LIMIT = 128;
+const RETIRING_LIMIT = 8;
+
+function clampVolume(value) {
+  if (!Number.isFinite(value)) throw new RangeError("Volume must be finite");
+  return Math.max(0, Math.min(1, value));
+}
+
+function roomBuffer(context) {
+  const buffer = context.createBuffer(2, Math.ceil(context.sampleRate * ROOM_SEC), context.sampleRate);
+  for (let channel = 0; channel < 2; channel++) {
+    const samples = buffer.getChannelData(channel);
+    for (const [index, level] of roomTaps(context.sampleRate, channel)) samples[index] += level;
+  }
+  return buffer;
+}
+
+function createAudioMixer(context, { volume = 0.30, maxVoices = 32 } = {}) {
+  if (!Number.isInteger(maxVoices) || maxVoices < 1 || maxVoices > 64) {
+    throw new RangeError("Voice limit must be an integer from 1 to 64");
+  }
+  let volumeLevel = clampVolume(volume);
+  let muted = false;
+  let run = null;
+  let lastRunId = null;
+  let lastRunOrdinal = 0;
+  let disposed = false;
+  let lastGain = { from: volumeLevel, to: volumeLevel, start: 0, end: 0 };
+  const buffers = new Map();
+  const journal = [];
+  const retiringRuns = new Set();
+  const counts = { scheduled: 0, duplicates: 0, stale: 0, silent: 0, late: 0, stolen: 0, hardCuts: 0, peakVoices: 0, peakSources: 0 };
+  const impulse = roomBuffer(context);
+  const master = context.createGain();
+  master.gain.value = volumeLevel;
+
+  const compressor = context.createDynamicsCompressor();
+  compressor.threshold.value = -8;
+  compressor.knee.value = 8;
+  compressor.ratio.value = 4;
+  compressor.attack.value = 0.006;
+  compressor.release.value = 0.16;
+  const ceiling = context.createWaveShaper();
+  ceiling.curve = Float32Array.from({ length: 2049 }, (_, i) => protectPeak(i / 1024 - 1));
+  master.connect(compressor).connect(ceiling).connect(context.destination);
+
+  function masterGainAt(now) {
+    const progress = now >= lastGain.end ? 1 : Math.max(0, (now - lastGain.start) / (lastGain.end - lastGain.start));
+    return lastGain.from + (lastGain.to - lastGain.from) * progress;
+  }
+
+  function smoothMasterGain() {
+    const now = context.currentTime;
+    const held = masterGainAt(now);
+    const target = muted ? 0 : volumeLevel;
+    master.gain.cancelScheduledValues(now);
+    master.gain.setValueAtTime(held, now);
+    master.gain.linearRampToValueAtTime(target, now + CONTROL_RAMP_SEC);
+    lastGain = { from: held, to: target, start: now, end: now + CONTROL_RAMP_SEC };
+  }
+
+  function sampleBuffer(intent) {
+    const key = [intent.voice, intent.pitchHz, intent.attackSec, intent.releaseSec, intent.brightness].join("/");
+    if (buffers.has(key)) {
+      const cached = buffers.get(key);
+      buffers.delete(key);
+      buffers.set(key, cached);
+      return cached;
+    }
+    const samples = renderVoiceSamples(intent, context.sampleRate);
+    const buffer = context.createBuffer(1, samples.length, context.sampleRate);
+    buffer.copyToChannel(samples, 0);
+    if (buffers.size >= CACHE_LIMIT) buffers.delete(buffers.keys().next().value);
+    buffers.set(key, buffer);
+    return buffer;
+  }
+
+  function disconnectVoice(owner, voice) {
+    if (!owner.sources.delete(voice)) return;
+    owner.active.delete(voice);
+    voice.source.onended = null;
+    voice.source.disconnect();
+    voice.level.disconnect();
+    voice.pan.disconnect();
+    voice.send.disconnect();
+  }
+
+  function stopVoice(owner, voice, stop, fadeSec) {
+    owner.active.delete(voice);
+    const now = context.currentTime;
+    if (voice.start >= stop) {
+      voice.source.stop(now);
+      disconnectVoice(owner, voice);
+      return;
+    }
+    if (voice.end <= stop) return;
+    const fadeStart = Math.max(now, voice.start, stop - fadeSec);
+    voice.level.gain.cancelScheduledValues(fadeStart);
+    voice.level.gain.setValueAtTime(voice.gain, fadeStart);
+    voice.level.gain.linearRampToValueAtTime(0, stop);
+    voice.end = stop;
+    voice.source.stop(stop);
+  }
+
+  function disconnectRun(owner) {
+    retiringRuns.delete(owner);
+    for (const voice of owner.sources) disconnectVoice(owner, voice);
+    owner.gate.disconnect();
+    owner.room.disconnect();
+    if (owner.timer) {
+      owner.timer.onended = null;
+      owner.timer.disconnect();
+    }
+  }
+
+  function fence({ immediate = false, preserveBoundary = false } = {}) {
+    if (!run) return;
+    const old = run;
+    run = null;
+    const now = context.currentTime;
+    const end = now + FENCE_RAMP_SEC;
+    for (const voice of old.sources) {
+      const pending = preserveBoundary ? voice.start > now : voice.start >= now;
+      if (pending || immediate) {
+        voice.source.stop(now);
+        disconnectVoice(old, voice);
+      } else if (voice.end > end) {
+        voice.source.stop(end);
+      }
+    }
+    if (immediate || disposed) {
+      disconnectRun(old);
+      return;
+    }
+    old.gate.gain.setValueAtTime(1, now);
+    old.gate.gain.linearRampToValueAtTime(0, end);
+    const timer = context.createConstantSource();
+    old.timer = timer;
+    timer.onended = () => disconnectRun(old);
+    timer.start(now);
+    timer.stop(end);
+    retiringRuns.add(old);
+    // A rapid reset loop cannot accumulate convolution graphs while the context is frozen.
+    if (retiringRuns.size > 2) disconnectRun(retiringRuns.values().next().value);
+  }
+
+  function beginRun(runId) {
+    if (disposed) throw new Error("Mixer disposed");
+    if (typeof runId !== "string" || !runId) throw new TypeError("A run ID is required");
+    if (run?.id === runId) return;
+    fence();
+    const gate = context.createGain();
+    const room = context.createConvolver();
+    room.normalize = false;
+    room.buffer = impulse;
+    room.connect(gate).connect(master);
+    if (runId !== lastRunId) {
+      lastRunId = runId;
+      lastRunOrdinal = 0;
+    }
+    run = { id: runId, gate, room, active: new Set(), sources: new Set(), lastTime: 0 };
+  }
+
+  // Call in presentation order. Sim timestamps stay in the intent, and the
+  // supplied audio timestamp is the runtime's already converted clock time.
+  function schedule(intent, audioSec) {
+    if (!intent) return false;
+    const owner = run;
+    if (!owner || intent.runId !== owner.id) {
+      counts.stale++;
+      return false;
+    }
+    const ordinal = /^e[1-9][0-9]*$/.test(intent.eventId) ? Number(intent.eventId.slice(1)) : NaN;
+    if (!Number.isSafeInteger(ordinal)) throw new RangeError("Expected a canonical activation event ID");
+    if (ordinal <= lastRunOrdinal) {
+      counts.duplicates++;
+      return false;
+    }
+    if (!Number.isFinite(audioSec) || audioSec < owner.lastTime) {
+      throw new RangeError("Expected audio time in presentation order");
+    }
+    lastRunOrdinal = ordinal;
+    owner.lastTime = audioSec;
+    if (intent.gain <= 0) {
+      counts.silent++;
+      return false;
+    }
+
+    const buffer = sampleBuffer(intent);
+    const now = context.currentTime;
+    const start = Math.max(now, audioSec);
+    if (start > audioSec) counts.late++;
+    for (const voice of owner.active) {
+      if (voice.end <= start) owner.active.delete(voice);
+    }
+
+    if (owner.active.size >= maxVoices) {
+      const oldest = owner.active.values().next().value;
+      // The event gets its original slot. If that slot is imminent, the displaced
+      // voice fades over the following few ms instead of jumping to zero.
+      stopVoice(owner, oldest, oldest.start === start ? start : Math.max(start, now + STOLEN_RAMP_SEC), STOLEN_RAMP_SEC);
+      counts.stolen++;
+    }
+    if (owner.sources.size >= maxVoices + RETIRING_LIMIT && typeof context.startRendering !== "function") {
+      for (const voice of owner.sources) {
+        if (!owner.active.has(voice)) {
+          voice.source.stop(now);
+          disconnectVoice(owner, voice);
+          counts.hardCuts++;
+          break;
+        }
+      }
+    }
+
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    const level = context.createGain();
+    level.gain.value = intent.gain;
+    const pan = context.createStereoPanner();
+    pan.pan.value = intent.pan;
+    const send = context.createGain();
+    send.gain.value = intent.reverbSend;
+    source.connect(level).connect(pan).connect(owner.gate);
+    pan.connect(send).connect(owner.room);
+
+    const voice = { source, level, pan, send, start, end: start + buffer.duration, gain: intent.gain };
+    source.onended = () => disconnectVoice(owner, voice);
+    owner.sources.add(voice);
+    owner.active.add(voice);
+    source.start(start);
+    counts.scheduled++;
+    counts.peakVoices = Math.max(counts.peakVoices, owner.active.size);
+    counts.peakSources = Math.max(counts.peakSources, owner.sources.size);
+    journal.push({ runId: intent.runId, eventId: intent.eventId, tMs: intent.tMs, requestedAudioSec: audioSec, audioSec: start });
+    if (journal.length > JOURNAL_LIMIT) journal.shift();
+    return true;
+  }
+
+  return {
+    beginRun,
+    fence,
+    schedule,
+    setVolume(value) {
+      volumeLevel = clampVolume(value);
+      smoothMasterGain();
+    },
+    setMuted(value) {
+      muted = Boolean(value);
+      smoothMasterGain();
+    },
+    diagnostics() {
+      const now = context.currentTime;
+      let activeVoices = 0;
+      for (const voice of run?.sources ?? []) {
+        if (voice.start <= now && now < voice.end) activeVoices++;
+      }
+      return {
+        ...counts, runId: run?.id ?? null, activeVoices, liveSources: run?.sources.size ?? 0,
+        cacheBuffers: buffers.size, volume: volumeLevel, muted, masterGain: masterGainAt(now),
+        recent: journal.map((entry) => ({ ...entry })),
+      };
+    },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      fence({ immediate: true });
+      for (const old of retiringRuns) disconnectRun(old);
+      master.disconnect();
+      compressor.disconnect();
+      ceiling.disconnect();
+      buffers.clear();
+    },
+  };
+}
+
+return {createAudioMixer};
+})();
+__modules["src/music/index.js"] = (()=>{
+const { mapActivation, describeNodeMusic, CHAMBER_VOICINGS, PALETTES } = __modules["src/music/mapping.js"];
+const { createAudioMixer } = __modules["src/music/mixer.js"];
+
+
+
+return {mapActivation,describeNodeMusic,CHAMBER_VOICINGS,PALETTES,createAudioMixer};
+})();
+__modules["src/ui/inspector.js"] = (()=>{
+const RASTER_WINDOW_MS = 2400;
+const MAX_LOG_ROWS = 80;
+const COUPLING_MIN_MS = 1;
+const COUPLING_MAX_MS = 5000;
+const SVG = 'http://www.w3.org/2000/svg';
+const MISSING = '—';
+const NOTES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+
+function ms(value) {
+  return Number.isFinite(value)
+    ? `${value.toLocaleString('en-US', { maximumFractionDigits: 3 })} ms`
+    : MISSING;
+}
+
+function percent(value) {
+  return Number.isFinite(value) ? `${Math.round(value * 100)}%` : MISSING;
+}
+
+function timingMark(event) {
+  if (event.type === 'activation') return 'accepted';
+  if (event.type === 'activation_blocked') return 'blocked';
+  if (event.type === 'stimulus_attempted' && event.source === 'stimulus') return 'stimulus';
+  return null;
+}
+
+function logGroup(event) {
+  if (event.type === 'activation') return 'accepted';
+  if (event.type === 'activation_blocked') return 'blocked';
+  if (event.type.startsWith('conduction_')) return 'propagating';
+  return 'other';
+}
+
+function target(event) {
+  if (event.fromNodeId) return `${event.linkId} · ${event.fromNodeId} → ${event.toNodeId}`;
+  return [event.nodeId, event.linkId].filter(Boolean).join(' · ') || MISSING;
+}
+
+function source(event) {
+  if (event.source) return event.source;
+  if (event.type.startsWith('conduction_')) return 'conduction';
+  if (event.commandId) return 'command';
+  return MISSING;
+}
+
+function directionText(direction) {
+  if (!direction.enabled) return 'Disallowed';
+  if (!direction.decrement) return `${ms(direction.delayMs)} base · fixed`;
+  const { maxExtraMs, tauMs } = direction.decrement;
+  return `${ms(direction.delayMs)} base · max extra ${ms(maxExtraMs)} · τ ${ms(tauMs)}`;
+}
+
+function noteIdentity(nodeMusic) {
+  if (nodeMusic === null) return 'Silent site';
+  if (!nodeMusic) return MISSING;
+  const { pitchMidi, pitchHz, voice } = nodeMusic;
+  const note = Number.isInteger(pitchMidi) && pitchMidi >= 0
+    ? `${NOTES[pitchMidi % 12]}${Math.floor(pitchMidi / 12) - 1}`
+    : `MIDI ${pitchMidi}`;
+  return `${note} · ${pitchHz.toFixed(1)} Hz · ${voice}`;
+}
+
+function visibleHistory(frame, events) {
+  const presentedThrough = frame.snapshot?.tMs ?? frame.presentedMs;
+  let end = events.length;
+  while (end > 0 && events[end - 1].tMs > presentedThrough) end--;
+  return events.slice(0, end).filter(event => event.runId === frame.runId);
+}
+
+function summarizeNodes(events) {
+  const latest = new Map();
+  const automaticCycles = new Map();
+  const blockedIntervals = new Map();
+  for (const event of events) {
+    if (event.type === 'activation') latest.set(event.nodeId, event);
+    if (event.type === 'activation_blocked' && latest.has(event.nodeId)) {
+      blockedIntervals.set(event.eventId, event.tMs - latest.get(event.nodeId).tMs);
+    }
+    if (event.type === 'parameter_changed' && event.parameter === 'cycleMs') {
+      automaticCycles.set(event.nodeId, event.value);
+    }
+  }
+  return { latest, automaticCycles, blockedIntervals };
+}
+
+function drawRaster(svg, nodeIds, events, latest, nodeId, presentedMs) {
+  const doc = svg.ownerDocument;
+  const fragment = doc.createDocumentFragment();
+  const width = 556;
+  const left = 108;
+  const right = 545;
+  const top = 22;
+  const spacing = 22;
+  const bottom = top + nodeIds.length * spacing;
+  const start = Math.max(0, presentedMs - RASTER_WINDOW_MS);
+  const xAt = time => left + (time - start) / RASTER_WINDOW_MS * (right - left);
+  const lanes = new Map(nodeIds.map((id, index) => [id, top + (index + 0.5) * spacing]));
+
+  function draw(tag, attributes, label) {
+    const element = doc.createElementNS(SVG, tag);
+    for (const [name, value] of Object.entries(attributes)) element.setAttribute(name, value);
+    if (label !== undefined) element.textContent = label;
+    fragment.append(element);
+  }
+
+  for (const [id, y] of lanes) {
+    const selected = id === nodeId;
+    if (selected) draw('rect', { x: 0, y: y - 10, width, height: 20, class: 'raster-selected' });
+    draw('line', { x1: left, x2: right, y1: y, y2: y, class: 'raster-guide' });
+    draw('text', { x: 3, y: y + 4, class: 'raster-site' }, id);
+    const interval = latest.get(id)?.intervalMs;
+    if (interval != null) draw('text', { x: left - 8, y: y + 4, 'text-anchor': 'end' }, ms(interval));
+  }
+
+  for (const offset of [0, RASTER_WINDOW_MS / 2, RASTER_WINDOW_MS]) {
+    const time = start + offset;
+    const x = xAt(time);
+    draw('line', { x1: x, x2: x, y1: top, y2: bottom, class: 'raster-guide' });
+    const anchor = offset === 0 ? 'start' : offset === RASTER_WINDOW_MS ? 'end' : 'middle';
+    draw('text', { x, y: bottom + 17, 'text-anchor': anchor }, ms(Math.round(time)));
+  }
+  const cursorX = xAt(presentedMs);
+  draw('line', { x1: cursorX, x2: cursorX, y1: top, y2: bottom, class: 'raster-cursor' });
+
+  for (const event of events) {
+    const y = lanes.get(event.nodeId);
+    const mark = timingMark(event);
+    if (y === undefined || !mark || event.tMs < start || event.tMs > presentedMs) continue;
+    const x = xAt(event.tMs);
+    if (mark === 'accepted') draw('line', { x1: x, x2: x, y1: y - 5, y2: y + 5, class: 'raster-accepted' });
+    if (mark === 'blocked') draw('path', { d: `M${x - 3} ${y - 3}l6 6m0 -6l-6 6`, class: 'raster-blocked' });
+    if (mark === 'stimulus') draw('path', { d: `M${x} ${y - 10}l-3 4h6z`, class: 'raster-stimulus' });
+  }
+  svg.setAttribute('viewBox', `0 0 ${width} ${bottom + 26}`);
+  svg.replaceChildren(fragment);
+}
+
+function optionList(doc, select, options) {
+  select.replaceChildren(...options.map(([value, label]) => {
+    const option = doc.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    return option;
+  }));
+}
+
+function createInspector(container, callbacks = {}) {
+  container.classList.add('counterpoint-inspector');
+  container.innerHTML = `
+    <output id="metrics" aria-live="off"></output>
+    <div class="inspector-grid">
+      <section class="inspector-panel" aria-labelledby="diagnostic-world">
+        <h3 id="diagnostic-world">World</h3>
+        <dl>
+          <dt>Scene</dt><dd data-read="world"></dd>
+          <dt>Topology</dt><dd data-read="topology"></dd>
+          <dt>Run ID</dt><dd data-read="run"></dd>
+        </dl>
+        <button type="button" data-control="reset">Reset world</button>
+      </section>
+      <section class="inspector-panel" aria-labelledby="diagnostic-transport">
+        <h3 id="diagnostic-transport">Transport</h3>
+        <dl>
+          <dt>Playback</dt><dd data-read="transport"></dd>
+          <dt>Presented time</dt><dd data-read="presented"></dd>
+          <dt>Engine horizon</dt><dd data-read="committed"></dd>
+          <dt>Time dilation</dt><dd data-read="dilation"></dd>
+          <dt>Audio</dt><dd data-read="audio"></dd>
+          <dt>Lookahead (wall)</dt><dd data-read="lookahead"></dd>
+          <dt>Late audio events</dt><dd data-read="late"></dd>
+          <dt>Frame rate</dt><dd data-read="fps"></dd>
+        </dl>
+      </section>
+      <section class="inspector-panel" aria-labelledby="diagnostic-node">
+        <h3 id="diagnostic-node">Selected site</h3>
+        <label class="inspector-field">Site <select data-control="node"></select></label>
+        <dl>
+          <dt>ERP</dt><dd data-read="erp"></dd>
+          <dt>Last activation</dt><dd data-read="last-activation"></dd>
+          <dt>Refractory status</dt><dd data-read="refractory"></dd>
+          <dt>Recovery before last beat</dt><dd data-read="recovery-before"></dd>
+          <dt>Last cycle length</dt><dd data-read="cycle-length"></dd>
+          <dt>Automatic cycle</dt><dd data-read="automatic-cycle"></dd>
+          <dt>Note identity</dt><dd data-read="note"></dd>
+        </dl>
+      </section>
+      <section class="inspector-panel" aria-labelledby="diagnostic-link">
+        <h3 id="diagnostic-link">Selected link</h3>
+        <label class="inspector-field">Link <select data-control="link"></select></label>
+        <dl>
+          <dt>State</dt><dd data-read="link-state"></dd>
+          <dt data-read="ab-label"></dt><dd data-read="ab"></dd>
+          <dt data-read="ba-label"></dt><dd data-read="ba"></dd>
+          <dt>Current transits</dt><dd data-read="transits"></dd>
+        </dl>
+        <button type="button" data-control="toggle-link">Cut link</button>
+      </section>
+      <section class="inspector-panel" aria-labelledby="diagnostic-protocol">
+        <h3 id="diagnostic-protocol">Protocol</h3>
+        <p>Selected site <strong data-read="protocol-site"></strong></p>
+        <div class="inspector-actions">
+          <button type="button" data-control="stimulate">Stimulate selected site</button>
+          <button type="button" data-control="single">Reset and deliver one impulse</button>
+        </div>
+        <div data-control="ring-protocol">
+          <p>The reference S1/S2 protocol starts a fresh Circulation run and applies both impulses at R0.</p>
+          <div class="inspector-actions">
+            <label class="inspector-field">Coupling interval (ms)
+              <input data-control="coupling" type="number" min="${COUPLING_MIN_MS}" max="${COUPLING_MAX_MS}" step="1" required aria-describedby="inspector-coupling-error">
+            </label>
+            <button type="button" data-control="guide">Reset and run S1/S2</button>
+          </div>
+          <p class="inspector-error" id="inspector-coupling-error" aria-live="polite" hidden></p>
+        </div>
+        <div data-control="conduction-protocol" hidden>
+          <p>The Conduction protocol starts a fresh run and stimulates A at 275 simulated ms.</p>
+          <button type="button" data-control="premature">Reset and apply premature stimulus</button>
+        </div>
+      </section>
+      <section class="inspector-panel" aria-labelledby="diagnostic-music">
+        <h3 id="diagnostic-music">Music</h3>
+        <dl>
+          <dt>Palette</dt><dd data-read="palette"></dd>
+          <dt>Selected pitch and timbre</dt><dd data-read="music-note"></dd>
+          <dt>Master gain</dt><dd data-read="master-gain"></dd>
+          <dt>Active voices</dt><dd data-read="voices"></dd>
+          <dt>Stolen voices</dt><dd data-read="stolen"></dd>
+          <dt>Late audio events</dt><dd data-read="music-late"></dd>
+        </dl>
+      </section>
+      <section class="inspector-panel inspector-wide" aria-labelledby="diagnostic-raster">
+        <h3 id="diagnostic-raster">Activation raster</h3>
+        <p>Last 2,400 simulated ms · row labels show the most recent cycle length.</p>
+        <ul class="inspector-legend" aria-label="Raster symbols">
+          <li><span class="raster-key-accepted" aria-hidden="true">│</span> Accepted</li>
+          <li><span class="raster-key-blocked" aria-hidden="true">×</span> Blocked</li>
+          <li><span class="raster-key-stimulus" aria-hidden="true">▴</span> External stimulus</li>
+        </ul>
+        <div class="inspector-scroll" tabindex="0" role="region" aria-label="Activation raster">
+          <svg data-control="raster" role="img" aria-label="Site activation times. Individual times are available in the event log."></svg>
+        </div>
+      </section>
+      <section class="inspector-panel inspector-wide" aria-labelledby="diagnostic-log">
+        <h3 id="diagnostic-log">Event log</h3>
+        <fieldset class="inspector-filters">
+          <legend>Show event types</legend>
+          <label><input type="checkbox" value="accepted" checked> Accepted</label>
+          <label><input type="checkbox" value="blocked" checked> Blocked</label>
+          <label><input type="checkbox" value="propagating" checked> Propagating</label>
+          <label><input type="checkbox" value="other" checked> Other events</label>
+        </fieldset>
+        <p data-read="log-summary"></p>
+        <div class="inspector-scroll inspector-log-scroll" tabindex="0" role="region" aria-label="Event log">
+          <table>
+            <thead><tr><th scope="col">Time</th><th scope="col">Site / link</th><th scope="col">Event</th><th scope="col">Source</th><th scope="col">Cause</th><th scope="col">Prior interval</th><th scope="col">ID</th></tr></thead>
+            <tbody id="log"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>`;
+
+  const doc = container.ownerDocument;
+  const readings = new Map([...container.querySelectorAll('[data-read]')].map(element => [element.dataset.read, element]));
+  const controls = Object.fromEntries([...container.querySelectorAll('[data-control]')].map(element => [element.dataset.control, element]));
+  const metrics = container.querySelector('#metrics');
+  const log = container.querySelector('#log');
+  const filters = [...container.querySelectorAll('.inspector-filters input')];
+  const couplingError = container.querySelector('#inspector-coupling-error');
+  let currentFrame;
+  let currentContext;
+  let layoutWorldId;
+  let selectedNodeId;
+  let selectedLinkId;
+  let couplingMs = 240;
+  let contextCouplingMs;
+  let couplingValid = true;
+  let canRun = false;
+  let canEdit = false;
+  let lastLogKey = null;
+
+  function read(name, value) {
+    const element = readings.get(name);
+    const text = String(value ?? MISSING);
+    if (element.textContent !== text) element.textContent = text;
+  }
+
+  function updateActionAvailability() {
+    controls.reset.disabled = !canRun;
+    controls.stimulate.disabled = !canEdit || !selectedNodeId;
+    controls.single.disabled = !canRun || !selectedNodeId;
+    controls['toggle-link'].disabled = !canEdit || !selectedLinkId;
+    controls.guide.disabled = !canRun || !couplingValid;
+    controls.premature.disabled = !canRun;
+  }
+
+  function readCoupling() {
+    const value = controls.coupling.valueAsNumber;
+    return Number.isInteger(value) && value >= COUPLING_MIN_MS && value <= COUPLING_MAX_MS ? value : null;
+  }
+
+  function updateCouplingValidation(showError) {
+    const value = readCoupling();
+    couplingValid = value !== null;
+    if (showError || couplingValid) {
+      controls.coupling.setAttribute('aria-invalid', String(!couplingValid));
+      couplingError.hidden = couplingValid;
+      couplingError.textContent = couplingValid ? '' : `Enter a whole number from ${COUPLING_MIN_MS} to ${COUPLING_MAX_MS} ms.`;
+    }
+    updateActionAvailability();
+    return value;
+  }
+
+  function commitCoupling() {
+    const value = updateCouplingValidation(true);
+    if (value !== null && couplingMs !== value) {
+      couplingMs = value;
+      callbacks.onProtocolChange?.(value);
+    }
+    return value !== null;
+  }
+
+  function renderLog(events, blockedIntervals) {
+    const checked = new Set(filters.filter(item => item.checked).map(item => item.value));
+    const matched = events.filter(event => checked.has(logGroup(event)));
+    const rows = matched.slice(-MAX_LOG_ROWS).reverse();
+    const key = `${currentFrame.runId}:${rows[0]?.eventId}:${rows.at(-1)?.eventId}:${rows.length}:${[...checked].join(',')}`;
+    read('log-summary', rows.length ? `${rows.length} most recent of ${matched.length} matching retained events` : 'No matching events yet.');
+    if (key === lastLogKey) return;
+    lastLogKey = key;
+    const fragment = doc.createDocumentFragment();
+    for (const event of rows) {
+      const row = doc.createElement('tr');
+      row.dataset.group = logGroup(event);
+      const interval = event.intervalMs ?? blockedIntervals.get(event.eventId);
+      for (const value of [ms(event.tMs), target(event), event.type, source(event), event.cause ?? MISSING, ms(interval), event.eventId]) {
+        const cell = doc.createElement('td');
+        cell.textContent = value;
+        row.append(cell);
+      }
+      fragment.append(row);
+    }
+    log.replaceChildren(fragment);
+  }
+
+  function render(frame, context = {}) {
+    if (!frame?.snapshot) return;
+    const snapshot = frame.snapshot;
+    const selectedNode = context.selectedNodeId ?? Object.keys(snapshot.nodes)[0];
+    const selectedLink = context.selectedLinkId ?? Object.keys(snapshot.links)[0];
+    const layoutChanged = layoutWorldId !== snapshot.worldId;
+    currentFrame = frame;
+    currentContext = context;
+    selectedNodeId = selectedNode;
+    selectedLinkId = selectedLink;
+    canRun = context.started ?? context.transport?.status !== 'idle';
+    canEdit = context.transport?.status === 'running';
+
+    if (layoutChanged) {
+      layoutWorldId = snapshot.worldId;
+      optionList(doc, controls.node, Object.keys(snapshot.nodes).map(id => [id, id]));
+      optionList(doc, controls.link, Object.entries(snapshot.links).map(([id, { a, b }]) => [id, `${id} · ${a}–${b}`]));
+      controls['ring-protocol'].hidden = layoutWorldId !== 'circulation';
+      controls['conduction-protocol'].hidden = layoutWorldId !== 'conduction';
+    }
+    if (layoutChanged || context.couplingMs !== contextCouplingMs) {
+      contextCouplingMs = context.couplingMs;
+      couplingMs = context.couplingMs ?? 240;
+      controls.coupling.value = String(couplingMs);
+      commitCoupling();
+    }
+    controls.node.value = selectedNodeId ?? '';
+    controls.link.value = selectedLinkId ?? '';
+    updateActionAvailability();
+
+    const events = visibleHistory(frame, context.events ?? frame.events ?? []);
+    const { latest, automaticCycles, blockedIntervals } = summarizeNodes(events);
+    const node = snapshot.nodes[selectedNodeId];
+    const last = latest.get(selectedNodeId);
+    const link = snapshot.links[selectedLinkId];
+    const transits = snapshot.activeTransits.filter(transit => transit.linkId === selectedLinkId);
+    const note = noteIdentity(context.nodeMusic);
+    const audio = context.audioDiagnostics;
+    const transport = context.transport;
+    const captures = Number.isFinite(context.captureTotal)
+      ? context.captureTotal - (context.events?.filter(event => event.type === 'activation' && event.tMs > snapshot.tMs).length ?? 0)
+      : events.filter(event => event.type === 'activation').length;
+
+    metrics.textContent = `${ms(frame.presentedMs)} simulated · ${captures} captures · ${snapshot.activeTransits.length} traveling waves`;
+    read('world', context.worldName ?? snapshot.worldId);
+    read('topology', context.topology ?? `${Object.keys(snapshot.nodes).length} sites · ${Object.keys(snapshot.links).length} links`);
+    read('run', frame.runId);
+    read('transport', transport?.reason ? `${transport.status} · ${transport.reason}` : transport?.status);
+    read('presented', ms(frame.presentedMs));
+    read('committed', ms(context.committedMs));
+    read('dilation', transport ? `${transport.dilation}×${transport.pendingDilation == null ? '' : ` → ${transport.pendingDilation}× queued`}` : MISSING);
+    read('audio', context.audioState);
+    read('lookahead', ms(context.lookaheadMs));
+    read('late', audio?.late);
+    read('fps', Number.isFinite(context.fps) ? `${Math.round(context.fps)} fps` : MISSING);
+    read('erp', ms(node?.erpMs));
+    read('last-activation', node?.lastActivationMs == null ? 'None' : ms(node.lastActivationMs));
+    read('refractory', node ? (node.excitable ? 'Excitable' : `Refractory until ${ms(node.refractoryUntilMs)}`) : MISSING);
+    read('recovery-before', percent(last?.recoveryBefore));
+    read('cycle-length', ms(last?.intervalMs));
+    const automatic = automaticCycles.has(selectedNodeId) ? automaticCycles.get(selectedNodeId)
+      : context.world?.nodes.find(({ id }) => id === selectedNodeId)?.automaticity?.cycleMs;
+    read('automatic-cycle', automatic == null ? 'Off' : ms(automatic));
+    read('note', note);
+    read('protocol-site', selectedNodeId);
+    read('link-state', link ? (link.enabled ? 'Enabled' : 'Cut') : MISSING);
+    read('ab-label', link ? `${link.a} → ${link.b}` : 'Forward');
+    read('ab', link ? directionText(link.ab) : MISSING);
+    read('ba-label', link ? `${link.b} → ${link.a}` : 'Reverse');
+    read('ba', link ? directionText(link.ba) : MISSING);
+    read('transits', transits.length
+      ? transits.map(transit => `${transit.fromNodeId} → ${transit.toNodeId} (${ms(transit.departureMs)} → ${ms(transit.arrivalMs)})`).join(' · ')
+      : 'None');
+    controls['toggle-link'].textContent = link?.enabled ? 'Cut link' : 'Restore link';
+    read('palette', context.palette);
+    read('music-note', note);
+    const masterGain = audio?.masterGain ?? (audio ? (audio.muted ? 0 : audio.volume) : null);
+    read('master-gain', Number.isFinite(masterGain) ? `${percent(masterGain)}${audio?.muted ? ' · muted' : ''}` : MISSING);
+    read('voices', audio?.activeVoices);
+    read('stolen', audio?.stolen);
+    read('music-late', audio?.late);
+
+    drawRaster(controls.raster, Object.keys(snapshot.nodes), events, latest, selectedNodeId, frame.presentedMs);
+    renderLog(events, blockedIntervals);
+  }
+
+  controls.reset.onclick = () => callbacks.onReset?.();
+  controls.node.onchange = () => callbacks.onSelectNode?.(controls.node.value);
+  controls.link.onchange = () => callbacks.onSelectLink?.(controls.link.value);
+  controls.stimulate.onclick = () => callbacks.onStimulus?.(controls.node.value);
+  controls.single.onclick = () => callbacks.onRunProtocol?.('single', controls.node.value);
+  controls['toggle-link'].onclick = () => callbacks.onToggleLink?.(controls.link.value);
+  controls.coupling.oninput = () => updateCouplingValidation(false);
+  controls.coupling.onchange = commitCoupling;
+  controls.coupling.onkeydown = event => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      commitCoupling();
+    }
+  };
+  controls.guide.onclick = () => {
+    if (commitCoupling()) callbacks.onRunProtocol?.('guide', 'R0', couplingMs);
+  };
+  controls.premature.onclick = () => callbacks.onRunProtocol?.('premature', 'A', 275);
+  for (const filter of filters) filter.onchange = () => render(currentFrame, currentContext);
+
+  return { render, dispose: () => container.replaceChildren() };
+}
+
+return {createInspector};
+})();
+__modules["src/ui/preferences.js"] = (()=>{
+const PREFERENCES_KEY = 'counterpoint.preferences.v1';
+const DEFAULTS = { dilation: 4, palette: 'chamber', voicing: 'balanced', volume: 0.3, muted: false };
+
+function readPreferences(palettes, voicings) {
+  let stored;
+  try { stored = JSON.parse(window.localStorage.getItem(PREFERENCES_KEY)); }
+  catch { return { ...DEFAULTS }; }
+  if (!stored || typeof stored !== 'object') return { ...DEFAULTS };
+  return {
+    dilation: Number.isInteger(stored.dilation) && stored.dilation >= 1 && stored.dilation <= 8 ? stored.dilation : DEFAULTS.dilation,
+    palette: palettes.includes(stored.palette) ? stored.palette : DEFAULTS.palette,
+    voicing: voicings.includes(stored.voicing) ? stored.voicing : DEFAULTS.voicing,
+    volume: Number.isFinite(stored.volume) && stored.volume >= 0 && stored.volume <= 0.7 ? stored.volume : DEFAULTS.volume,
+    muted: typeof stored.muted === 'boolean' ? stored.muted : DEFAULTS.muted,
+  };
+}
+
+function savePreferences(preferences) {
+  try { window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences)); }
+  catch { /* Storage may be unavailable when a browser opens the local HTML. */ }
+}
+
+return {readPreferences,savePreferences};
+})();
+__modules["src/ui/app.js"] = (()=>{
+const { Engine } = __modules["src/engine/index.js"];
+const { createCirculationWorld } = __modules["src/worlds/circulation.js"];
+const { createConductionWorld } = __modules["src/worlds/conduction.js"];
+const { createDualityWorld } = __modules["src/worlds/duality.js"];
+const { createTransport, LOOKAHEAD_WALL_MS } = __modules["src/runtime/transport.js"];
+const { createRenderer } = __modules["src/visuals/renderer.js"];
+const { mapActivation, createAudioMixer, describeNodeMusic, PALETTES, CHAMBER_VOICINGS } = __modules["src/music/index.js"];
+const { createInspector } = __modules["src/ui/inspector.js"];
+const { readPreferences, savePreferences } = __modules["src/ui/preferences.js"];
+
+const $ = id => document.getElementById(id);
+const WORLDS = {
+  conduction: {
+    create: createConductionWorld,
+    name: 'Conduction',
+    topology: 'Six sites in a branching pathway, led by an automatic focus.',
+    hint: 'Tap a site to stimulate it. Swipe across a connection to cut it.',
+    status: 'An automatic impulse leads the way.',
+  },
+  circulation: {
+    create: createCirculationWorld,
+    name: 'Circulation',
+    topology: 'Eight excitable sites joined in a bidirectional ring.',
+    hint: 'Swipe across a connection to cut it. Find a rhythm resets the ring and sends two impulses.',
+    status: 'The ring rests until a site is stimulated.',
+  },
+  duality: {
+    create: createDualityWorld,
+    name: 'Duality',
+    topology: 'Two disconnected pathways, each with its own automatic focus.',
+    hint: 'Tap a site to stimulate it. Swipe across a connection to cut it.',
+    status: 'Two independent rhythms share the space.',
+  },
+};
+
+const preferences = readPreferences(PALETTES, CHAMBER_VOICINGS);
+const engine = new Engine();
+const motion = matchMedia('(prefers-reduced-motion: reduce)');
+const pendingLinks = new Map();
+const EVENT_LIMIT = 4096;
+const GUIDE_COUPLING_MS = 240;
+const SWIPE_THRESHOLD = 10;
+let worldId = 'conduction';
+let world;
+let renderer;
+let inspector;
+let context;
+let mixer;
+let started = false;
+let beginning = false;
+let visibilityChanges = 0;
+let runCounter = 0;
+let allEvents = [];
+let lastFrame;
+let discardedEvents = 0;
+let captureTotal = 0;
+let visualFloorMs = -1;
+let selectedNodeId;
+let selectedLinkId;
+let couplingMs = GUIDE_COUPLING_MS;
+let gesture;
+let lastFpsTime = 0;
+let fpsFrames = 0;
+let fps = 0;
+let lastInspectionTime = -Infinity;
+let inspectionDirty = true;
+
+function retainEvents(events) {
+  for (const event of events) {
+    if (event.type === 'activation') captureTotal++;
+    allEvents.push(event);
+  }
+  const overflow = allEvents.length - EVENT_LIMIT;
+  if (overflow > 0) {
+    discardedEvents += overflow;
+    allEvents.splice(0, overflow);
+  }
+}
+
+const transport = createTransport({
+  engine,
+  dilation: preferences.dilation,
+  nowSec: () => context ? context.currentTime : performance.now() / 1000,
+  onCommit(events) {
+    retainEvents(events);
+    if (!mixer) return;
+    for (const event of events) {
+      const intent = mapActivation(event, preferences);
+      if (intent) mixer.schedule(intent, transport.audioSecAt(event.tMs));
+    }
+  },
+  onSilence({ reason }) {
+    mixer?.fence({
+      immediate: reason === 'audio-interrupted' || reason === 'page-hidden',
+      preserveBoundary: reason === 'pause',
+    });
+    if (['audio-interrupted', 'page-hidden', 'late-wake'].includes(reason)) {
+      visualFloorMs = transport.committedThroughMs() ?? 0;
+    }
+  },
+  onFault(error) { retainEvents(error.events ?? []); },
+  onReset(snapshot) {
+    allEvents = [];
+    discardedEvents = 0;
+    captureTotal = 0;
+    visualFloorMs = -1;
+    lastFrame = undefined;
+    pendingLinks.clear();
+    gesture = undefined;
+    renderer.clearGestures();
+    mixer?.beginRun(snapshot.runId);
+    inspectionDirty = true;
+  },
+  onStateChange(state) {
+    updateButtons();
+    if (state.status === 'running' && $('status').textContent.includes('Resume when ready.')) {
+      $('status').textContent = WORLDS[worldId].status;
+    }
+    if (state.reason && state.reason !== 'pause' && state.status === 'paused') {
+      const explanation = {
+        'page-hidden': 'Paused while away.',
+        'audio-interrupted': 'Sound was interrupted.',
+        'late-wake': 'The playback clock was interrupted.',
+      }[state.reason] ?? 'Playback was interrupted.';
+      $('status').textContent = `${explanation} Resume when ready.`;
+    }
+    if (state.status === 'faulted') {
+      $('status').textContent = `The circuit stopped at ${state.error?.tMs ?? '?'} ms. Reset to begin a fresh run.`;
+    }
+  },
+});
+
+function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs, autoStart = started) {
+  if (kind === 'single' && !world.nodes.some(node => node.id === nodeId)) return;
+  if (kind === 'guide' && (worldId !== 'circulation' || !world.nodes.some(node => node.id === nodeId)
+    || !Number.isInteger(interval) || interval < 1 || interval > 5000)) return;
+  if (kind === 'premature' && worldId !== 'conduction') return;
+  const runId = `run-${++runCounter}`;
+  const commands = [];
+  const stimulus = (commandId, nodeId, tMs) => ({ commandId, type: 'stimulate', nodeId, tMs });
+  let status = WORLDS[worldId].status;
+  if (kind === 'single') {
+    commands.push(stimulus('protocol-s1', nodeId, 0));
+    status = 'One impulse travels through the circuit.';
+  } else if (kind === 'guide' && worldId === 'circulation') {
+    commands.push(stimulus('protocol-s1', nodeId, 0), stimulus('protocol-s2', nodeId, interval));
+    status = 'Two impulses. A chance to keep going.';
+  } else if (kind === 'premature' && worldId === 'conduction') {
+    commands.push(stimulus('protocol-premature', 'A', 275));
+    status = 'An early impulse takes the slower path.';
+  }
+  $('status').textContent = started ? status : WORLDS[worldId].topology;
+  transport.reset(world, runId, {
+    commands, start: autoStart && !document.hidden && (!context || context.state === 'running'),
+  });
+  updateButtons();
+  if (!$('lab').hidden) {
+    lastFrame = transport.frame();
+    updateInspection(lastFrame, performance.now());
+  }
+}
+
+function chooseWorld(id) {
+  if (!Object.hasOwn(WORLDS, id) || (id === worldId && selectedNodeId)) return;
+  const autoStart = transport.status === 'running';
+  const settings = WORLDS[id];
+  const nextWorld = settings.create();
+  const nextRenderer = createRenderer($('canvas'), nextWorld, { reducedMotion: motion.matches });
+  worldId = id;
+  world = nextWorld;
+  renderer = nextRenderer;
+  selectedNodeId = world.nodes[0].id;
+  selectedLinkId = world.links[0].id;
+  for (const button of $('worlds').children) {
+    button.setAttribute('aria-pressed', String(button.dataset.world === worldId));
+  }
+  $('canvas').setAttribute('aria-label', settings.topology + ' Use the site buttons to stimulate.');
+  $('single').hidden = $('guide').hidden = id !== 'circulation';
+  $('premature').hidden = id !== 'conduction';
+  updatePaletteControls();
+  $('protocol-hint').textContent = id === 'conduction'
+    ? settings.hint + ' Premature impulse resets the pathway for the reference trial.'
+    : settings.hint;
+  buildSiteButtons();
+  buildLinkButtons();
+  resize();
+  startRun('quiet', selectedNodeId, couplingMs, autoStart);
+}
+
+function updateButtons() {
+  const running = transport.status === 'running';
+  if (!running) gesture = undefined;
+  for (const button of $('sites').children) button.disabled = !running;
+  for (const button of $('cuts').children) button.disabled = !running;
+  $('restore').disabled = !running;
+  for (const id of ['single', 'guide', 'premature', 'reset']) $(id).disabled = !started;
+  $('pause').textContent = transport.status === 'pausing' ? 'Pausing…' : running ? 'Pause' : 'Resume';
+  $('pause').disabled = !started || ['pausing', 'faulted'].includes(transport.status);
+}
+
+function updatePaletteControls() {
+  $('voicing-control').hidden = worldId !== 'circulation' || preferences.palette !== 'chamber';
+}
+
+function updateAudioControls() {
+  $('mute').disabled = !mixer;
+  $('volume').disabled = !mixer;
+  $('mute').textContent = !mixer ? 'Sound disabled' : preferences.muted ? 'Unmute' : 'Mute';
+  $('mute').setAttribute('aria-pressed', String(Boolean(mixer && preferences.muted)));
+}
+
+async function begin(silent) {
+  if (beginning || started) return;
+  beginning = true;
+  const visibilityAtRequest = visibilityChanges;
+  $('begin').disabled = $('silent').disabled = true;
+  let candidate;
+  try {
+    if (!silent) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      candidate = new AudioContext();
+      await candidate.resume();
+      context = candidate;
+      mixer = createAudioMixer(context, { volume: preferences.volume });
+      mixer.setMuted(preferences.muted);
+      context.onstatechange = () => {
+        if (['suspended', 'interrupted'].includes(context.state)) transport.interrupt('audio-interrupted');
+      };
+    }
+    started = true;
+    $('intro').hidden = true;
+    $('performance').hidden = false;
+    updateAudioControls();
+    const stillVisible = !document.hidden && visibilityAtRequest === visibilityChanges;
+    startRun(worldId === 'circulation' ? 'single' : 'quiet', selectedNodeId, couplingMs, stillVisible);
+    if (!stillVisible) $('status').textContent = 'Paused while away. Resume when ready.';
+    $('pause').focus({ preventScroll: true });
+  } catch (error) {
+    if (candidate) await candidate.close().catch(() => {});
+    context = mixer = undefined;
+    $('status').textContent = `Sound could not start. Begin in silence is available. ${error.message}`;
+  } finally {
+    beginning = false;
+    $('begin').disabled = $('silent').disabled = false;
+  }
+}
+
+function selectNode(nodeId) {
+  if (!world.nodes.some(node => node.id === nodeId)) return;
+  selectedNodeId = nodeId;
+  inspectionDirty = true;
+}
+
+function selectLink(linkId) {
+  if (!world.links.some(link => link.id === linkId)) return;
+  selectedLinkId = linkId;
+  inspectionDirty = true;
+}
+
+function stimulate(nodeId) {
+  if (transport.status !== 'running' || !world.nodes.some(node => node.id === nodeId)) return;
+  selectNode(nodeId);
+  const command = transport.submit({ type: 'stimulate', nodeId });
+  if (command) renderer.markGesture(nodeId, command.commandId, command.tMs, command.runId);
+}
+
+function linkEnabled(linkId) {
+  return pendingLinks.get(linkId)?.enabled ?? lastFrame?.snapshot.links[linkId]?.enabled ?? true;
+}
+
+function setLinkEnabled(linkId, enabled) {
+  if (transport.status !== 'running' || !world.links.some(link => link.id === linkId) || linkEnabled(linkId) === enabled) return false;
+  const command = transport.submit({ type: 'setLinkEnabled', linkId, enabled });
+  if (!command) return false;
+  pendingLinks.set(linkId, { enabled, tMs: command.tMs });
+  return true;
+}
+
+function toggleLink(linkId) {
+  selectLink(linkId);
+  setLinkEnabled(linkId, !linkEnabled(linkId));
+}
+
+function buildSiteButtons() {
+  $('sites').replaceChildren();
+  for (const { id } of world.nodes) {
+    const button = document.createElement('button');
+    button.className = 'site';
+    button.disabled = true;
+    button.textContent = id;
+    button.setAttribute('aria-label', `Stimulate site ${id}`);
+    // Pointer activation is handled on the stage so a stroke can start on a site.
+    button.onclick = event => { if (!event.detail) stimulate(id); };
+    $('sites').append(button);
+  }
+}
+
+function buildLinkButtons() {
+  $('cuts').replaceChildren();
+  for (const link of world.links) {
+    const button = document.createElement('button');
+    button.textContent = `${link.a}–${link.b}`;
+    button.setAttribute('aria-label', `Cut or restore connection ${link.a} to ${link.b}`);
+    button.setAttribute('aria-pressed', 'false');
+    button.onclick = () => toggleLink(link.id);
+    button.dataset.link = link.id;
+    $('cuts').append(button);
+  }
+}
+
+function resize() {
+  renderer.resize();
+  for (const button of $('sites').children) {
+    const point = renderer.nodePosition(button.textContent);
+    if (!point) continue;
+    button.style.left = `${point.x}px`;
+    button.style.top = `${point.y}px`;
+  }
+}
+
+function canvasPoint(event) {
+  const rect = $('canvas').getBoundingClientRect();
+  return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+}
+
+function crossConnections(from, to, previous) {
+  for (const linkId of renderer.crossedLinks(from, to, previous)) {
+    if (!setLinkEnabled(linkId, false)) continue;
+    selectLink(linkId);
+    const link = world.links.find(link => link.id === linkId);
+    $('status').textContent = `Connection ${link.a}–${link.b} cut.`;
+  }
+}
+
+function trackGesture(event) {
+  const active = gesture;
+  if (active?.pointerId !== event.pointerId) return;
+  const samples = event.getCoalescedEvents?.() ?? [];
+  for (const sample of [...samples, event]) {
+    if (gesture !== active) return;
+    const point = canvasPoint(sample);
+    if (point.x === active.last.x && point.y === active.last.y) continue;
+    if (active.swiping) {
+      crossConnections(active.last, point, active.previous);
+    } else {
+      active.path.push(point);
+      active.travel += Math.hypot(point.x - active.last.x, point.y - active.last.y);
+      if (active.travel >= SWIPE_THRESHOLD) {
+        active.swiping = true;
+        for (let i = 1; i < active.path.length; i++) {
+          crossConnections(active.path[i - 1], active.path[i], active.path[i - 2]);
+        }
+      }
+    }
+    active.previous = active.last;
+    active.last = point;
+  }
+}
+
+const stage = $('stage');
+stage.addEventListener('pointerdown', event => {
+  if (gesture || !event.isPrimary || event.button !== 0 || transport.status !== 'running') return;
+  const point = canvasPoint(event);
+  const site = renderer.hitTest(point.x, point.y);
+  gesture = { pointerId: event.pointerId, last: point, path: [point], travel: 0, swiping: false, site };
+  stage.setPointerCapture(event.pointerId);
+});
+stage.addEventListener('pointermove', trackGesture);
+stage.addEventListener('pointerup', event => {
+  if (gesture?.pointerId !== event.pointerId) return;
+  trackGesture(event);
+  if (!gesture) return;
+  const { site, swiping } = gesture;
+  gesture = undefined;
+  if (site && !swiping) stimulate(site);
+});
+for (const type of ['pointercancel', 'lostpointercapture']) {
+  stage.addEventListener(type, event => {
+    if (gesture?.pointerId === event.pointerId) gesture = undefined;
+  });
+}
+
+function updateInspection(frame, now) {
+  if ($('lab').hidden || (!inspectionDirty && now - lastInspectionTime < 120)) return;
+  lastInspectionTime = now;
+  inspectionDirty = false;
+  const settings = WORLDS[worldId];
+  inspector ??= createInspector($('lab-content'), {
+    onStimulus: stimulate,
+    onToggleLink: toggleLink,
+    onSelectNode: selectNode,
+    onSelectLink: selectLink,
+    onProtocolChange(interval) { couplingMs = interval; inspectionDirty = true; },
+    onRunProtocol: startRun,
+    onReset: () => startRun(),
+  });
+  inspector.render(frame, {
+    world,
+    worldName: settings.name,
+    started,
+    topology: settings.topology,
+    events: allEvents,
+    captureTotal,
+    transport: transport.state(),
+    committedMs: transport.committedThroughMs(),
+    lookaheadMs: LOOKAHEAD_WALL_MS,
+    audioState: context?.state ?? (started ? 'silent' : 'awaiting Begin'),
+    audioDiagnostics: mixer?.diagnostics(),
+    palette: preferences.palette,
+    voicing: preferences.voicing,
+    volume: preferences.volume,
+    muted: preferences.muted,
+    fps,
+    selectedNodeId,
+    selectedLinkId,
+    couplingMs,
+    nodeMusic: describeNodeMusic(worldId, selectedNodeId, preferences),
+  });
+}
+
+$('begin').onclick = () => begin(false);
+$('silent').onclick = () => begin(true);
+$('pause').onclick = async () => {
+  if (transport.status === 'running') {
+    transport.pause();
+    return;
+  }
+  const runId = transport.runId;
+  const visibilityAtRequest = visibilityChanges;
+  try {
+    if (context) await context.resume();
+    if (document.hidden || visibilityAtRequest !== visibilityChanges || (context && context.state !== 'running')) return;
+    if (runId !== transport.runId || !['paused', 'idle'].includes(transport.status)) return;
+    mixer?.beginRun(runId);
+    transport.resume();
+  } catch (error) {
+    $('status').textContent = `Sound could not resume. ${error.message}`;
+  }
+};
+$('single').onclick = () => startRun('single', 'R0');
+$('guide').onclick = () => startRun('guide', 'R0', GUIDE_COUPLING_MS);
+$('premature').onclick = () => startRun('premature');
+$('reset').onclick = () => startRun();
+for (const button of $('worlds').children) button.onclick = () => chooseWorld(button.dataset.world);
+$('dilation').value = String(preferences.dilation);
+$('palette').value = preferences.palette;
+$('voicing').value = preferences.voicing;
+$('volume').value = String(preferences.volume);
+$('dilation').onchange = () => {
+  preferences.dilation = Number($('dilation').value);
+  transport.setDilation(preferences.dilation);
+  savePreferences(preferences);
+};
+$('palette').onchange = () => {
+  preferences.palette = $('palette').value;
+  updatePaletteControls();
+  savePreferences(preferences);
+};
+$('voicing').onchange = () => {
+  preferences.voicing = $('voicing').value;
+  savePreferences(preferences);
+};
+$('mute').onclick = () => {
+  preferences.muted = !preferences.muted;
+  mixer?.setMuted(preferences.muted);
+  updateAudioControls();
+  savePreferences(preferences);
+};
+$('volume').oninput = () => {
+  preferences.volume = Number($('volume').value);
+  mixer?.setVolume(preferences.volume);
+  savePreferences(preferences);
+};
+$('restore').onclick = () => {
+  let restored = false;
+  for (const link of world.links) {
+    if (setLinkEnabled(link.id, true)) restored = true;
+  }
+  if (restored) $('status').textContent = 'Connections restored.';
+};
+$('lab-toggle').onclick = () => {
+  const open = $('lab').hidden;
+  $('lab').hidden = !open;
+  $('lab-toggle').setAttribute('aria-expanded', String(open));
+  if (open && lastFrame) {
+    inspectionDirty = true;
+    updateInspection(lastFrame, performance.now());
+  }
+};
+$('export').onclick = () => {
+  const data = {
+    origin: 'actual-engine', contract: '1.0.0', runId: transport.runId, world,
+    presentedMs: transport.presentedMs(), committedMs: transport.committedThroughMs(),
+    retentionLimit: EVENT_LIMIT, discardedEvents, commands: transport.commandLog(),
+    discardedCommands: transport.discardedCommandCount, lastInterruption: transport.lastInterruption,
+    events: allEvents,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const anchor = document.createElement('a');
+  anchor.href = URL.createObjectURL(blob);
+  anchor.download = 'counterpoint-events.json';
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(anchor.href), 1000);
+};
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    visibilityChanges++;
+    if (started) transport.interrupt('page-hidden');
+  }
+});
+const applyMotion = event => renderer?.setReducedMotion(event.matches);
+if (motion.addEventListener) motion.addEventListener('change', applyMotion);
+else motion.addListener?.(applyMotion);
+
+try {
+  chooseWorld(worldId);
+  if (typeof ResizeObserver === 'function') new ResizeObserver(resize).observe(stage);
+  else window.addEventListener('resize', resize);
+} catch {
+  $('status').textContent = 'The artwork could not start. A browser with Canvas 2D is required.';
+  $('begin').disabled = $('silent').disabled = $('lab-toggle').disabled = true;
+  for (const button of $('worlds').children) button.disabled = true;
+}
+
+function draw(now) {
+  try {
+    fpsFrames++;
+    if (now - lastFpsTime >= 1000) {
+      fps = fpsFrames * 1000 / (now - lastFpsTime);
+      fpsFrames = 0;
+      lastFpsTime = now;
+    }
+    const frame = transport.frame();
+    lastFrame = frame;
+    if (frame.snapshot) {
+      const events = visualFloorMs < 0 ? allEvents : allEvents.filter(event => event.tMs > visualFloorMs);
+      renderer.render(frame.snapshot, events, frame.presentedMs);
+      for (const [id, pending] of pendingLinks) {
+        if (pending.tMs <= frame.presentedMs) pendingLinks.delete(id);
+      }
+      for (const button of $('cuts').children) {
+        const pressed = String(!frame.snapshot.links[button.dataset.link].enabled);
+        if (button.getAttribute('aria-pressed') !== pressed) button.setAttribute('aria-pressed', pressed);
+      }
+    }
+    updateInspection(frame, now);
+  } catch (error) {
+    $('status').textContent = error.message;
+    console.error(error);
+  }
+  requestAnimationFrame(draw);
+}
+if (renderer) requestAnimationFrame(draw);
+
+window.counterpoint = {
+  engine,
+  transport,
+  get events() { return allEvents; },
+  get mixer() { return mixer; },
+  get retention() { return { discardedEvents, captureTotal, retained: allEvents.length }; },
+};
+
+return {};
+})();
+</script>
+</body>
+</html>

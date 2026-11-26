@@ -1,0 +1,9 @@
+[
+  {
+    "type": "stimulate",
+    "commandId": "S1",
+    "runId": "study-A",
+    "tMs": 0,
+    "nodeId": "R0"
+  }
+]

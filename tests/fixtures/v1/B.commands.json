@@ -1,0 +1,16 @@
+[
+  {
+    "type": "stimulate",
+    "commandId": "S1",
+    "runId": "study-B",
+    "tMs": 0,
+    "nodeId": "R0"
+  },
+  {
+    "type": "stimulate",
+    "commandId": "S2",
+    "runId": "study-B",
+    "tMs": 240,
+    "nodeId": "R0"
+  }
+]
