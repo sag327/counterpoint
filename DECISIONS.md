@@ -25,3 +25,21 @@ Conduction opens before Begin in a rested state. The engine supplies its first a
 A site touch becomes a stimulus on release if the pointer has traveled less than 10 CSS px. A deliberate stroke disables each enabled physical path crossed, in stroke order. The geometric test excludes node approach and tangent contacts. Pointer cancellation ends the gesture, and a cut already submitted remains a normal engine command. Site and connection buttons stay available for keyboard operation.
 
 The creator reported that the playable Circulation study worked well and requested swipe-to-cut. This is the usability review used to advance P1. Chamber Balanced and 4× dilation remain initial defaults pending a fixed-input listening comparison.
+
+## 2026-11-26 · Contract 1.1.0 (Study No. 2 tickets 11a–11d)
+
+Contract engineer decision record, pending lead acceptance at G1. The failing input is the Study No. 2 spec itself: v0.1 has no history dependence, so no maneuver behaves as it does in the lab. Affected consumers are the mapper (audible false, ticket 12d), the Ladder and Lab (delayParts, diastolicIntervalMs, phase_modulated, lesion_changed), and gestures (trains, agents, ablate). No frozen fixture was migrated. All of them stay byte-identical.
+
+| Decision | Reason / revisit condition |
+|---|---|
+| Ship contract 1.1.0 as new `*.v1_1.schema.json` files, each a strict superset of 1.0.0. A world is 1.1.0 if it has contractVersion "1.1.0" or any 1.1.0 field. contractVersion is optional in the schema. | Lead instruction for 11a. Every 1.0.0 document validates under both schemas, and producers should still write contractVersion. |
+| A 1.0.0 run rejects the nine 1.1.0 commands, and the 1.1.0 annotations (diastolicIntervalMs, delayParts, cause) appear only in 1.1.0 runs. | This keeps the invariant that a 1.0.0 stream validates under the 1.0.0 event schema. To use trains on a frozen preset, mark a copy 1.1.0. Its dynamics are unchanged. |
+| §D ignores coupling inputs outside the target's current cycle (φ < 0 or φ ≥ 1). Before its first attempt, a focus's phase origin is firstAttempt − cycle. | The spec's prototype (design/plates/src/labplate.py) uses this rule, and only this rule reproduces the narrow 5:7 window near 0.1825. A periodic sine gives no 5:7 window and stays at 2:3 from 0.221 to about 0.245. |
+| phase_modulated.shiftMs is the PRC value Δ. nextAttemptMs carries the t + 1 tick floor. Amplitude 0 emits nothing. | The Lab's phase-response dots then lie on the sine law within rounding. |
+| delayParts adds agentMs. | Slow the current changes link delay. Folding it into baseMs would hide the agent from the conduction curve. |
+| setTone sign: positive tone lengthens the sinus cycle and increases nodal decrement, using (1 + 0.2v) and (1 + 0.5v). | This mirrors the breath law, where the same factor scales both. Lead to confirm whether + should mean sympathetic instead. |
+| Restitution requires erpMaxMs = erpMs. readAt and parameter_changed erpMs report the rested ERP: erpMax plus any agent modifier. | This removes the two-ERP ambiguity. setNodeERP keeps erpMs and erpMax in step. |
+| Lesions are monotone. A pass at or below the current target is a no-op. A deeper pass continues from the current progress. The §F "ERP floor on the link" is deferred. | The gesture layer sends cumulative completeness (0.5, then 1). The floor needs a value and a rule from the lead. |
+| Stillness overlaps take the strongest envelope. A new Slow ramp starts from the current level. | Both rules are deterministic, bounded and replay-safe. Stacking doses has no oracle yet. |
+| Train admission caps overlapping pulse windows at maxConcurrentTrains (default 4). The cap uses only earlier commands. Each pulse is charged to the processing budget. | Ticket 11d budget limits. A command log must be accepted the same way live and on replay, so admission can never depend on the horizon. |
+| Do not commit a rebuilt dist/counterpoint.html on this branch. | dist is the v0.1 release artifact pinned by RELEASE.sha256. `npm run build` was verified, then restored. The v0.2 artifact belongs to release ticket 15d. |

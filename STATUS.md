@@ -15,5 +15,6 @@
 | 09a | ACCEPTED | [Production world traces](docs/runs/worlds-01.md), [native Canvas world and swipe review](docs/runs/visual-02.md) |
 | 09b | ACCEPTED | [Palettes and diagnostics](docs/runs/music-02.md), [Laboratory](docs/runs/inspector-01.md), [bundled controls and preferences](docs/runs/release-02.md) |
 | 10 | REVIEW | Final source and candidate artifact available. Device/browser review and human audition remain open. See [gate coverage](docs/COVERAGE.md). |
+| 11a–11d | REVIEW | [Contract 1.1.0 receipt](docs/runs/contract-v11-01.md): schemas, engine A–F, trains, agents and every required oracle pass; v1 traces byte-identical. Independent G1 review pending (re-derive the oracle numbers). Open questions for the lead are in the receipt. |
 
 On a browser-enabled host, run `python3 tests/browser_smoke.py --soak-minutes 10`. Keep the comparative listening verdict separate from browser and signal checks.

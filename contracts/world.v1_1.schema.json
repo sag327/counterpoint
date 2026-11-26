@@ -1,0 +1,324 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$comment": "Counterpoint contract 1.1.0 world. A strict superset of world.v1.schema.json: every 1.0.0 world also validates here. Semantic rules are in contracts/README.md.",
+  "definitions": {
+    "extraLawOrNull": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "maxExtraMs": {
+              "type": "number",
+              "minimum": 0
+            },
+            "tauMs": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "maxExtraMs",
+            "tauMs"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "restitution": {
+      "type": "object",
+      "properties": {
+        "erpMaxMs": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "amplitudeMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "tauMs": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "erpMinMs": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "erpMaxMs",
+        "amplitudeMs",
+        "tauMs",
+        "erpMinMs"
+      ],
+      "additionalProperties": false
+    },
+    "automaticity": {
+      "type": "object",
+      "properties": {
+        "cycleMs": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "firstAttemptMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "resetOnCapture": {
+          "type": "boolean"
+        },
+        "overdrive": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "gainPerBeat": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "maxMs": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "warmupFactor": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "gainPerBeat",
+                "maxMs",
+                "warmupFactor"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "protected": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "cycleMs",
+        "firstAttemptMs",
+        "resetOnCapture"
+      ],
+      "additionalProperties": false
+    },
+    "direction": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "delayMs": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "decrement": {
+          "$ref": "#/definitions/extraLawOrNull"
+        },
+        "entry": {
+          "$ref": "#/definitions/extraLawOrNull"
+        }
+      },
+      "required": [
+        "enabled",
+        "delayMs",
+        "decrement"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "properties": {
+    "contractVersion": {
+      "const": "1.1.0"
+    },
+    "worldId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "erpMs": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "recoveryTailMs": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "automaticity": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/automaticity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tissue": {
+            "enum": [
+              "sinus",
+              "atrial",
+              "nodal",
+              "hisPurkinje",
+              "ventricular",
+              "accessory"
+            ]
+          },
+          "audible": {
+            "type": "boolean"
+          },
+          "restitution": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/restitution"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "erpMs",
+          "recoveryTailMs",
+          "automaticity"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "a": {
+            "type": "string",
+            "minLength": 1
+          },
+          "b": {
+            "type": "string",
+            "minLength": 1
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "ab": {
+            "$ref": "#/definitions/direction"
+          },
+          "ba": {
+            "$ref": "#/definitions/direction"
+          }
+        },
+        "required": [
+          "id",
+          "a",
+          "b",
+          "enabled",
+          "ab",
+          "ba"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "coupling": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "from": {
+            "type": "string",
+            "minLength": 1
+          },
+          "to": {
+            "type": "string",
+            "minLength": 1
+          },
+          "amplitude": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "id",
+          "from",
+          "to",
+          "amplitude"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "autonomic": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "breathPeriodMs": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "depth": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.5
+            },
+            "targets": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "sinus",
+                  "nodal"
+                ]
+              },
+              "uniqueItems": true,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "breathPeriodMs",
+            "depth",
+            "targets"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "worldId",
+    "nodes",
+    "links"
+  ],
+  "additionalProperties": false
+}
