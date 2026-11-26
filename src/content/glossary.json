@@ -1,0 +1,402 @@
+[
+  {
+    "id": "rhythm",
+    "term": "rhythm",
+    "layer": 1,
+    "short": [
+      "Rhythm is the pattern of when sounds happen.",
+      "It is made of the gaps between sounds as much as the sounds."
+    ],
+    "studyNotes": {
+      "echo": "Here the rhythm changes the moment the early tap arrives."
+    },
+    "demo": {
+      "solo": [],
+      "brackets": null
+    }
+  },
+  {
+    "id": "beat",
+    "term": "beat",
+    "layer": 1,
+    "short": [
+      "A beat is one single sound in a steady pattern.",
+      "Each beat here marks one site waking up."
+    ],
+    "studyNotes": {
+      "meter": "Here some beats go missing in a regular way."
+    },
+    "demo": {
+      "solo": [],
+      "brackets": null
+    }
+  },
+  {
+    "id": "tempo",
+    "term": "tempo",
+    "layer": 1,
+    "short": [
+      "Tempo is how fast the beats come.",
+      "A quicker tempo means shorter gaps between beats."
+    ],
+    "studyNotes": {
+      "prelude": "Here your tapping sets the tempo of the heart."
+    },
+    "demo": {
+      "solo": [],
+      "brackets": null
+    }
+  },
+  {
+    "id": "rest",
+    "term": "rest",
+    "layer": 1,
+    "short": [
+      "A rest is a beat that stays silent.",
+      "The pattern carries on, with one sound left out."
+    ],
+    "studyNotes": {
+      "meter": "Here a rest appears when one wave fails to get through."
+    },
+    "demo": {
+      "solo": [],
+      "brackets": null
+    }
+  },
+  {
+    "id": "pause",
+    "term": "pause",
+    "layer": 1,
+    "short": [
+      "A pause is a longer silence between two beats.",
+      "It gives the ear a moment before the next sound."
+    ],
+    "studyNotes": {
+      "prelude": "Here a pause follows the pacing, before the natural rhythm returns."
+    },
+    "demo": {
+      "solo": [],
+      "brackets": null
+    }
+  },
+  {
+    "id": "melody",
+    "term": "melody",
+    "layer": 1,
+    "short": [
+      "A melody is a line of notes heard one after another.",
+      "The order of the notes is what you recognise."
+    ],
+    "studyNotes": {
+      "retrograde": "Here the same line of notes comes round in both directions."
+    },
+    "demo": {
+      "solo": [],
+      "brackets": null
+    }
+  },
+  {
+    "id": "arpeggio",
+    "term": "arpeggio",
+    "layer": 1,
+    "short": [
+      "An arpeggio is a chord played one note at a time.",
+      "The notes follow each other in a steady order."
+    ],
+    "studyNotes": {
+      "echo": "Here the atrium and ventricle sound one after the other."
+    },
+    "demo": {
+      "solo": [],
+      "brackets": null
+    }
+  },
+  {
+    "id": "chord",
+    "term": "chord",
+    "layer": 1,
+    "short": [
+      "A chord is several notes sounding at once.",
+      "When notes fall very close together they blend into one."
+    ],
+    "studyNotes": {
+      "echo": "Here the atrium and ventricle sound almost together."
+    },
+    "demo": {
+      "solo": [],
+      "brackets": null
+    }
+  },
+  {
+    "id": "echo",
+    "term": "echo",
+    "layer": 1,
+    "short": [
+      "An echo is a sound that comes back a moment later.",
+      "It repeats something you have just heard."
+    ],
+    "studyNotes": {
+      "echo": "Here one extra beat returns to the atrium after the ventricle."
+    },
+    "demo": {
+      "solo": [],
+      "brackets": null
+    }
+  },
+  {
+    "id": "round",
+    "term": "round",
+    "layer": 1,
+    "short": [
+      "A round is a tune that one voice starts and others join later.",
+      "Every voice sings the same notes, a little apart."
+    ],
+    "studyNotes": {
+      "canon": "Here two waves chase each other around the same ring."
+    },
+    "demo": {
+      "solo": [],
+      "brackets": null
+    }
+  },
+  {
+    "id": "faster",
+    "term": "faster",
+    "layer": 1,
+    "short": [
+      "Faster means the beats come closer together.",
+      "The pattern stays the same but moves along more quickly."
+    ],
+    "studyNotes": {
+      "prelude": "Here the heart speeds up gradually as it recovers."
+    },
+    "demo": {
+      "solo": [],
+      "brackets": null
+    }
+  },
+  {
+    "id": "slower",
+    "term": "slower",
+    "layer": 1,
+    "short": [
+      "Slower means the beats spread further apart.",
+      "The pattern stays the same but takes more time."
+    ],
+    "studyNotes": {
+      "ostinato": "Here slower conduction lets the lower voice keep up."
+    },
+    "demo": {
+      "solo": [],
+      "brackets": null
+    }
+  },
+  {
+    "id": "hemiola",
+    "term": "hemiola",
+    "layer": 2,
+    "short": [
+      "Hemiola is three beats of one voice against two of another.",
+      "The two voices meet again after every full set."
+    ],
+    "studyNotes": {
+      "hemiola": "Here it appears when the two pacemakers lock three to two."
+    },
+    "demo": {
+      "solo": [
+        "A",
+        "B"
+      ],
+      "brackets": "groups"
+    }
+  },
+  {
+    "id": "ostinato",
+    "term": "ostinato",
+    "layer": 2,
+    "short": [
+      "An ostinato is a short figure repeated again and again.",
+      "Other voices change while it keeps going underneath."
+    ],
+    "studyNotes": {
+      "ostinato": "Here the fast atrial circuit repeats while the lower voice answers."
+    },
+    "demo": {
+      "solo": [
+        "R0",
+        "V"
+      ],
+      "brackets": "figure"
+    }
+  },
+  {
+    "id": "retrograde",
+    "term": "retrograde",
+    "layer": 2,
+    "short": [
+      "Retrograde means playing a melody backwards, from its last note to its first.",
+      "The same notes are heard in reverse order."
+    ],
+    "studyNotes": {
+      "retrograde": "Here the second circuit visits the same sites in reverse."
+    },
+    "demo": {
+      "solo": [
+        "CSp",
+        "Vs",
+        "Vl",
+        "CSd"
+      ],
+      "brackets": "mirror"
+    }
+  },
+  {
+    "id": "canon",
+    "term": "canon",
+    "layer": 2,
+    "short": [
+      "A canon is one melody sung by voices that start at different times.",
+      "Each voice copies the first exactly."
+    ],
+    "studyNotes": {
+      "canon": "Here two waves circle the ring, half a lap apart."
+    },
+    "demo": {
+      "solo": [
+        "R0"
+      ],
+      "brackets": "figure"
+    }
+  },
+  {
+    "id": "phasing",
+    "term": "phasing",
+    "layer": 2,
+    "short": [
+      "Phasing is two steady patterns drifting slowly apart and back together.",
+      "Their small speed difference creates ever-changing overlaps."
+    ],
+    "studyNotes": {
+      "hemiola": "Here the two pacemakers drift until they begin to listen to each other."
+    },
+    "demo": {
+      "solo": [
+        "A",
+        "B"
+      ],
+      "brackets": "groups"
+    }
+  },
+  {
+    "id": "meter",
+    "term": "meter",
+    "layer": 2,
+    "short": [
+      "Meter is how beats gather into regular groups, such as threes or fours.",
+      "The first beat of each group feels stronger."
+    ],
+    "studyNotes": {
+      "meter": "Here groups form as beats drop out at a regular interval."
+    },
+    "demo": {
+      "solo": [
+        "HRA",
+        "V"
+      ],
+      "brackets": "groups"
+    }
+  },
+  {
+    "id": "fermata",
+    "term": "fermata",
+    "layer": 2,
+    "short": [
+      "A fermata is a held note or silence, lasting longer than written.",
+      "The player decides when the music moves on."
+    ],
+    "studyNotes": {
+      "prelude": "Here the long pause after pacing is held until the heart resumes."
+    },
+    "demo": {
+      "solo": [
+        "HRA"
+      ],
+      "brackets": null
+    }
+  },
+  {
+    "id": "accelerando",
+    "term": "accelerando",
+    "layer": 2,
+    "short": [
+      "Accelerando means gradually getting faster.",
+      "Each gap is a little shorter than the last."
+    ],
+    "studyNotes": {
+      "prelude": "Here the beats quicken step by step back to the resting pace."
+    },
+    "demo": {
+      "solo": [
+        "HRA",
+        "V"
+      ],
+      "brackets": null
+    }
+  },
+  {
+    "id": "rubato",
+    "term": "rubato",
+    "layer": 2,
+    "short": [
+      "Rubato means bending the timing a little, giving and taking time.",
+      "The beat sways but stays together overall."
+    ],
+    "studyNotes": {
+      "prelude": "Here the gentle sway of breathing stretches and shortens the gaps."
+    },
+    "demo": {
+      "solo": [
+        "HRA"
+      ],
+      "brackets": null
+    }
+  },
+  {
+    "id": "suspension",
+    "term": "suspension",
+    "layer": 2,
+    "short": [
+      "A suspension is a note held back a moment before it arrives.",
+      "The delay creates a small wish for the next sound."
+    ],
+    "studyNotes": {
+      "echo": "Here the ventricle arrives suddenly later than the atrium led you to expect."
+    },
+    "demo": {
+      "solo": [
+        "HRA",
+        "V"
+      ],
+      "brackets": null
+    }
+  },
+  {
+    "id": "polyrhythm",
+    "term": "polyrhythm",
+    "layer": 2,
+    "short": [
+      "Polyrhythm is two different beat patterns sounding together.",
+      "Each keeps its own count at the same time."
+    ],
+    "studyNotes": {
+      "hemiola": "Here the two voices keep different counts until they lock."
+    },
+    "demo": {
+      "solo": [
+        "A",
+        "B"
+      ],
+      "brackets": "groups"
+    }
+  }
+]
