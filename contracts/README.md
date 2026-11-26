@@ -27,3 +27,58 @@ Runtime alone maps presentation time to sim time. Let anchorSimMs and anchorAudi
 Map each P0 activation to one noteIntent with the same runId, eventId, tMs. Sound owns voice mapping and gain; schedule once per identity. Mute only adjusts gain. Pause stops extending the horizon and lets the bounded committed interval finish, then freezes at the boundary. Resume reanchors there with no replay. Dilation changes switch anchors at a committed boundary, preserving sim continuity. On reset/scene change fence and mute old scheduled audio, clear presentation queues and load a fresh run. On visibility/audio interruption silence the old schedule, freeze at the last committed horizon, expose paused state, and explicitly resume there with a fresh presentation anchor. Record any unpresented interval as a diagnostic. No backlog attacks. Silent playback follows the same protocol.
 
 Any wire or semantic change goes through a lead decision with failing input, affected consumers, new revision and migrated fixtures. Downstream fixtures are under tests/ only. Shipping production must use the actual engine.
+
+# Counterpoint contract 1.1.0
+
+Added for Study No. 2 tickets 11a–11d (design/study-2-spec.md, "Engine contract v1.1"). Contract 1.0.0 above stays valid and its four schema files are unchanged. Contract 1.1.0 ships as world.v1_1, command.v1_1 and event.v1_1 schemas. Each is a strict superset of its 1.0.0 file, so every 1.0.0 document also validates under 1.1.0. noteIntent is unchanged.
+
+## Version and compatibility
+
+readWorld reads a world as 1.1.0 when it declares contractVersion "1.1.0" or carries any 1.1.0 field: world coupling or autonomic; node tissue, audible or restitution; automaticity overdrive or protected; direction entry. Any other contractVersion value is rejected. A 1.0.0 world runs the 1.0.0 code paths and emits exactly the 1.0.0 trace. The 1.0.0 fixtures, `ring.json` and both committed evidence files are checked byte for byte in tests/engine-v11.test.js. A 1.0.0 run rejects the nine 1.1.0 commands before mutation, so a 1.0.0 stream always validates under the 1.0.0 event schema. A 1.1.0 world without any mechanism, for example `ring.json` plus contractVersion, has the same dynamics. It only adds the 1.1.0 annotations: diastolicIntervalMs, delayParts and cause.
+
+## World semantics
+
+Tissue defaults to atrial and audible to true. The engine never reads audible: mappers return null for audible false sites (handoff §6.2). Restitution requires erpMinMs ≤ erpMaxMs = erpMs. Coupling ids are unique, from and to differ, the target must have automaticity, and amplitude lies in 0–1. Autonomic depth lies in 0–0.5 and its targets list sinus and/or nodal at most once each. Overdrive gainPerBeat and warmupFactor lie in 0–1. A link is nodal when either endpoint is nodal. Every new duration is a positive tick, and maxExtra and amplitude may be zero.
+
+## Laws
+
+All laws operate on integer ticks. Each time result is rounded once with Math.round, so half ticks go toward +∞, and the fixtures repeat the same arithmetic.
+
+- §A restitution, computed at capture from pre-capture state: DI = t − previous refractoryUntil, null on first capture. ERP = clamp(round(Emax − A·e^(−DI/τ)), Emin, Emax), and Emax on first capture. With restitution, setNodeERP moves erpMax and shifts erpMin by the same amount, with the floor clamped to 1 ms.
+- §B entry, applied at launch from destination state after every outcome of the batch: nominal = departure + link delay + Slow extra + source decrement. If the destination has been activated and nominal ≥ its refractoryUntil, entry = round(M·e^(−(nominal − refractoryUntil)/τ)). Otherwise entry is 0. Arrival deadlines stay fixed at launch.
+- §C overdrive: a capture without the focus's own automatic attempt is driven. If its interval I is below the effective cycle T, S = min(Smax, S + round(g·(T − I))). A capture that includes the focus's own attempt is spontaneous, and S = round(w·S). Every schedule, including resets, due attempts and setAutomaticity, is t + T + S. For sinus-tissue foci only, T = round(cycle × stillness × (1 + 0.2·tone) × (1 + d·sin(2πt/P))) at the scheduling instant. Breath applies only when sinus is a target. The nodal decrement maxExtra is multiplied by (1 + 0.5·tone)(1 + d·sin(2πt/P)) at departure for directions whose source is nodal. Breath applies only when nodal is a target. Positive tone lengthens the cycle and increases decrement, using the breath law's sign.
+- §D coupling, applied after launches and before schedules are committed: for each capture of `from` in emission order, then by coupling id, compute φ = (t − origin)/T. origin is the instant the target's pending cycle began: its last firing, reset or cycle edit, or firstAttempt − cycle before its first attempt. The shift is Δ = round(T·a·sin 2πφ), and next = max(t + 1 tick, pending + Δ). Inputs with φ outside [0, 1), and couplings with a = 0, are ignored and emit nothing. A focus reset in the same batch has origin t and therefore φ = 0. A protected focus is captured only when its own automatic attempt is among the causes. If an external stimulus or arrival lacks that attempt, the engine emits activation_blocked with cause protected, remainingErpMs ≥ 0 and refractoryUntilMs nullable. A same-instant own attempt merges with external causes as in 1.0.0.
+- §F lesion: ablate raises progress from its current value to completeness, in 250 ms steps ending exactly at durationMs. Both directions then use round(delay × (1 + 3p²)). Each step emits parameter_changed (delayMs, cause lesion) per direction whose value changed, then lesion_changed. At completeness 1 the final step disables the link, emitting link_changed with cause lesion, and cancels live transits with cause lesion. A pass at or below the current lesion target is a no-op. A later pass continues from the current progress. setDirectionDelay edits the pre-lesion delay. Its parameter_changed values, readAt delayMs and delayParts.baseMs + lesionMs all report the lesioned delay.
+- Stillness (applyAgent stillness): e(t) rises linearly to doseScale over 1500 ms, holds for 2000 ms and falls linearly over 6000 ms. It is applied every 100 ms from the command, ending at 9500 ms. The strongest active envelope wins. Nodal ERP gets + round(600 ms·e), atrial ERP × (1 − 0.2e), and the sinus cycle × (1 + 0.5e). The modifier applies after restitution. Each changed site emits parameter_changed (erpMs or cycleMs, cause agent) in node id order. Other tissues are untouched.
+- Slow (applyAgent slow): the level ramps linearly from its current value to doseScale in 30 steps of 100 ms, then persists until reset. Each changed step emits parameter_changed (parameter slowing, value = level, cause agent) per non-nodal link. At launch on a non-nodal link, agent = round(linkDelay × 0.3·level × (1 + max(0, (400 ms − CL)/400 ms))). CL is the source's preceding activation interval, and use dependence is 0 on its first activation.
+
+## Commands
+
+All 1.1.0 commands require a 1.1.0 world. Edit ranges extend §5.4:
+
+- stimulateTrain { nodeId, startMs ≥ tMs, cycleMs 150–10000, count 1–64, label ≤ 120 chars }: pulse k (1-based) is stimulus_attempted at startMs + (k−1)·cycleMs with triggerId `<commandId>#<k>`. Pulses enter the stimulus phase in submission order alongside stimulate commands. After the last pulse, train_completed { commandId, delivered } closes that batch. A train holds one pending agenda item at a time.
+- cancelTrain { trainId }: the train is named by its own commandId, because commandId is taken by the cancel itself. Pulses at or after the cancel instant are not delivered. Nothing is emitted, and a cancelled train never emits train_completed.
+- Concurrent trains: at most maxConcurrentTrains (engine option, default 4) may have overlapping pulse windows. Overlap is computed from previously enqueued commands only (a window ends before an earlier-enqueued cancel), never from the horizon, so a command log is accepted the same way live and on replay.
+- setTone { value −1..1 }, applyAgent { agent stillness | slow, doseScale (0, 2] }, ablate { target linkId, durationMs 1–60000, completeness (0, 1] }, setCoupling { couplingId, value 0–1 }, setRestitution { nodeId, erpMaxMs 50–1000, amplitudeMs 0–1000, tauMs 10–1000, erpMinMs 10–erpMax }, setDecrement and setEntry { linkId, direction, maxExtraMs 0–300, tauMs 10–1000 }.
+
+## Events
+
+1.1.0 runs add diastolicIntervalMs to every activation and delayParts { baseMs, sourceMs, entryMs, lesionMs, agentMs } to every conduction_launched. The parts sum exactly to arrival − departure. They also add cause to every parameter_changed and link_changed: command, lesion or agent. parameter_changed gains the parameters restitution, decrement, entry, coupling, tone and slowing. Each target, parameter pair has its own generation counter. erpMs and cycleMs report agent-modified values. New event types are phase_modulated { nodeId, couplingId, sourceActivationId, phase, shiftMs = Δ before the t + 1 tick floor, nextAttemptMs }, lesion_changed { linkId, progress, completeness } and train_completed { commandId, delivered }. conduction_canceled cause adds lesion.
+
+## One instant, additions
+
+1. Edits apply in submission order before collisions. This includes setTone, cancelTrain, applyAgent and ablate registrations, and the derived Stillness, Slow and lesion steps, which take their command's submission position.
+2. External stimulus attempts (stimulate commands and train pulses) in submission order, then automatic attempts and arrivals as in 1.0.0.
+3. Outcomes, with §A restitution and §C suppression from pre-capture state.
+4. Launches, with §B entry from post-outcome destination state.
+5. The 1.0.0 post-launch collision drain.
+6. Schedules planned: reset and due foci get t + T + S.
+7. §D modulation on the planned or pending attempt.
+8. Schedules committed.
+9. train_completed.
+
+readAt for 1.1.0 runs adds node restitution and suppressionMs (null without overdrive), direction entry and link lesion { progress, completeness }. erpMs is the rested ERP: erpMax under restitution, with any agent modifier.
+
+## Model notes and open items
+
+Arrival deadlines are fixed at launch, so a later capture of the destination does not move a planned arrival (§B). Lesion "ERP floor on the link" (§F) is not implemented: the spec gives neither a value nor a rule, and a link has no refractoriness in this graph model. It is recorded as an open question in docs/runs/contract-v11-01.md.

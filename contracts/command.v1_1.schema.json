@@ -1,0 +1,618 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$comment": "Counterpoint contract 1.1.0 commands: the five 1.0.0 commands plus nine 1.1.0 commands. The 1.1.0 commands require a 1.1.0 world.",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "stimulate"
+          ]
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "commandId",
+        "runId",
+        "tMs",
+        "type",
+        "nodeId"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "setLinkEnabled"
+          ]
+        },
+        "linkId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "commandId",
+        "runId",
+        "tMs",
+        "type",
+        "linkId",
+        "enabled"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "setNodeERP"
+          ]
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "erpMs": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "commandId",
+        "runId",
+        "tMs",
+        "type",
+        "nodeId",
+        "erpMs"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "setDirectionDelay"
+          ]
+        },
+        "linkId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "direction": {
+          "enum": [
+            "ab",
+            "ba"
+          ]
+        },
+        "delayMs": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "commandId",
+        "runId",
+        "tMs",
+        "type",
+        "linkId",
+        "direction",
+        "delayMs"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "setAutomaticity"
+          ]
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cycleMs": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "commandId",
+        "runId",
+        "tMs",
+        "type",
+        "nodeId",
+        "cycleMs"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "stimulateTrain"
+          ]
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "startMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "cycleMs": {
+          "type": "number",
+          "minimum": 150,
+          "maximum": 10000
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 120
+        }
+      },
+      "required": [
+        "commandId",
+        "runId",
+        "tMs",
+        "type",
+        "nodeId",
+        "startMs",
+        "cycleMs",
+        "count",
+        "label"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "cancelTrain"
+          ]
+        },
+        "trainId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "commandId",
+        "runId",
+        "tMs",
+        "type",
+        "trainId"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "setTone"
+          ]
+        },
+        "value": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "commandId",
+        "runId",
+        "tMs",
+        "type",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "ablate"
+          ]
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "durationMs": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 60000
+        },
+        "completeness": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "commandId",
+        "runId",
+        "tMs",
+        "type",
+        "target",
+        "durationMs",
+        "completeness"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "applyAgent"
+          ]
+        },
+        "agent": {
+          "enum": [
+            "stillness",
+            "slow"
+          ]
+        },
+        "doseScale": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 2
+        }
+      },
+      "required": [
+        "commandId",
+        "runId",
+        "tMs",
+        "type",
+        "agent",
+        "doseScale"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "setCoupling"
+          ]
+        },
+        "couplingId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "commandId",
+        "runId",
+        "tMs",
+        "type",
+        "couplingId",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "setRestitution"
+          ]
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "erpMaxMs": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "amplitudeMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "tauMs": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "erpMinMs": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "commandId",
+        "runId",
+        "tMs",
+        "type",
+        "nodeId",
+        "erpMaxMs",
+        "amplitudeMs",
+        "tauMs",
+        "erpMinMs"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "setDecrement"
+          ]
+        },
+        "linkId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "direction": {
+          "enum": [
+            "ab",
+            "ba"
+          ]
+        },
+        "maxExtraMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "tauMs": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "commandId",
+        "runId",
+        "tMs",
+        "type",
+        "linkId",
+        "direction",
+        "maxExtraMs",
+        "tauMs"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "setEntry"
+          ]
+        },
+        "linkId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "direction": {
+          "enum": [
+            "ab",
+            "ba"
+          ]
+        },
+        "maxExtraMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "tauMs": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "commandId",
+        "runId",
+        "tMs",
+        "type",
+        "linkId",
+        "direction",
+        "maxExtraMs",
+        "tauMs"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}
