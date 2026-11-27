@@ -1,0 +1,33 @@
+/* Lab inspector card (ticket 14d). Dark plate style; the canvas draws the plot,
+   DOM sliders sit on the handles so they are focusable and screen-reader visible. */
+.lab-card {
+  --lab-bg: #070B12; --lab-panel: #0D1520; --lab-rule: #1B2736; --lab-text: #E3DED5;
+  --lab-text2: #9CA9B8; --lab-gold: #C8A878; --lab-blue: #83A9C8; --lab-blue-core: #D9F1FF;
+  width: min(420px, 100%); padding: 14px 16px 16px; color: var(--lab-text);
+  background: var(--lab-panel); border: 1px solid var(--lab-rule); border-radius: 10px;
+  font: 13px Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums;
+}
+.lab-card[hidden] { display: none; }
+.lab-card-header { display: flex; align-items: baseline; gap: 10px; }
+.lab-card-header h3 { margin: 0; flex: 1; font: italic 20px 'EB Garamond', Georgia, serif; font-weight: 400; }
+.lab-card-modified { font-size: 11px; color: var(--lab-gold); border: 1px solid var(--lab-gold); border-radius: 999px; padding: 1px 8px; }
+.lab-card-modified[hidden] { display: none; }
+.lab-card-close { min-height: 32px; min-width: 32px; padding: 0; background: transparent; border: 0; color: var(--lab-text2); font-size: 20px; cursor: pointer; }
+.lab-card-state { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; margin: 10px 0; color: var(--lab-text2); font-size: 12px; }
+.lab-card-state dd { margin: 0; color: var(--lab-text); text-align: right; }
+.lab-card-plot { position: relative; margin: 6px -6px 0; touch-action: none; }
+.lab-card-plot canvas { display: block; width: 100%; height: 330px; }
+.lab-card-handle { position: absolute; width: 24px; height: 24px; margin: -12px 0 0 -12px; border-radius: 50%; cursor: grab; outline: none; }
+.lab-card-handle:focus-visible { box-shadow: 0 0 0 2px var(--lab-gold); }
+.lab-card-handle:active { cursor: grabbing; }
+.lab-card-summary { margin: 6px 0 10px; color: var(--lab-text2); font-size: 12px; }
+.lab-card-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+.lab-card-field { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--lab-text2); font-size: 12px; }
+.lab-card-field input { width: 72px; min-height: 32px; padding: 4px 6px; color: var(--lab-text); background: var(--lab-bg); border: 1px solid var(--lab-rule); border-radius: 5px; text-align: right; }
+.lab-card-default { margin-top: 12px; min-height: 36px; padding: 6px 14px; color: var(--lab-gold); background: transparent; border: 1px solid var(--lab-rule); border-radius: 6px; cursor: pointer; }
+.lab-card-default:disabled { opacity: .35; cursor: default; }
+.lab-card-note { margin: 10px 0 0; color: var(--lab-text2); font: italic 13px 'EB Garamond', Georgia, serif; }
+.lab-card-table summary { margin-top: 8px; color: var(--lab-text2); cursor: pointer; font-size: 12px; }
+.lab-card-table table { width: 100%; font-size: 11px; border-collapse: collapse; }
+.lab-card-table caption { text-align: left; color: var(--lab-text2); }
+.lab-card-table td, .lab-card-table th { padding: 2px 4px; text-align: right; border-bottom: 1px solid var(--lab-rule); }

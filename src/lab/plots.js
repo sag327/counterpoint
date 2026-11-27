@@ -52,6 +52,7 @@ function format(value, step) {
 }
 
 const HEADER = 50;
+const COMPACT_HEADER = 26;
 const FOOTER_LINE = 16;
 
 // Pixel layout of a model inside rect.
@@ -59,7 +60,7 @@ export function plotLayout(model, rect) {
   const footer = (model.footer?.length ?? 0) * FOOTER_LINE + (model.footer?.length ? 6 : 0);
   const left = rect.x + 48;
   const right = rect.x + rect.width - (model.rightMargin ?? 14);
-  const top = rect.y + HEADER;
+  const top = rect.y + (model.compact ? COMPACT_HEADER : HEADER);
   const bottom = rect.y + rect.height - 38 - footer;
   let box = { left, top, width: Math.max(10, right - left), height: Math.max(10, bottom - top) };
   if (model.square) {
@@ -313,8 +314,9 @@ export function drawPlot(ctx, model, rect, options = {}) {
     ctx.fillStyle = S.background;
     ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
   }
-  label(ctx, model.title, rect.x + 4, rect.y + 14, { size: 17, color: S.text, alpha: 1 });
-  if (model.subtitle) label(ctx, model.subtitle, rect.x + 4, rect.y + 34, { size: 10.5, italic: false, serif: false, color: S.text2, alpha: 1 });
+  // A compact model (inside a card that already names it) shows only its subtitle.
+  if (!model.compact) label(ctx, model.title, rect.x + 4, rect.y + 14, { size: 17, color: S.text, alpha: 1 });
+  if (model.subtitle) label(ctx, model.subtitle, rect.x + 4, rect.y + (model.compact ? 10 : 34), { size: 10.5, italic: false, serif: false, color: S.text2, alpha: 1 });
   const layout = { ...plotLayout(model, rect), deferred: [] };
   drawAxes(ctx, model, layout);
   ctx.save();
@@ -374,11 +376,15 @@ function entry(id, title, build) {
 
 // law: §A parameters or null (fixed ERP erpMs). dots: measure.restitutionDots.
 // live: { diMs } for the current diastolic interval, or null.
-export function restitutionModel({ siteLabel, law = null, erpMs = null, dots = [], live = null, diMaxMs = 600 }) {
+// sinceMs: captures before the last edit of this site were made under other
+// parameters; they are drawn faint and left out of the on-curve count.
+export function restitutionModel({ siteLabel, law = null, erpMs = null, dots: allDots = [], live = null, diMaxMs = 600, sinceMs = null }) {
+  const earlier = sinceMs === null ? [] : allDots.filter(d => d.tMs < sinceMs);
+  const dots = sinceMs === null ? allDots : allDots.filter(d => d.tMs >= sinceMs);
   const f = di => (law === null ? erpMs : Math.min(law.erpMaxMs, Math.max(law.erpMinMs, law.erpMaxMs - law.amplitudeMs * Math.exp(-di / law.tauMs))));
-  const xMax = Math.max(diMaxMs, ...dots.map(d => d.diMs).filter(Number.isFinite).map(v => Math.min(v, 3000)));
+  const xMax = Math.max(diMaxMs, ...allDots.map(d => d.diMs).filter(Number.isFinite).map(v => Math.min(v, 3000)));
   const curve = sample(0, xMax, 240, f);
-  const yValues = [...curve.map(p => p[1]), ...dots.map(d => d.erpMs)];
+  const yValues = [...curve.map(p => p[1]), ...allDots.map(d => d.erpMs)];
   let yDomain = extent(yValues, 0.14);
   if (law !== null && law.erpMinMs > yDomain[0] - 30 && law.erpMinMs < yDomain[0]) yDomain = [law.erpMinMs - 8, yDomain[1]];
   const layers = [{ type: 'line', points: curve, color: S.gold, width: 1.3, glow: true }];
@@ -386,6 +392,7 @@ export function restitutionModel({ siteLabel, law = null, erpMs = null, dots = [
     layers.push({ type: 'hline', y: law.erpMinMs, dash: [3, 3], color: S.text2, alpha: 0.5 });
   }
   const recent = dots.slice(-120);
+  if (earlier.length) layers.push({ type: 'dots', points: earlier.slice(-60).map(d => [d.diMs, d.erpMs]), color: S.text2, radius: 1.8, alpha: 0.35 });
   layers.push({ type: 'dots', points: recent.map(d => [d.diMs, d.erpMs]), color: S.gold, radius: 2.3, fade: true });
   let liveErp = null;
   if (live && Number.isFinite(live.diMs)) {
@@ -414,7 +421,7 @@ export function restitutionModel({ siteLabel, law = null, erpMs = null, dots = [
   const off = dots.filter(d => Math.abs(d.erpMs - lawAt(d.diMs)) > 0.0015).length;
   const summary = law === null
     ? `${siteLabel}: fixed ERP of ${ms(erpMs)}; ${dots.length} captures.`
-    : `${siteLabel}: ERP ${ms(law.erpMaxMs)} after a long rest, shortening by up to ${ms(law.amplitudeMs)} with tau ${ms(law.tauMs)}; ${dots.length - off} of ${dots.length} captures lie on the curve${liveErp === null ? '' : `; now ${ms(round3(liveErp))}`}.`;
+    : `${siteLabel}: ERP ${ms(law.erpMaxMs)} after a long rest, shortening by up to ${ms(law.amplitudeMs)} with tau ${ms(law.tauMs)}; ${dots.length - off} of ${dots.length} captures lie on the curve${earlier.length ? ` (${earlier.length} earlier captures used other parameters)` : ''}${liveErp === null ? '' : `; now ${ms(round3(liveErp))}`}.`;
   return {
     kind: 'restitution',
     title: `Site · ${siteLabel}`,
@@ -473,7 +480,9 @@ export function cobwebModel({ siteLabel, law, cycleMs, erps }) {
 
 // delayMs: the direction's current delay (with lesion); decrement and entry: laws or null.
 // dots: measure.conductionDots for this direction.
-export function conductionModel({ linkLabel, delayMs, decrement = null, entry = null, dots = [], live = null, xMaxMs = 700 }) {
+export function conductionModel({ linkLabel, delayMs, decrement = null, entry = null, dots: allDots = [], live = null, xMaxMs = 700, sinceMs = null }) {
+  const earlier = sinceMs === null ? [] : allDots.filter(d => d.tMs < sinceMs && d.recoveryMs !== null);
+  const dots = sinceMs === null ? allDots : allDots.filter(d => d.tMs >= sinceMs);
   const main = x => delayMs + (decrement ? decrement.maxExtraMs * Math.exp(-x / decrement.tauMs) : 0);
   const entryLine = x => delayMs + (entry ? entry.maxExtraMs * Math.exp(-x / entry.tauMs) : 0);
   const sourceDots = dots.filter(d => d.recoveryMs !== null).map(d => [Math.min(d.recoveryMs, xMaxMs), d.parts ? d.parts.baseMs + d.parts.lesionMs + d.parts.sourceMs : d.totalMs]);
@@ -482,6 +491,7 @@ export function conductionModel({ linkLabel, delayMs, decrement = null, entry = 
   const yDomain = extent([delayMs, top, ...sourceDots.map(p => p[1]), ...entryDots.map(p => p[1])], 0.12);
   const layers = [{ type: 'line', points: sample(0, xMaxMs, 240, main), color: S.blue, width: 1.2, glow: true }];
   if (entry) layers.push({ type: 'line', points: sample(0, xMaxMs, 240, entryLine), color: S.blue, width: 0.9, alpha: 0.6, dash: [4, 4] });
+  if (earlier.length) layers.push({ type: 'dots', points: earlier.slice(-80).map(d => [Math.min(d.recoveryMs, xMaxMs), d.totalMs]), color: S.text2, radius: 1.8, alpha: 0.35 });
   if (entryDots.length) layers.push({ type: 'dots', points: entryDots.slice(-150), color: S.blueCore, radius: 2.4, hollow: true, fade: true });
   layers.push({ type: 'dots', points: sourceDots.slice(-150), color: S.gold, radius: 2.4 });
   if (live && Number.isFinite(live.recoveryMs)) layers.push({ type: 'pearl', point: [Math.min(live.recoveryMs, xMaxMs), main(live.recoveryMs)], label: 'now' });
@@ -517,7 +527,7 @@ export function conductionModel({ linkLabel, delayMs, decrement = null, entry = 
       { text: entry ? 'Open dots: entry against the destination\'s slack.' : 'Dots: base delay plus source decrement per launch.' },
     ],
     table: { caption: `Launches on ${linkLabel}`, columns: ['departure (ms)', 'recovery (ms)', 'decrement (ms)', 'slack (ms)', 'entry (ms)', 'total (ms)'], rows },
-    summary: `${linkLabel}: ${ms(delayMs)} base, decrement ${describe(decrement)}, entry ${describe(entry)}; ${dots.length} launches${decrement ? `, ${onLaw} on the decrement curve` : ''}.`,
+    summary: `${linkLabel}: ${ms(delayMs)} base, decrement ${describe(decrement)}, entry ${describe(entry)}; ${dots.length} launches${decrement ? `, ${onLaw} on the decrement curve` : ''}${earlier.length ? ` (${earlier.length} earlier launches used other parameters)` : ''}.`,
   };
 }
 

@@ -17,7 +17,7 @@ import {
   round3, simpleFraction, stimulusAttempts, tachycardiaCycle, wenckebachCycle, intervals,
 } from './measure.js';
 
-const V11_WORLD_KEYS = ['contractVersion', 'coupling', 'autonomic'];
+const V11_WORLD_KEYS = ['contractVersion', 'coupling', 'autonomic', 'limits'];
 const V11_NODE_KEYS = ['tissue', 'audible', 'restitution'];
 const TRAIN_MIN_CYCLE = 150;
 const TRAIN_MAX_COUNT = 64;
