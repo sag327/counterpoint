@@ -158,24 +158,28 @@ def desktop_smoke(browser, output):
     assert not page.locator(".lab-card-section[data-section=tune]").evaluate("node => node.open")
     page.keyboard.press("Escape")
     page.locator("#card-layer").wait_for(state="hidden", timeout=5000)
-    page.locator("#lab-toggle").click()
-    assert page.locator("#lab").is_visible()
-    assert page.locator("#metrics").inner_text()
-    assert page.locator("[data-read=world]").inner_text() == "Circulation"
-    page.locator("[data-control=coupling]").fill("239")
-    page.locator("[data-control=guide]").click()
-    page.wait_for_function("""
-        counterpoint.events.filter(e => e.type === 'stimulus_attempted').map(e => e.tMs).join() === '0,239'
-    """)
-    assert page.locator("#log tr").count() > 0
-    with page.expect_download() as download_info:
-        page.locator("#export").click()
-    exported = json.loads(Path(download_info.value.path()).read_text())
-    assert exported["origin"] == "actual-engine" and exported["world"]["worldId"] == "circulation" and exported["events"], exported
-    assert all(event["runId"] == exported["runId"] for event in exported["events"])
+    # The Laboratory is hidden for now (SHOW_LABORATORY = false, 2026-11-27).
+    if page.locator("#lab-toggle").is_visible():
+        page.locator("#lab-toggle").click()
+        assert page.locator("#lab").is_visible()
+        assert page.locator("#metrics").inner_text()
+        assert page.locator("[data-read=world]").inner_text() == "Circulation"
+        page.locator("[data-control=coupling]").fill("239")
+        page.locator("[data-control=guide]").click()
+        page.wait_for_function("""
+            counterpoint.events.filter(e => e.type === 'stimulus_attempted').map(e => e.tMs).join() === '0,239'
+        """)
+        assert page.locator("#log tr").count() > 0
+        with page.expect_download() as download_info:
+            page.locator("#export").click()
+        exported = json.loads(Path(download_info.value.path()).read_text())
+        assert exported["origin"] == "actual-engine" and exported["world"]["worldId"] == "circulation" and exported["events"], exported
+        assert all(event["runId"] == exported["runId"] for event in exported["events"])
+    else:
+        assert page.locator("#lab").is_hidden()
     assert not errors, errors
     check_network(requests, url)
-    print("PASS desktop Chromium file:// offline, Conduction and Circulation, keyboard/silent, reentry, pause/resume, drag does not cut, reset, dilation, inspector card, Lab/export", flush=True)
+    print("PASS desktop Chromium file:// offline, Conduction and Circulation, keyboard/silent, reentry, pause/resume, drag does not cut, reset, dilation, inspector card, Laboratory hidden", flush=True)
     context.close()
 
 
@@ -214,8 +218,9 @@ def mobile_smoke(browser, url, output):
     page.locator("#palette").select_option("minimalism")
     assert page.evaluate("counterpoint.transport.runId") == run_id
     screenshot(page, output, "mobile-running")
-    page.locator("#lab-toggle").tap()
-    page.get_by_role("heading", name="Activation raster").wait_for(state="visible", timeout=5000)
+    if page.locator("#lab-toggle").is_visible():
+        page.locator("#lab-toggle").tap()
+        page.get_by_role("heading", name="Activation raster").wait_for(state="visible", timeout=5000)
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
     page.reload()
     assert page.locator("#palette").input_value() == "minimalism"

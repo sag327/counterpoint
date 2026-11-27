@@ -14,6 +14,7 @@
 | M4 | Remove cutting, mute/volume, S key, Echo header; fraction speeds; prominent instructions; selected-site halo | DONE | [simplify-01](docs/runs/simplify-01.md) |
 | M5 | Preconditioned Find the echo / Find the circuit | DONE | [simplify-02](docs/runs/simplify-02.md) |
 | M6 | Tiered inspector card; inspect and tune in every world | DONE | [simplify-03](docs/runs/simplify-03.md) |
+| M8 | Laboratory hidden (`SHOW_LABORATORY`); card curves drop pre-edit points; larger dots | DONE | [simplify-04](docs/runs/simplify-04.md) |
 | M7 | Gate run, merge into `main`, push | DONE | https://github.com/sag327/counterpoint/pull/2 (merged `7d6da76`, Pages deployed) |
 
 ## M5 · done
@@ -28,7 +29,14 @@ The card leads with three key readouts (`KEY_READOUTS` in `inspector-card.js`) a
 
 PR #2 merged into `main` at `7d6da76`; the Pages workflow deployed it. The next session starts from `main` and asks the creator what comes next (see follow-ups below and the open items).
 
+## M8 · done
+
+The Laboratory is hidden behind `SHOW_LABORATORY = false` (`src/ui/studies.js`), and its code is kept. The browser suites skip its steps while the button is hidden. Liner notes are unreachable while it is hidden. Inspector curves (`restitutionModel` / `conductionModel` in `src/lab/plots.js`) drop points captured before the element's last edit and draw larger haloed dots.
+
 ## Possible follow-ups (ask the creator)
+
+- A home for the liner notes now that the Laboratory is hidden. The Echo header used to link to them.
+- On the restitution plot, the "now" label can overlap the tau handle's label when the current DI is near tau.
 
 - Lab Model sliders for Conduction and Circulation (`MODEL_CONTROLS`). The card already tunes every site and connection.
 - A preconditioned start for Circulation's Find a rhythm. It is short (two stimuli) and does not need one now.

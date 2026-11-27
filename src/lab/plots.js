@@ -207,17 +207,28 @@ const LAYER = {
   dots(ctx, layer, layout) {
     const n = layer.points.length;
     for (const [index, point] of layer.points.entries()) {
-      const alpha = layer.fade ? 0.12 + 0.88 * ((index + 1) / n) : layer.alpha ?? 1;
+      const floor = layer.fadeFloor ?? 0.12;
+      const alpha = layer.fade ? floor + (1 - floor) * ((index + 1) / n) : layer.alpha ?? 1;
       const x = layout.px(point[0]);
       const y = layout.py(point[1]);
-      if (layer.halo) dot(ctx, x, y, (layer.radius ?? 2.2) * 2.6, layer.color, 0.05 * alpha);
+      if (layer.halo) dot(ctx, x, y, (layer.radius ?? 2.2) * 2.6, layer.color, (layer.haloAlpha ?? 0.05) * alpha);
       if (layer.hollow) {
         ctx.beginPath();
         ctx.arc(x, y, layer.radius ?? 2.2, 0, Math.PI * 2);
         ctx.strokeStyle = withAlpha(layer.color, alpha);
-        ctx.lineWidth = 1;
+        ctx.lineWidth = layer.lineWidth ?? 1;
         ctx.stroke();
-      } else dot(ctx, x, y, layer.radius ?? 2.2, layer.color, alpha);
+      } else {
+        dot(ctx, x, y, layer.radius ?? 2.2, layer.color, alpha);
+        if (layer.outline) {
+          // A dark rim keeps a dot readable where it sits on a curve of the same colour.
+          ctx.beginPath();
+          ctx.arc(x, y, (layer.radius ?? 2.2) + 0.6, 0, Math.PI * 2);
+          ctx.strokeStyle = withAlpha(S.background, 0.9 * alpha);
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+        }
+      }
     }
   },
   pearl(ctx, layer, layout) {
@@ -389,7 +400,8 @@ function entry(id, title, build) {
 // sinceMs: captures before the last edit of this site were made under other
 // parameters; they are drawn faint and left out of the on-curve count.
 export function restitutionModel({ siteLabel, law = null, erpMs = null, dots: allDots = [], live = null, diMaxMs = 600, sinceMs = null }) {
-  const earlier = sinceMs === null ? [] : allDots.filter(d => d.tMs < sinceMs);
+  // Captures before the player's last edit of this site no longer describe the
+  // model, so they are dropped (creator decision 2026-11-27), not greyed out.
   const dots = sinceMs === null ? allDots : allDots.filter(d => d.tMs >= sinceMs);
   const f = di => (law === null ? erpMs : Math.min(law.erpMaxMs, Math.max(law.erpMinMs, law.erpMaxMs - law.amplitudeMs * Math.exp(-di / law.tauMs))));
   const xMax = Math.max(diMaxMs, ...allDots.map(d => d.diMs).filter(Number.isFinite).map(v => Math.min(v, 3000)));
@@ -402,8 +414,7 @@ export function restitutionModel({ siteLabel, law = null, erpMs = null, dots: al
     layers.push({ type: 'hline', y: law.erpMinMs, dash: [3, 3], color: S.text2, alpha: 0.5 });
   }
   const recent = dots.slice(-120);
-  if (earlier.length) layers.push({ type: 'dots', points: earlier.slice(-60).map(d => [d.diMs, d.erpMs]), color: S.text2, radius: 1.8, alpha: 0.35 });
-  layers.push({ type: 'dots', points: recent.map(d => [d.diMs, d.erpMs]), color: S.gold, radius: 2.3, fade: true });
+  layers.push({ type: 'dots', points: recent.map(d => [d.diMs, d.erpMs]), color: S.gold, radius: 4, fade: true, fadeFloor: 0.5, halo: true, haloAlpha: 0.18, outline: true });
   let liveErp = null;
   if (live && Number.isFinite(live.diMs)) {
     liveErp = f(Math.max(0, live.diMs));
@@ -431,7 +442,7 @@ export function restitutionModel({ siteLabel, law = null, erpMs = null, dots: al
   const off = dots.filter(d => Math.abs(d.erpMs - lawAt(d.diMs)) > 0.0015).length;
   const summary = law === null
     ? `${siteLabel}: fixed ERP of ${ms(erpMs)}; ${dots.length} captures.`
-    : `${siteLabel}: ERP ${ms(law.erpMaxMs)} after a long rest, shortening by up to ${ms(law.amplitudeMs)} with tau ${ms(law.tauMs)}; ${dots.length - off} of ${dots.length} captures lie on the curve${earlier.length ? ` (${earlier.length} earlier captures used other parameters)` : ''}${liveErp === null ? '' : `; now ${ms(Math.round(liveErp))}`}.`;
+    : `${siteLabel}: ERP ${ms(law.erpMaxMs)} after a long rest, shortening by up to ${ms(law.amplitudeMs)} with tau ${ms(law.tauMs)}; ${dots.length === 0 && sinceMs !== null && sinceMs > 0 ? 'no captures yet since the last edit' : `${dots.length - off} of ${dots.length} captures${sinceMs !== null && sinceMs > 0 ? ' since the last edit' : ''} lie on the curve`}${liveErp === null ? '' : `; now ${ms(Math.round(liveErp))}`}.`;
   return {
     kind: 'restitution',
     title: `Site · ${siteLabel}`,
@@ -491,7 +502,7 @@ export function cobwebModel({ siteLabel, law, cycleMs, erps }) {
 // delayMs: the direction's current delay (with lesion); decrement and entry: laws or null.
 // dots: measure.conductionDots for this direction.
 export function conductionModel({ linkLabel, delayMs, decrement = null, entry = null, dots: allDots = [], live = null, xMaxMs = 700, sinceMs = null }) {
-  const earlier = sinceMs === null ? [] : allDots.filter(d => d.tMs < sinceMs && d.recoveryMs !== null);
+  // Launches before the last edit of this link are dropped (see restitutionModel).
   const dots = sinceMs === null ? allDots : allDots.filter(d => d.tMs >= sinceMs);
   const main = x => delayMs + (decrement ? decrement.maxExtraMs * Math.exp(-x / decrement.tauMs) : 0);
   const entryLine = x => delayMs + (entry ? entry.maxExtraMs * Math.exp(-x / entry.tauMs) : 0);
@@ -501,9 +512,8 @@ export function conductionModel({ linkLabel, delayMs, decrement = null, entry = 
   const yDomain = extent([delayMs, top, ...sourceDots.map(p => p[1]), ...entryDots.map(p => p[1])], 0.12);
   const layers = [{ type: 'line', points: sample(0, xMaxMs, 240, main), color: S.blue, width: 1.2, glow: true }];
   if (entry) layers.push({ type: 'line', points: sample(0, xMaxMs, 240, entryLine), color: S.blue, width: 0.9, alpha: 0.6, dash: [4, 4] });
-  if (earlier.length) layers.push({ type: 'dots', points: earlier.slice(-80).map(d => [Math.min(d.recoveryMs, xMaxMs), d.totalMs]), color: S.text2, radius: 1.8, alpha: 0.35 });
-  if (entryDots.length) layers.push({ type: 'dots', points: entryDots.slice(-150), color: S.blueCore, radius: 2.4, hollow: true, fade: true });
-  layers.push({ type: 'dots', points: sourceDots.slice(-150), color: S.gold, radius: 2.4 });
+  if (entryDots.length) layers.push({ type: 'dots', points: entryDots.slice(-150), color: S.blueCore, radius: 3.6, hollow: true, lineWidth: 1.6, fade: true, fadeFloor: 0.5 });
+  layers.push({ type: 'dots', points: sourceDots.slice(-150), color: S.gold, radius: 3.8, halo: true, haloAlpha: 0.18, outline: true });
   if (live && Number.isFinite(live.recoveryMs)) layers.push({ type: 'pearl', point: [Math.min(live.recoveryMs, xMaxMs), main(live.recoveryMs)], label: 'now' });
   const handles = [{ id: 'delay', param: 'delayMs', axis: 'y', x: xMaxMs, y: delayMs, value: delayMs, label: 'delay' }];
   if (decrement) {
@@ -537,7 +547,7 @@ export function conductionModel({ linkLabel, delayMs, decrement = null, entry = 
       { text: entry ? 'Open dots: entry against the destination\'s slack.' : 'Dots: base delay plus source decrement per launch.' },
     ],
     table: { caption: `Launches on ${linkLabel}`, columns: ['departure (ms)', 'recovery (ms)', 'decrement (ms)', 'slack (ms)', 'entry (ms)', 'total (ms)'], rows },
-    summary: `${linkLabel}: ${ms(delayMs)} base, decrement ${describe(decrement)}, entry ${describe(entry)}; ${dots.length} launches${decrement ? `, ${onLaw} on the decrement curve` : ''}${earlier.length ? ` (${earlier.length} earlier launches used other parameters)` : ''}.`,
+    summary: `${linkLabel}: ${ms(delayMs)} base, decrement ${describe(decrement)}, entry ${describe(entry)}; ${dots.length} launches${decrement ? `, ${onLaw} on the decrement curve` : ''}${sinceMs !== null && sinceMs > 0 ? ' since the last edit' : ''}.`,
   };
 }
 

@@ -6,7 +6,7 @@ import { mapActivation, createAudioMixer, describeNodeMusic, musicTableFor, PALE
 import { createInspector } from './inspector.js';
 import { createInspectorCard } from '../lab/inspector-card.js';
 import { DILATIONS, dilationLabel, readPreferences, savePreferences } from './preferences.js';
-import { SCENES, SHOW_MUSIC_LABELS, VIEWS, carryCommands, formatFragment, glossaryFor, parseFragment, worldFromState } from './studies.js';
+import { SCENES, SHOW_LABORATORY, SHOW_MUSIC_LABELS, VIEWS, carryCommands, formatFragment, glossaryFor, parseFragment, worldFromState } from './studies.js';
 import { createViews } from './views.js';
 import { createStudyLab, protocolWorkerUrl } from './lab-panel.js';
 import { isDraft, renderNotes } from './notes.js';
@@ -714,6 +714,7 @@ $('voicing').onchange = () => {
   preferences.voicing = $('voicing').value;
   savePreferences(preferences);
 };
+$('lab-toggle').hidden = !SHOW_LABORATORY;
 $('lab-toggle').onclick = () => {
   const open = $('lab').hidden;
   $('lab').hidden = !open;

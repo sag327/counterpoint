@@ -272,12 +272,17 @@ def smoke(browser, output, *, phone):
         page.wait_for_function("""counterpoint.transport.commandLog()
             .some(command => command.type === 'applyAgent' && command.agent === 'stillness' && command.doseScale === 1)""")
         page.wait_for_function("counterpoint.stillnessLevel() > 0")
-        check_worker(page, phone=phone, output=output, capture=capture)
-        check_live_curve_and_model(page, phone=phone, capture=capture)
+        # The Laboratory is hidden for now (SHOW_LABORATORY = false, 2026-11-27).
+        # Its steps run again when the flag returns.
+        if page.locator("#lab-toggle").is_visible():
+            check_worker(page, phone=phone, output=output, capture=capture)
+            check_live_curve_and_model(page, phone=phone, capture=capture)
+        else:
+            assert page.locator("#lab").is_hidden()
         assert not errors, errors
         check_network(requests, ARTIFACT.as_uri())
-        print(f"PASS Echo {width}x{height} Chromium file:// offline, guided run, two views, live S1–S2 curve, model sliders, "
-              "inspector by hold and keyboard, Stillness, S1–S2 Web Worker and CSV, liner notes", flush=True)
+        print(f"PASS Echo {width}x{height} Chromium file:// offline, guided run, two views, "
+              "inspector by hold and keyboard, Stillness, Laboratory hidden", flush=True)
     except Exception:
         diagnostics = page.evaluate("""window.counterpoint && ({
             state: counterpoint.transport.state(),
