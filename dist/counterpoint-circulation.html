@@ -6954,9 +6954,9 @@ const isV11World = (world) => world?.contractVersion === "1.1.0";
 // tissue (nodal, sinus) never sounds.
 function musicTableFor(world, presentation = null) {
   if (!isV11World(world)) return null;
-  // Circulation uses its built-in instrumentation and selectable chamber voicings.
-  if (world.worldId === "circulation" && !presentation?.music
-    && world.nodes.every(node => node.audible !== false && Object.hasOwn(worldAssignments.circulation, node.id))) return null;
+  // The original scenes keep their built-in instruments and voicings.
+  if (["circulation", "conduction"].includes(world.worldId) && !presentation?.music
+    && world.nodes.every(node => node.audible !== false && Object.hasOwn(worldAssignments[world.worldId], node.id))) return null;
   const declared = presentation?.music ?? {};
   const table = {};
   for (const node of world.nodes) {
@@ -9891,6 +9891,7 @@ function freezePreset(value) {
 return {directedLink,freezePreset};
 })();
 __modules["src/worlds/conduction.js"] = (()=>{
+const { link, sinusFocus, site, way, world } = __modules["src/worlds/kit.js"];
 const { directedLink, freezePreset } = __modules["src/worlds/feedforward.js"];
 
 function createConductionWorld() {
@@ -9916,7 +9917,26 @@ function createConductionWorld() {
 
 const conductionWorld = freezePreset(createConductionWorld());
 
-return {createConductionWorld,conductionWorld};
+// The interactive tree uses the same recovery laws as Echo and Circulation.
+// The fixed-ERP preset above is retained for the contract v1 reference cases.
+function createRestitutionConduction() {
+  return world('conduction', [
+    site('S', 'sinus', 200, { restitution: [40, 90], automaticity: sinusFocus(800), audible: true }),
+    site('A', 'atrial', 220, { restitution: [45, 90] }),
+    site('N', 'nodal', 250, { restitution: [45, 110], audible: true }),
+    site('H', 'hisPurkinje', 180, { restitution: [35, 95] }),
+    site('V1', 'ventricular', 260, { restitution: [60, 80] }),
+    site('V2', 'ventricular', 260, { restitution: [60, 80] }),
+  ], [
+    link('SA', 'S', 'A', way(25, { decrement: [10, 85], entry: [12, 60] })),
+    link('AN', 'A', 'N', way(35, { decrement: [12, 85], entry: [18, 65] })),
+    link('NH', 'N', 'H', way(65, { decrement: [90, 120], entry: [12, 60] })),
+    link('HV1', 'H', 'V1', way(25, { decrement: [10, 85], entry: [10, 60] })),
+    link('HV2', 'H', 'V2', way(45, { decrement: [10, 85], entry: [10, 60] })),
+  ]);
+}
+
+return {createConductionWorld,conductionWorld,createRestitutionConduction};
 })();
 __modules["src/worlds/duality.js"] = (()=>{
 const { directedLink, freezePreset } = __modules["src/worlds/feedforward.js"];
@@ -10591,7 +10611,7 @@ __modules["src/ui/studies.js"] = (()=>{
 // and the Study No. 2 studies registered in src/worlds/studies.js (v0.2: Echo).
 // Pure data and helpers, so they can be tested without a DOM.
 const { createRestitutionRing } = __modules["src/worlds/circulation.js"];
-const { createConductionWorld } = __modules["src/worlds/conduction.js"];
+const { createRestitutionConduction } = __modules["src/worlds/conduction.js"];
 const { createDualityWorld } = __modules["src/worlds/duality.js"];
 const { STUDIES } = __modules["src/worlds/studies.js"];
 const { createParameterState, defaultCommands, modifiedElements } = __modules["src/lab/inspector-card.js"];
@@ -10625,7 +10645,7 @@ const ECHO_LABELS = Object.freeze({
 
 const SCENE_LIST = {
   conduction: {
-    create: createConductionWorld,
+    create: createRestitutionConduction,
     name: 'Conduction',
     topology: 'Six sites in a branching pathway, led by an automatic focus.',
     hint: 'Tap a site to stimulate it · Hold a site to inspect it',

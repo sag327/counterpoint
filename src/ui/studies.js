@@ -2,7 +2,7 @@
 // and the Study No. 2 studies registered in src/worlds/studies.js (v0.2: Echo).
 // Pure data and helpers, so they can be tested without a DOM.
 import { createRestitutionRing } from '../worlds/circulation.js';
-import { createConductionWorld } from '../worlds/conduction.js';
+import { createRestitutionConduction } from '../worlds/conduction.js';
 import { createDualityWorld } from '../worlds/duality.js';
 import { STUDIES } from '../worlds/studies.js';
 import { createParameterState, defaultCommands, modifiedElements } from '../lab/inspector-card.js';
@@ -36,7 +36,7 @@ const ECHO_LABELS = Object.freeze({
 
 const SCENE_LIST = {
   conduction: {
-    create: createConductionWorld,
+    create: createRestitutionConduction,
     name: 'Conduction',
     topology: 'Six sites in a branching pathway, led by an automatic focus.',
     hint: 'Tap a site to stimulate it · Hold a site to inspect it',

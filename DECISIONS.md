@@ -80,3 +80,7 @@ Stillness is removed from every world; the engine keeps the contract command, un
 ## 2026-11-27 · Circulation-only shareable edition
 
 The creator wants to share Circulation before the other models are ready. A build-time edition (`src/ui/edition.js`) produces a separate page with Circulation alone, the Network view only (no Ladder) and the sound fixed to Chamber / balanced, with no palette controls. It is published at `/circulation/` and nothing links to it. The full app is unchanged; one source serves both.
+
+## Shared recovery dynamics for playable models
+
+Conduction, Circulation and Echo use the same contract 1.1 engine. New playable sites should start with diastolic-interval-dependent ERP restitution, and new conducting links should start with recovery-dependent conduction delay. Use the shared builders in `src/worlds/kit.js` and tune the topology and parameters to the physiology each model illustrates. Reserve fixed-law presets for reference fixtures or intentional controls.
