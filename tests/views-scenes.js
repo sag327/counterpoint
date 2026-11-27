@@ -64,3 +64,24 @@ export function runChain(throughMs = 3000) {
   engine.enqueue({ commandId: 'p', runId: 'c', type: 'stimulateTrain', nodeId: 'A', startMs: 0, cycleMs: 300, count: 8, label: 'pace', tMs: 0 });
   return engine.advanceTo(throughMs);
 }
+
+// 10-site ring (24 ms links, 45 ms isthmus) feeding a silent nodal chain, His and ventricle (design/plates/src/ost.mjs).
+export function ostinatoWorld() {
+  const dir = (d, dec = null, on = true) => ({ enabled: on, delayMs: d, decrement: dec });
+  const link = (id, a, b, d, dec = null, both = true) => ({ id, a, b, enabled: true, ab: dir(d, dec), ba: dir(d, dec, both) });
+  const nodes = []; const links = [];
+  for (let i = 0; i < 10; i += 1) { nodes.push(N(`R${i}`, 170)); links.push(link(`L${i}`, `R${i}`, `R${(i + 1) % 10}`, i === 4 ? 45 : 24)); }
+  const nodal = { tissue: 'nodal', audible: false };
+  nodes.push(N('N1', 260, nodal), N('N2', 280, nodal), N('N3', 300, nodal), N('H', 260, { tissue: 'hisPurkinje' }), N('V', 250, { tissue: 'ventricular' }));
+  links.push(link('RN', 'R0', 'N1', 20, null, false), link('N12', 'N1', 'N2', 30, { maxExtraMs: 40, tauMs: 100 }, false),
+    link('N23', 'N2', 'N3', 30, { maxExtraMs: 60, tauMs: 120 }, false), link('N3H', 'N3', 'H', 30, null, false), link('HV', 'H', 'V', 35, null, false));
+  return { contractVersion: '1.1.0', worldId: 'ostinato', nodes, links };
+}
+export function runOstinato(throughMs = 3000) {
+  const engine = createEngine({ processingBudget: 1e6 });
+  engine.reset(ostinatoWorld(), 'o');
+  engine.enqueue({ commandId: 'c1', runId: 'o', type: 'setLinkEnabled', linkId: 'L9', enabled: false, tMs: 0 });
+  engine.enqueue({ commandId: 'c2', runId: 'o', type: 'stimulate', nodeId: 'R0', tMs: 10 });
+  engine.enqueue({ commandId: 'c3', runId: 'o', type: 'setLinkEnabled', linkId: 'L9', enabled: true, tMs: 120 });
+  return engine.advanceTo(throughMs);
+}
