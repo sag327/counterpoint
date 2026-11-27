@@ -69,12 +69,20 @@ function draw() {
     }
     ctx.shadowBlur=0;
   }
-  // The blocked wave's light is absorbed by the existing strands. Geometry
+  // Lost wave energy lights the existing strands at blocks and collisions. Geometry
   // keeps recovering on its original clock; this overlay adds no activation.
   for(const e of trace.events) {
     const age=time-e.tMs;
-    if(e.type!=='activation_blocked'||e.cause!=='refractory'||age<0||age>=85)continue;
-    const center=Number(e.nodeId.slice(1))*tau/8;
+    if(age<0||age>=85)continue;
+    const blocked=e.type==='activation_blocked'&&e.cause==='refractory';
+    const collision=e.type==='conduction_collision';
+    // Opposing arrivals at an exact node coalesce into one capture in the
+    // engine, rather than emitting an in-link collision event.
+    const meeting=e.type==='activation'&&e.incomingLinkIds.length>1;
+    if(!blocked&&!collision&&!meeting)continue;
+    const center=collision
+      ? (Number(e.linkId.slice(1))+e.position)*tau/8
+      : Number(e.nodeId.slice(1))*tau/8;
     const envelope=(.6+.4*Math.min(1,age/5))*Math.pow(1-age/85,1.8);
     const spread=.14+.065*Math.min(1,age/35);
     ctx.lineCap='round';
