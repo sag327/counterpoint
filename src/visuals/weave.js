@@ -46,12 +46,14 @@ export function pathPassages(history, active, linkId, time, maxErp, generation) 
 }
 
 // Fractions measure arc length, using the same clock and curve as the wavehead.
-export function openingAt(passages, sourceId, fraction, time, erp) {
+export function sampleWeave(passages, sourceId, fraction, time, erp) {
   let opening = 0;
+  let glow = 0;
   for (const { launch, terminal } of passages) {
     const forward = launch.fromNodeId === sourceId;
     const progress = forward ? fraction : 1 - fraction;
-    const crossing = launch.departureMs + progress * (launch.arrivalMs - launch.departureMs);
+    const duration = launch.arrivalMs - launch.departureMs;
+    const crossing = launch.departureMs + progress * duration;
     const age = time - crossing;
     if (age <= 0 || age >= erp) continue;
     let weight = 1;
@@ -59,9 +61,14 @@ export function openingAt(passages, sourceId, fraction, time, erp) {
       if (terminal.position !== undefined && (forward ? fraction > terminal.position : fraction < terminal.position)) continue;
       if (terminal.type === 'activation_blocked') weight = 1 - smooth((progress - .78) / .22);
     }
-    opening = Math.max(opening, weight * smooth(age / 11) * (1 - age / erp) ** .55);
+    const recovery = weight * (1 - age / erp) ** .55;
+    opening = Math.max(opening, recovery * smooth(age / 11));
+    // A point glows for 58% of the transit duration, about 2.5 times the
+    // old centerline tail. The clock keeps running after arrival.
+    const trailAge = age / (.58 * duration);
+    glow = Math.max(glow, recovery * smooth(trailAge / .16) * (1 - clamp(trailAge)) ** 1.4);
   }
-  return opening;
+  return { opening, glow };
 }
 
 export function threadShape(phase, strand) {

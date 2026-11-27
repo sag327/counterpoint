@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createRenderer } from '../src/visuals/renderer.js';
-import { createWeaveHistory, openingAt, pathPassages } from '../src/visuals/weave.js';
+import { createWeaveHistory, sampleWeave, pathPassages } from '../src/visuals/weave.js';
 import { Engine } from '../src/engine/index.js';
 import { circulationWorld } from '../src/worlds/circulation.js';
 import { conductionWorld } from '../src/worlds/conduction.js';
@@ -379,7 +379,7 @@ console.log('Visual checks passed for all worlds with engine snapshots, contract
   const launch = events.find(event => event.type === 'conduction_launched' && event.linkId === 'HV1');
   const time = launch.departureMs + 17;
   const atBranch = (id, field = history) =>
-    openingAt(pathPassages(field, [], id, time, 260, 0), 'H', .5, time, 260);
+    sampleWeave(pathPassages(field, [], id, time, 260, 0), 'H', .5, time, 260).opening;
   assert.ok(atBranch('HV1') > 0, 'the faster leg opens behind its halfway point');
   assert.equal(atBranch('HV2'), 0, 'the slower leg remains gathered ahead of its wave');
   const missingBranch = createWeaveHistory()(events.filter(event => event.linkId !== 'HV1'), 'fork-weave');

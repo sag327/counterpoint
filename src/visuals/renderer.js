@@ -1,5 +1,5 @@
 import { createNetworkMarks } from './marks.js';
-import { createWeaveHistory, pathPassages, openingAt, threadShape, junctionTaper } from './weave.js';
+import { createWeaveHistory, pathPassages, sampleWeave, threadShape, junctionTaper } from './weave.js';
 
 const GROUND = '#080C13';
 const BRASS = '#C8A878';
@@ -328,6 +328,30 @@ function drawWeave(ctx, link, openings, enabled) {
   }
 }
 
+function strokeLitStrands(ctx, a, b, openingA, openingB, tint, opacity) {
+  for (let strand = 0; strand < 3; strand++) {
+    const start = strandPoint(a, strand, openingA);
+    const end = strandPoint(b, strand, openingB);
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y);
+    ctx.lineTo(end.x, end.y);
+    ctx.strokeStyle = cssColor(tint, opacity * (strand === 1 ? .85 : .7));
+    ctx.lineWidth = 1.25;
+    ctx.stroke();
+  }
+}
+
+function drawWake(ctx, link, samples) {
+  const tint = link.color === BRASS ? FLASH : COOL_FLASH;
+  for (let i = 1; i < samples.length; i++) {
+    const a = samples[i - 1];
+    const b = samples[i];
+    const intensity = Math.min(a.glow, b.glow);
+    if (intensity < .01) continue;
+    strokeLitStrands(ctx, link.samples[i - 1], link.samples[i], a.opening, b.opening, tint, intensity);
+  }
+}
+
 function drawDissipation(ctx, geometry, fields, event, age) {
   const collision = event.type === 'conduction_collision';
   const linkIds = collision ? [event.linkId] : event.incomingLinkIds;
@@ -344,18 +368,9 @@ function drawDissipation(ctx, geometry, fields, event, age) {
       const distance = Math.abs((a.fraction + b.fraction) / 2 - center) * link.curve.length;
       if (distance >= spread) continue;
       const opacity = envelope * Math.cos(distance / spread * Math.PI / 2) ** 2;
-      for (let strand = 0; strand < 3; strand++) {
-        const start = strandPoint(a, strand, field.openings[i - 1]);
-        const end = strandPoint(b, strand, field.openings[i]);
-        ctx.beginPath();
-        ctx.moveTo(start.x, start.y);
-        ctx.lineTo(end.x, end.y);
-        ctx.strokeStyle = cssColor(COOL_FLASH, opacity * (strand === 1 ? .85 : .7));
-        ctx.lineWidth = 1.25;
-        ctx.shadowColor = cssColor(ICE, opacity * .7);
-        ctx.shadowBlur = 7;
-        ctx.stroke();
-      }
+      ctx.shadowColor = cssColor(ICE, opacity * .7);
+      ctx.shadowBlur = 7;
+      strokeLitStrands(ctx, a, b, field.openings[i - 1], field.openings[i], COOL_FLASH, opacity);
     }
   }
   ctx.shadowBlur = 0;
@@ -371,16 +386,6 @@ function drawTransit(ctx, link, transit, tMs, reducedMotion) {
     return;
   }
   const forward = transit.fromNodeId === link.a;
-  for (let i = 0; i < 8; i += 1) {
-    const start = Math.max(0, progress - 0.23 + 0.23 * (i / 8));
-    const end = Math.max(0, progress - 0.23 + 0.23 * ((i + 1) / 8));
-    if (start >= end) continue;
-    const opacity = (i + 1) / 8;
-    const from = forward ? start : 1 - end;
-    const to = forward ? end : 1 - start;
-    strokeCurve(ctx, link.curve, from, to, cssColor(link.color, 0.23 * opacity), 2.4 + 1.2 * opacity);
-    strokeCurve(ctx, link.curve, from, to, cssColor(link.color, 0.72 * opacity), 0.8 + opacity);
-  }
   const head = atFraction(link.curve, forward ? progress : 1 - progress);
   halo(ctx, head.x, head.y, 13, link.color, 0.49);
   dot(ctx, head.x, head.y, 2.4, link.color === BRASS ? FLASH : COOL_FLASH);
@@ -533,10 +538,12 @@ export function createRenderer(canvas, world, { reducedMotion = false, layout = 
       const passages = history ? pathPassages(history, snapshot.activeTransits, id, tMs,
         Math.max(erpA, erpB), state?.generation).filter(({ launch }) =>
           !network.isConcealedTransit(events, launch.transitId)) : [];
-      const openings = link.samples.map(({ fraction }) =>
-        openingAt(passages, link.a, fraction, tMs, mix(erpA, erpB, fraction)));
+      const samples = link.samples.map(({ fraction }) =>
+        sampleWeave(passages, link.a, fraction, tMs, mix(erpA, erpB, fraction)));
+      const openings = samples.map(({ opening }) => opening);
       fields.set(id, { enabled, openings });
       drawWeave(ctx, link, openings, enabled);
+      if (enabled && passages.length) drawWake(ctx, link, samples);
     }
 
     for (const [id, node] of geometry.nodes) drawNode(ctx, node, snapshot.nodes[id]);
