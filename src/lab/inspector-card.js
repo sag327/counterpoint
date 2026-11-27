@@ -371,6 +371,8 @@ export function createInspectorCard(container, {
   }
 
   function editParam(param, value) {
+    // A field's change can fire on blur after the card has closed: nothing to edit then.
+    if (target === null || !Number.isFinite(value)) return;
     send(editCommand(state, target, param, value));
   }
 

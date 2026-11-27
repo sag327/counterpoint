@@ -70,3 +70,12 @@ test('Echo sustained circulation for 60 s with CSp-to-V between 10 and 60 ms, an
   assert.equal(reentrant.length, 0, 'no further echo after the nodal block');
   assert.ok(still.events.every(e => e.type !== 'link_changed'), 'never by a cut');
 });
+
+test('Guided windows: S2 240–264 ms gives one echo, 266–298 ms sustained reentry; the buttons sit 12 ms inside each', () => {
+  for (const s2 of [240, 252, 264]) assert.equal(echoes(s2Run(s2, 5000).late).length, 1, `S2 ${s2}`);
+  for (const s2 of [266, 282, 298]) assert.ok(echoes(s2Run(s2, 5000).late).length >= 10, `S2 ${s2}`);
+  assert.equal(echoes(s2Run(238, 5000).late).length, 0);
+  assert.equal(echoes(s2Run(300, 5000).late).length, 0);
+  const s2Of = id => echoPresentation.protocols.find(p => p.id === id).s2;
+  assert.deepEqual([s2Of('find-echo'), s2Of('find-arrhythmia')], [252, 282]);
+});

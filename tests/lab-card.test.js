@@ -206,3 +206,16 @@ test('introductory worlds without restitution can be inspected and tuned', async
   assert.equal(sent[0].nodeId, 'R0');
   assert.deepEqual(card.modified().nodes, new Set(['R0']));
 });
+
+test('a field change that arrives after the card closes is ignored', () => {
+  const world = echoV11World();
+  const sent = [];
+  const fakeContainer = new FakeElement('div');
+  const card = createInspectorCard(fakeContainer, { world, enqueue: body => { sent.push(body); }, document: fakeDocument });
+  card.open({ kind: 'node', id: 'FP' });
+  const input = fakeContainer.all(n => n.tag === 'input')[0];
+  card.close();
+  input.value = '330';
+  assert.doesNotThrow(() => input.fire('change'));
+  assert.equal(sent.length, 0);
+});

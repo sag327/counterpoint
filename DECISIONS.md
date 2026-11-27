@@ -72,3 +72,7 @@ Cutting connections is removed from the app: it added complexity with little tea
 ## 2026-11-27 · Laboratory hidden; inspector curves reset on edit
 
 The Laboratory does not earn its place yet, so it is hidden behind `SHOW_LABORATORY` and its code is kept. When the player edits an element's curve in the inspector, that element's earlier data points are erased, because they no longer describe the model. The data points are drawn larger and brighter.
+
+## 2026-11-27 · no Stillness; guided runs show the behaviour in one press
+
+Stillness is removed from every world; the engine keeps the contract command, unused. Find the echo and Find the arrhythmia (formerly Find the circuit) now reset the model to nominal and precondition it with the drive already given. The next impulse, a single S2 in the middle of its window (252 ms for one echo, 282 ms for sustained reentry), produces the behaviour at once, with no stepping between presses.

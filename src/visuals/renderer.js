@@ -434,7 +434,6 @@ export function createRenderer(canvas, world, { reducedMotion = false, layout = 
   let overlay = null;
   let modified = { nodes: new Set(), links: new Set() };
   let selected = null;
-  let dim = 0;
 
   // Adapter the Study No. 2 marks (marks.js) use to reach this renderer's geometry.
   const adapter = {
@@ -477,11 +476,6 @@ export function createRenderer(canvas, world, { reducedMotion = false, layout = 
     ctx.drawImage(backdropCanvas, 0, 0);
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     ctx.lineCap = 'round';
-    if (dim > 0) {
-      // Stillness: the ground dims by up to 6% at the agent's peak. Nothing else changes.
-      ctx.fillStyle = cssColor('#000000', 0.06 * dim);
-      ctx.fillRect(0, 0, width + 1, height + 1);
-    }
 
     for (const [id, node] of geometry.nodes) drawNode(ctx, node, snapshot.nodes[id]);
     // The selected site (last touched or inspected) wears a quiet gold halo.
@@ -596,8 +590,6 @@ export function createRenderer(canvas, world, { reducedMotion = false, layout = 
   return { resize, render, hitTest, hitTestLink, nodePosition, crossedLinks, markGesture, linkPoint,
     // Open rings on sites and links that differ from the study default.
     markModified(next) { modified = { nodes: new Set(next?.nodes ?? []), links: new Set(next?.links ?? []) }; },
-    // Stillness envelope 0..1: dims the ground by 6% at 1.
-    setDim(value) { dim = clamp(value); },
     setSelected(nodeId) { selected = nodeId ?? null; },
     get selected() { return selected; },
     get centre() { return geometry ? { x: geometry.cx, y: geometry.cy, radius: geometry.radius } : null; },
