@@ -9,7 +9,7 @@ for(const file of [dist,circulation])await access(file).catch(()=>{throw new Err
 await rm(out,{recursive:true,force:true});
 await mkdir(path.join(out,'play'),{recursive:true});
 await mkdir(path.join(out,'circulation'),{recursive:true});
-await copyFile(path.join(root,'site/index.html'),path.join(out,'index.html'));
+await copyFile(dist,path.join(out,'index.html'));
 await copyFile(dist,path.join(out,'play/index.html'));
 await copyFile(dist,path.join(out,'play/counterpoint.html'));
 // The shareable Circulation preview (src/ui/edition.js): nothing on the site links to it.
