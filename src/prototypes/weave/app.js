@@ -69,12 +69,35 @@ function draw() {
     }
     ctx.shadowBlur=0;
   }
-  // A failed arrival dissipates locally; it never launches a replacement wave.
+  // The blocked wave's light is absorbed by the existing strands. Geometry
+  // keeps recovering on its original clock; this overlay adds no activation.
   for(const e of trace.events) {
     const age=time-e.tMs;
-    if(e.type!=='activation_blocked'||age<0||age>65)continue;
-    const a=Number(e.nodeId.slice(1))*tau/8;
-    for(let s=-1;s<=1;s+=2){const p=position(a-.015-age*.00015,s*(2+age*.08));ctx.beginPath();ctx.arc(...p,1.6,0,tau);ctx.fillStyle=rgba([171,204,231],.8*(1-age/65));ctx.fill();}
+    if(e.type!=='activation_blocked'||e.cause!=='refractory'||age<0||age>=85)continue;
+    const center=Number(e.nodeId.slice(1))*tau/8;
+    const envelope=(.6+.4*Math.min(1,age/5))*Math.pow(1-age/85,1.8);
+    const spread=.14+.065*Math.min(1,age/35);
+    ctx.lineCap='round';
+    for(let strand=0;strand<3;strand++) {
+      for(let i=0;i<8;i++) {
+        for(let k=1;k<samples[i].length;k++) {
+          const previous=samples[i][k-1], point=samples[i][k];
+          const midpoint=(previous.angle+point.angle)/2;
+          const distance=Math.abs(Math.atan2(Math.sin(midpoint-center),Math.cos(midpoint-center)));
+          if(distance>=spread)continue;
+          const local=Math.pow(Math.cos(distance/spread*Math.PI/2),2);
+          const strength=envelope*local;
+          ctx.beginPath();
+          ctx.moveTo(...position(previous.angle,filamentOffset(previous.angle,strand,openings[i][k-1])));
+          ctx.lineTo(...position(point.angle,filamentOffset(point.angle,strand,openings[i][k])));
+          ctx.strokeStyle=rgba([211,231,245],strength*(strand===1?.9:.78));
+          ctx.lineWidth=1.2;
+          ctx.shadowColor=rgba([145,199,237],strength*.8);ctx.shadowBlur=9;
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.shadowBlur=0;ctx.lineCap='butt';
   }
   $('timeline').value=Math.round(time);describe();
 }
