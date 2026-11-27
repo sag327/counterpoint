@@ -18,6 +18,7 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACT = ROOT / "dist" / "counterpoint.html"
+CIRCULATION = ROOT / "dist" / "counterpoint-circulation.html"
 ACTIVATIONS = "counterpoint.events.filter(event => event.type === 'activation')"
 
 
@@ -294,6 +295,41 @@ def soak(browser, minutes):
     context.close()
 
 
+def circulation_edition_smoke(browser, output):
+    """The shareable Circulation preview: one world, Network only, Chamber / balanced."""
+    for width, height, name in [(1280, 900, "desktop"), (360, 800, "phone")]:
+        context = browser.new_context(viewport={"width": width, "height": height}, offline=True)
+        page = context.new_page()
+        errors, requests = observe(page)
+        # A stale or shared link cannot reach another world or the Ladder.
+        page.goto(CIRCULATION.as_uri() + "#study=echo&view=ladder")
+        page.wait_for_function("window.counterpoint !== undefined")
+        assert page.title() == "Counterpoint · Circulation"
+        state = page.evaluate("""() => ({
+            worlds: [...document.querySelectorAll('#worlds button')].map(b => b.dataset.world),
+            worldsHidden: document.getElementById('worlds').hidden,
+            viewsHidden: document.getElementById('views').hidden,
+            view: counterpoint.view,
+            sound: document.getElementById('palette-control').hidden && document.getElementById('voicing-control').hidden,
+            lab: document.getElementById('lab-toggle').hidden,
+        })""")
+        assert state == {"worlds": ["circulation"], "worldsHidden": True, "viewsHidden": True, "view": "network", "sound": True, "lab": True}, state
+        assert page.get_by_role("link").count() == 0, "no links to the other models"
+        page.locator("#silent").click()
+        wait_playing(page, "counterpoint.transport.status === 'running'")
+        page.locator("#single").click()
+        wait_playing(page, f"{ACTIVATIONS}.length >= 8")
+        assert page.evaluate("counterpoint.events.every(e => e.worldId === 'circulation')")
+        page.get_by_role("button", name="Stimulate site R3").press("i")
+        page.locator("#card-layer").wait_for(state="visible", timeout=5000)
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        screenshot(page, output, f"circulation-edition-{name}")
+        assert not errors, errors
+        check_network(requests, CIRCULATION.as_uri())
+        context.close()
+    print("PASS Circulation edition desktop and 360 px: one world, Network only, fixed sound, no links, inspector", flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--chromium", help="Path to a Chromium executable")
@@ -311,6 +347,7 @@ def main():
         print(f"Chromium {browser.version}", flush=True)
         if not args.soak_only:
             desktop_smoke(browser, args.screenshots)
+            circulation_edition_smoke(browser, args.screenshots)
             handler = functools.partial(QuietHandler, directory=ARTIFACT.parent)
             with http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler) as server:
                 thread = threading.Thread(target=server.serve_forever, daemon=True)

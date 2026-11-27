@@ -15,6 +15,10 @@ import path from 'node:path';
 import vm from 'node:vm';
 
 const root = path.resolve(import.meta.dirname, '..');
+// `--edition <id>` builds one of the editions in src/ui/edition.js (default: full).
+const editionIndex = process.argv.indexOf('--edition');
+const edition = editionIndex > 0 ? process.argv[editionIndex + 1] : 'full';
+const editionFile = path.join(root, 'src/ui/edition.js');
 const IMPORT = /import\s+([\s\S]*?)\s+from\s+['"]([^'"]+)['"](\s+with\s*\{[^}]*\})?\s*;?/g;
 
 async function bundle(entry) {
@@ -25,7 +29,12 @@ async function bundle(entry) {
     if (modules.has(file)) return;
     modules.set(file, '');
     const ext = path.extname(file);
-    const raw = await readFile(file, 'utf8');
+    let raw = await readFile(file, 'utf8');
+    if (file === editionFile) {
+      const pattern = /export const EDITION_ID = '[a-z]+';/;
+      if (!pattern.test(raw)) throw new Error('src/ui/edition.js: EDITION_ID line not found');
+      raw = raw.replace(pattern, `export const EDITION_ID = ${JSON.stringify(edition)};`);
+    }
     if (ext === '.json') {
       JSON.parse(raw);
       modules.set(file, `return { default: Object.freeze(${raw.trim()}) };`);
@@ -66,7 +75,10 @@ async function bundle(entry) {
 const escapeScript = text => text.replace(/<\/script/gi, '<\\/script');
 const app = await bundle('src/ui/app.js');
 const worker = await bundle('src/lab/worker.js');
-const html = await readFile(path.join(root, 'src/index.html'), 'utf8');
+let html = await readFile(path.join(root, 'src/index.html'), 'utf8');
+const editionTitle = { circulation: 'Counterpoint · Circulation' }[edition];
+if (edition !== 'full' && !editionTitle) throw new Error(`Unknown edition: ${edition}`);
+if (editionTitle) html = html.replace(/<title>[^<]*<\/title>/, `<title>${editionTitle}</title>`);
 const css = (await Promise.all(['src/ui/styles.css', 'src/ui/inspector.css', 'src/lab/lab.css', 'src/ui/study.css']
   .map(file => readFile(path.join(root, file), 'utf8')))).join('\n');
 const out = html
@@ -76,7 +88,8 @@ const out = html
 if (/(?:src|href)\s*=\s*["']https?:/i.test(out)) throw new Error('Build output references a network resource');
 // `--out <file>` writes elsewhere (the integration test builds into a temporary directory).
 const outIndex = process.argv.indexOf('--out');
-const target = outIndex > 0 ? path.resolve(process.argv[outIndex + 1]) : path.join(root, 'dist/counterpoint.html');
+const target = outIndex > 0 ? path.resolve(process.argv[outIndex + 1])
+  : path.join(root, edition === 'full' ? 'dist/counterpoint.html' : `dist/counterpoint-${edition}.html`);
 await mkdir(path.dirname(target), { recursive: true });
 await writeFile(target, out);
 console.log(`Built ${path.relative(root, target)} (self-contained, ${(out.length / 1024).toFixed(0)} KB)`);

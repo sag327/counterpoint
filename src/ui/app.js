@@ -5,6 +5,7 @@ import { mapActivation, createAudioMixer, describeNodeMusic, musicTableFor, PALE
 import { createInspector } from './inspector.js';
 import { createInspectorCard } from '../lab/inspector-card.js';
 import { DILATIONS, dilationLabel, readPreferences, savePreferences } from './preferences.js';
+import { EDITION, editionAllows } from './edition.js';
 import { SCENES, SHOW_LABORATORY, SHOW_MUSIC_LABELS, VIEWS, carryCommands, formatFragment, glossaryFor, parseFragment, worldFromState } from './studies.js';
 import { createViews } from './views.js';
 import { createStudyLab, protocolWorkerUrl } from './lab-panel.js';
@@ -17,7 +18,9 @@ const $ = id => document.getElementById(id);
 const WORLDS = SCENES;
 const NOTES = { echo: ECHO_NOTES };
 
-const preferences = readPreferences(PALETTES, CHAMBER_VOICINGS);
+const preferences = readPreferences(PALETTES, CHAMBER_VOICINGS, EDITION.storageSuffix);
+// An edition can fix the sound (the Circulation edition: Chamber, balanced voicing).
+if (EDITION.sound) Object.assign(preferences, EDITION.sound);
 const engine = new Engine();
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
 const EVENT_LIMIT = 4096;
@@ -26,7 +29,7 @@ const GUIDE_COUPLING_MS = 240;
 const DRAG_THRESHOLD = 10;
 const HOLD_SITE_MS = 500;
 const initialFragment = parseFragment(location.hash);
-let worldId = initialFragment.study ?? 'conduction';
+let worldId = EDITION.worlds ? EDITION.worlds[0] : (initialFragment.study ?? 'conduction');
 let scene = WORLDS[worldId];
 let world;
 let renderer;
@@ -37,7 +40,7 @@ let musicTable = null;
 let card;
 let studyLab;
 let views;
-let view = initialFragment.view ?? 'network';
+let view = EDITION.views ? EDITION.views[0] : (initialFragment.view ?? 'network');
 let started = false;
 let beginning = false;
 let visibilityChanges = 0;
@@ -202,6 +205,8 @@ function updateGuidedReadout() {
 }
 
 function updateFragment() {
+  // A single-world edition has nothing to put in the address.
+  if (EDITION.worlds) return;
   const fragment = formatFragment({ study: worldId === 'conduction' ? null : worldId, view });
   if (location.hash !== fragment) history.replaceState(null, '', fragment || `${location.pathname}${location.search}`);
 }
@@ -211,7 +216,7 @@ function labOpen() {
 }
 
 function chooseWorld(id) {
-  if (!Object.hasOwn(WORLDS, id) || (id === worldId && selectedNodeId)) return;
+  if (!Object.hasOwn(WORLDS, id) || !editionAllows(EDITION.worlds, id) || (id === worldId && selectedNodeId)) return;
   const autoStart = transport.status === 'running';
   const settings = WORLDS[id];
   const nextWorld = settings.create();
@@ -349,7 +354,8 @@ function updateButtons() {
 }
 
 function updatePaletteControls() {
-  $('voicing-control').hidden = worldId !== 'circulation' || preferences.palette !== 'chamber';
+  $('palette-control').hidden = Boolean(EDITION.sound);
+  $('voicing-control').hidden = Boolean(EDITION.sound) || worldId !== 'circulation' || preferences.palette !== 'chamber';
 }
 
 async function begin(silent) {
@@ -470,7 +476,7 @@ function resize() {
 }
 
 function setView(next) {
-  if (!VIEWS.includes(next)) return;
+  if (!VIEWS.includes(next) || !editionAllows(EDITION.views, next)) return;
   view = next;
   views.view = next;
   for (const button of $('views').querySelectorAll('button')) button.setAttribute('aria-pressed', String(button.dataset.view === view));
@@ -656,6 +662,12 @@ $('find-arrhythmia').onclick = () => startRun('find-arrhythmia');
 $('reset').onclick = () => startRun();
 $('notes-close').onclick = () => $('notes-sheet').close?.() ?? $('notes-sheet').removeAttribute('open');
 $('notes-sheet').addEventListener('click', event => { if (event.target === $('notes-sheet')) $('notes-sheet').close(); });
+// An edition shows only its worlds and views; with one of either, the menu goes too.
+if (EDITION.worlds) {
+  $('worlds').replaceChildren(...[...$('worlds').children].filter(button => EDITION.worlds.includes(button.dataset.world)));
+  $('worlds').hidden = EDITION.worlds.length < 2;
+}
+if (EDITION.views) $('views').hidden = EDITION.views.length < 2;
 for (const button of $('worlds').children) button.onclick = () => chooseWorld(button.dataset.world);
 for (const button of $('views').querySelectorAll('button')) button.onclick = () => setView(button.dataset.view);
 $('dilation').replaceChildren(...DILATIONS.map(value => {
