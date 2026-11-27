@@ -61,3 +61,19 @@ for case, count, last in [('A',8,240), ('B',25,1200), ('C',28,1380)]:
         assert not active and captures[-1]==(1380,'R5')
         assert [(e['tMs'],e['value']) for e in events if e['type']=='link_changed']==[(1000,False),(1500,True)]
     print(f'{case}: {len(events)} events, {count} captures, last capture at {last} ms')
+
+# Contract 1.1.0: new schema files, a strict superset of 1.0.0, checked against actual engine receipts.
+import runpy
+v11 = {kind: json.loads((root / 'contracts' / f'{kind}.v1_1.schema.json').read_text()) for kind in ('world', 'command', 'event')}
+for schema in v11.values():
+    Draft7Validator.check_schema(schema)
+v11 = {kind: Draft7Validator(schema) for kind, schema in v11.items()}
+v11['world'].validate(world)
+for case in 'ABC':
+    for cmd in read(fixtures / f'{case}.commands.json'):
+        v11['command'].validate(cmd)
+    for e in read(fixtures / f'{case}.presentation.json')['events']:
+        v11['event'].validate(e)
+assert not Draft7Validator(read(root / 'contracts' / 'world.v1.schema.json')).is_valid({**world, 'contractVersion': '1.1.0'})
+print('1.1.0 schemas: well formed; every 1.0.0 fixture validates under them')
+runpy.run_path(str(root / 'tests' / 'engine-contract-v11.py'), run_name='__main__')

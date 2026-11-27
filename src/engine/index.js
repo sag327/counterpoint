@@ -1,6 +1,11 @@
 import { Agenda } from './agenda.js';
 import { History, recoveryAt } from './history.js';
-import { readCommand, readWorld, requireId } from './input.js';
+import { TRAIN_CONCURRENCY_MAX, readCommand, readWorld, requireId, withFloorOffset } from './input.js';
+import {
+  AGENT_STEP, LESION_STEP, SLOW_RAMP, STILLNESS_ATRIAL_ERP, STILLNESS_END, STILLNESS_NODAL_ERP, STILLNESS_SINUS_CYCLE,
+  TONE_CYCLE, TONE_DECREMENT, agentCycle, agentErp, breathFactor, decrementExtra, entryExtra, lesionDelay, phaseShift,
+  restedErp, restitutionErp, slowExtra, stillnessEnvelope,
+} from './laws.js';
 import { addTicks, clampUnit, toMs, toTick } from './time.js';
 
 const EDIT = 0;
@@ -49,14 +54,37 @@ function emit(run, batch, type, payload) {
   return event;
 }
 
+// Contract 1.1.0 annotations are added only to 1.1.0 runs, so 1.0.0 traces stay byte-identical.
+function withCause(run, payload, cause) {
+  return run.v11 ? { ...payload, cause } : payload;
+}
+
 function scheduleAutomatic(run, node, tick) {
   const token = {};
   node.auto.token = token;
+  node.auto.next = tick;
   run.agenda.push({ tick, phase: AUTOMATIC, order: node.order, node, token });
 }
 
+// §C: sinus foci follow tone, Stillness and breath at scheduling time.
+// Positive tone is sympathetic: a shorter cycle. Negative tone is vagal.
+function effectiveCycle(run, node, tick) {
+  const cycle = node.auto.cycle;
+  if (!run.v11 || node.tissue !== 'sinus') return cycle;
+  let factor = node.agentCycleScale;
+  if (run.tone !== 0) factor *= 1 - TONE_CYCLE * run.tone;
+  if (run.autonomic?.sinus) factor *= breathFactor(run.autonomic, tick);
+  return factor === 1 ? cycle : Math.round(cycle * factor);
+}
+
+// The phase origin is the instant the pending cycle started. Suppression is 0 without overdrive.
+function planNextAutomatic(run, node, tick) {
+  node.auto.origin = tick;
+  return addTicks(tick, effectiveCycle(run, node, tick) + node.auto.suppression);
+}
+
 function scheduleNextAutomatic(run, node, tick) {
-  scheduleAutomatic(run, node, addTicks(tick, node.auto.cycle));
+  scheduleAutomatic(run, node, planNextAutomatic(run, node, tick));
 }
 
 function removeTransit(batch, transit) {
@@ -69,64 +97,282 @@ function transitPosition(transit, tick) {
   return transit.direction === 'ab' ? progress : 1 - progress;
 }
 
-function applyEdit(run, batch, command) {
-  const { commandId, direction, target, type, value } = command;
-  if (type === 'setLinkEnabled') {
-    if (target.enabled === value) return;
-    const previous = target.enabled;
-    target.enabled = value;
-    const generation = ++target.generation;
-    batch.links.add(target);
-    emit(run, batch, 'link_changed', { linkId: target.id, previous, value, generation, commandId });
-    if (!value) {
-      target.collision = null;
-      for (const transit of target.active.values()) {
-        emit(run, batch, 'conduction_canceled', {
-          linkId: target.id,
-          transitId: transit.event.transitId,
-          cause: 'cut',
-          position: transitPosition(transit, batch.tick),
-        });
-        removeTransit(batch, transit);
-      }
+function parameterChanged(run, batch, parameter, commandId, generation, targetRef, previous, value, cause) {
+  emit(run, batch, 'parameter_changed', withCause(run, { parameter, commandId, generation, ...targetRef, previous, value }, cause));
+}
+
+function changeLinkEnabled(run, batch, link, value, commandId, cause) {
+  if (link.enabled === value) return;
+  const previous = link.enabled;
+  link.enabled = value;
+  const generation = ++link.generation;
+  batch.links.add(link);
+  emit(run, batch, 'link_changed', withCause(run, { linkId: link.id, previous, value, generation, commandId }, cause));
+  if (!value) {
+    link.collision = null;
+    for (const transit of link.active.values()) {
+      emit(run, batch, 'conduction_canceled', {
+        linkId: link.id,
+        transitId: transit.event.transitId,
+        cause: cause === 'lesion' ? 'lesion' : 'cut',
+        position: transitPosition(transit, batch.tick),
+      });
+      removeTransit(batch, transit);
     }
+  }
+}
+
+const lawMs = law => law === null ? null : Object.freeze({
+  erpMaxMs: toMs(law.erpMax), amplitudeMs: toMs(law.amplitude), tauMs: toMs(law.tau), erpMinMs: toMs(law.erpMin),
+});
+const extraMs = law => law === null ? null : Object.freeze({ maxExtraMs: toMs(law.maxExtra), tauMs: toMs(law.tau) });
+const sameLaw = (a, b) => a !== null && Object.keys(b).every(key => a[key] === b[key]);
+
+// Under restitution, setNodeERP moves erpMax and shifts erpMin by the same amount (§A).
+// The floor keeps its offset below erpMax and is clamped to 1 ms only in use, so edits reverse exactly.
+function editErp(run, batch, { target: node, value, commandId }) {
+  if (node.erp === value) return;
+  const previous = restedErp(node);
+  const law = node.restitution;
+  if (law !== null) {
+    law.erpMin = Math.max(1000, value - law.floorOffset);
+    law.erpMax = value;
+  }
+  node.erp = value;
+  batch.nodes.add(node);
+  parameterChanged(run, batch, 'erpMs', commandId, ++node.erpGeneration, { nodeId: node.id },
+    toMs(previous), toMs(restedErp(node)), 'command');
+}
+
+function editDelay(run, batch, { target: link, direction, value, commandId }) {
+  const settings = link[direction];
+  if (settings.delay === value) return;
+  const progress = link.lesion?.progress ?? 0;
+  const previous = lesionDelay(settings.delay, progress);
+  settings.delay = value;
+  batch.links.add(link);
+  parameterChanged(run, batch, 'delayMs', commandId, ++settings.generation, { linkId: link.id, direction },
+    toMs(previous), toMs(lesionDelay(value, progress)), 'command');
+}
+
+function editCycle(run, batch, { target: node, value, commandId }) {
+  const auto = node.auto;
+  if (auto.cycle === value) return;
+  const previous = agentCycle(node, auto.cycle);
+  auto.cycle = value;
+  auto.token = null;
+  const generation = ++node.cycleGeneration;
+  if (value !== null) scheduleNextAutomatic(run, node, batch.tick);
+  parameterChanged(run, batch, 'cycleMs', commandId, generation, { nodeId: node.id },
+    toMs(previous), toMs(agentCycle(node, value)), 'command');
+  // §D: a focus without automaticity has no own attempt that could capture it, so its
+  // entrance block is lifted. Protection does not return if automaticity is restored.
+  if (value === null && auto.protected) {
+    auto.protected = false;
+    parameterChanged(run, batch, 'protected', commandId, ++node.protectedGeneration, { nodeId: node.id }, true, false, 'command');
+  }
+}
+
+// setRestitution replaces the law. When that moves the rested ERP it also emits erpMs.
+function editRestitution(run, batch, { target: node, value, commandId }) {
+  const previous = node.restitution;
+  if (sameLaw(previous, value) && previous.floorOffset === value.erpMax - value.erpMin) return;
+  const previousErp = restedErp(node);
+  node.restitution = withFloorOffset(value);
+  node.erp = value.erpMax;
+  batch.nodes.add(node);
+  parameterChanged(run, batch, 'restitution', commandId, ++node.restitutionGeneration, { nodeId: node.id },
+    lawMs(previous), lawMs(node.restitution), 'command');
+  const erp = restedErp(node);
+  if (erp !== previousErp) {
+    parameterChanged(run, batch, 'erpMs', commandId, ++node.erpGeneration, { nodeId: node.id }, toMs(previousErp), toMs(erp), 'command');
+  }
+}
+
+function editExtraLaw(run, batch, { target: link, direction, value, commandId, type }) {
+  const key = type === 'setDecrement' ? 'decrement' : 'entry';
+  const settings = link[direction];
+  const previous = settings[key];
+  if (sameLaw(previous, value)) return;
+  settings[key] = { ...value };
+  batch.links.add(link);
+  const generation = key === 'decrement' ? ++settings.decrementGeneration : ++settings.entryGeneration;
+  parameterChanged(run, batch, key, commandId, generation, { linkId: link.id, direction },
+    extraMs(previous), extraMs(value), 'command');
+}
+
+function editCoupling(run, batch, { target: coupling, value, commandId }) {
+  if (coupling.amplitude === value) return;
+  const previous = coupling.amplitude;
+  coupling.amplitude = value;
+  parameterChanged(run, batch, 'coupling', commandId, ++coupling.generation, { couplingId: coupling.id }, previous, value, 'command');
+}
+
+function editTone(run, batch, { value, commandId }) {
+  if (run.tone === value) return;
+  const previous = run.tone;
+  run.tone = value;
+  parameterChanged(run, batch, 'tone', commandId, ++run.toneGeneration, {}, previous, value, 'command');
+}
+
+const autonomicMs = law => law === null ? null : Object.freeze({
+  breathPeriodMs: toMs(law.period),
+  depth: law.depth,
+  targets: Object.freeze([...(law.sinus ? ['sinus'] : []), ...(law.nodal ? ['nodal'] : [])]),
+});
+const sameAutonomic = (a, b) => a === b || (a !== null && b !== null &&
+  a.period === b.period && a.depth === b.depth && a.sinus === b.sinus && a.nodal === b.nodal);
+
+// Live Breath toggle (§C). Applies prospectively at scheduling and departure. The breath
+// phase is sin(2 pi t / P) of absolute sim time, so toggling never resets it and replay matches.
+function editAutonomic(run, batch, { value, commandId }) {
+  if (sameAutonomic(run.autonomic, value)) return;
+  const previous = run.autonomic;
+  run.autonomic = value;
+  parameterChanged(run, batch, 'autonomic', commandId, ++run.autonomicGeneration, {}, autonomicMs(previous), autonomicMs(value), 'command');
+}
+
+// A cancelled train that has not closed yet closes in this batch with its partial count.
+function cancelTrain(run, batch, { target: train }) {
+  if (!train.active) return;
+  train.active = false;
+  batch.trains.push({ train, cancelled: true });
+}
+
+// A complete lesion stays closed until reset. Enqueue rejects an enable that the command
+// log shows would reopen it; this covers a log whose ablate was enqueued after the enable.
+function enableLink(run, batch, item) {
+  if (item.value && item.target.lesion?.progress === 1) return;
+  changeLinkEnabled(run, batch, item.target, item.value, item.commandId, 'command');
+}
+
+// §F. A lesion advances from its current progress to the commanded completeness.
+function scheduleLesionStep(run, plan) {
+  plan.step++;
+  const elapsed = Math.min(plan.step * LESION_STEP, plan.duration);
+  run.agenda.push({ tick: addTicks(plan.start, elapsed), phase: EDIT, order: plan.order, type: 'lesionStep', plan, elapsed });
+}
+
+// A lesion never shrinks: a pass at or below the current target is a no-op.
+function startLesion(run, batch, { target: link, value: { duration, completeness }, commandId, order }) {
+  if (completeness <= (link.lesion?.completeness ?? 0)) return;
+  const progress = link.lesion?.progress ?? 0;
+  const plan = { link, commandId, order, start: batch.tick, duration, from: progress, to: completeness, step: 0 };
+  link.lesion = { progress, completeness, plan };
+  batch.links.add(link);
+  scheduleLesionStep(run, plan);
+}
+
+function stepLesion(run, batch, { plan, elapsed }) {
+  const { link } = plan;
+  const lesion = link.lesion;
+  if (lesion.plan !== plan) return;
+  const before = lesion.progress;
+  const progress = elapsed === plan.duration ? plan.to : plan.from + (plan.to - plan.from) * elapsed / plan.duration;
+  lesion.progress = progress;
+  batch.links.add(link);
+  for (const direction of ['ab', 'ba']) {
+    const settings = link[direction];
+    const previous = lesionDelay(settings.delay, before);
+    const value = lesionDelay(settings.delay, progress);
+    if (previous !== value) {
+      parameterChanged(run, batch, 'delayMs', plan.commandId, ++settings.generation, { linkId: link.id, direction },
+        toMs(previous), toMs(value), 'lesion');
+    }
+  }
+  emit(run, batch, 'lesion_changed', { linkId: link.id, progress, completeness: plan.to });
+  if (elapsed < plan.duration) {
+    scheduleLesionStep(run, plan);
     return;
   }
+  lesion.plan = null;
+  if (plan.to === 1) changeLinkEnabled(run, batch, link, false, plan.commandId, 'lesion');
+}
 
-  const targetRef = type === 'setDirectionDelay' ? { linkId: target.id, direction } : { nodeId: target.id };
-  let parameter;
-  let previous;
-  let generation;
-  switch (type) {
-    case 'setNodeERP':
-      previous = target.erp;
-      if (previous === value) return;
-      target.erp = value;
-      parameter = 'erpMs';
-      generation = ++target.erpGeneration;
-      batch.nodes.add(target);
-      break;
-    case 'setDirectionDelay':
-      previous = target[direction].delay;
-      if (previous === value) return;
-      target[direction].delay = value;
-      parameter = 'delayMs';
-      generation = ++target[direction].generation;
-      batch.links.add(target);
-      break;
-    case 'setAutomaticity':
-      previous = target.auto.cycle;
-      if (previous === value) return;
-      target.auto.cycle = value;
-      target.auto.token = null;
-      parameter = 'cycleMs';
-      generation = ++target.cycleGeneration;
-      if (value !== null) scheduleNextAutomatic(run, target, batch.tick);
-      break;
+function scheduleAgentStep(run, plan, type) {
+  plan.step++;
+  run.agenda.push({ tick: addTicks(plan.start, plan.step * AGENT_STEP), phase: EDIT, order: plan.order, type, plan });
+}
+
+function startAgent(run, batch, { value: { agent, dose }, commandId, order }) {
+  if (agent === 'stillness') {
+    const plan = { start: batch.tick, dose, commandId, order, step: 0 };
+    run.stillness.push(plan);
+    scheduleAgentStep(run, plan, 'stillnessStep');
+  } else {
+    run.slowRamp = { start: batch.tick, from: run.slowLevel, to: dose, commandId, order, step: 0 };
+    scheduleAgentStep(run, run.slowRamp, 'slowStep');
   }
-  emit(run, batch, 'parameter_changed', {
-    parameter, commandId, generation, ...targetRef, previous: toMs(previous), value: toMs(value),
-  });
+}
+
+function setErpModifier(run, batch, node, add, scale, commandId) {
+  const previous = restedErp(node);
+  node.agentErpAdd = add;
+  node.agentErpScale = scale;
+  const value = restedErp(node);
+  if (previous === value) return;
+  batch.nodes.add(node);
+  parameterChanged(run, batch, 'erpMs', commandId, ++node.erpGeneration, { nodeId: node.id }, toMs(previous), toMs(value), 'agent');
+}
+
+function setCycleModifier(run, batch, node, scale, commandId) {
+  const previous = agentCycle(node, node.auto.cycle);
+  node.agentCycleScale = scale;
+  const value = agentCycle(node, node.auto.cycle);
+  if (previous === value) return;
+  parameterChanged(run, batch, 'cycleMs', commandId, ++node.cycleGeneration, { nodeId: node.id }, toMs(previous), toMs(value), 'agent');
+}
+
+// Stillness: the strongest active envelope sets e(t) for every site, in node ID order.
+function stepStillness(run, batch, { plan }) {
+  const ended = plan.step * AGENT_STEP >= STILLNESS_END;
+  if (ended) run.stillness.splice(run.stillness.indexOf(plan), 1);
+  let level = 0;
+  for (const active of run.stillness) level = Math.max(level, active.dose * stillnessEnvelope(batch.tick - active.start));
+  for (const node of run.nodes.values()) {
+    if (node.tissue === 'nodal') setErpModifier(run, batch, node, Math.round(STILLNESS_NODAL_ERP * level), 1, plan.commandId);
+    else if (node.tissue === 'atrial') setErpModifier(run, batch, node, 0, 1 - STILLNESS_ATRIAL_ERP * level, plan.commandId);
+    else if (node.tissue === 'sinus') setCycleModifier(run, batch, node, 1 + STILLNESS_SINUS_CYCLE * level, plan.commandId);
+  }
+  if (!ended) scheduleAgentStep(run, plan, 'stillnessStep');
+}
+
+// Slow the current: the dose level ramps linearly and then persists until reset.
+function stepSlow(run, batch, { plan }) {
+  if (run.slowRamp !== plan) return;
+  const steps = SLOW_RAMP / AGENT_STEP;
+  const level = plan.step >= steps ? plan.to : plan.from + (plan.to - plan.from) * plan.step / steps;
+  const previous = run.slowLevel;
+  run.slowLevel = level;
+  if (level !== previous) {
+    for (const link of run.links.values()) {
+      if (!link.nodal) parameterChanged(run, batch, 'slowing', plan.commandId, ++link.slowingGeneration, { linkId: link.id }, previous, level, 'agent');
+    }
+  }
+  if (plan.step < steps) scheduleAgentStep(run, plan, 'slowStep');
+  else run.slowRamp = null;
+}
+
+function applyEdit(run, batch, item) {
+  switch (item.type) {
+    case 'setLinkEnabled': return enableLink(run, batch, item);
+    case 'setNodeERP': return editErp(run, batch, item);
+    case 'setDirectionDelay': return editDelay(run, batch, item);
+    case 'setAutomaticity': return editCycle(run, batch, item);
+    case 'setRestitution': return editRestitution(run, batch, item);
+    case 'setDecrement':
+    case 'setEntry': return editExtraLaw(run, batch, item);
+    case 'setCoupling': return editCoupling(run, batch, item);
+    case 'setTone': return editTone(run, batch, item);
+    case 'setAutonomic': return editAutonomic(run, batch, item);
+    case 'cancelTrain': return cancelTrain(run, batch, item);
+    case 'ablate': return startLesion(run, batch, item);
+    case 'lesionStep': return stepLesion(run, batch, item);
+    case 'applyAgent': return startAgent(run, batch, item);
+    case 'stillnessStep': return stepStillness(run, batch, item);
+    case 'slowStep': return stepSlow(run, batch, item);
+  }
+  throw new Error(`Unhandled edit ${item.type}`);
 }
 
 function intersection(a, b) {
@@ -189,17 +435,31 @@ function applyCollision(run, batch, collision) {
 function addCause(batch, node, event, source) {
   let causes = batch.causes.get(node);
   if (causes === undefined) {
-    causes = { ids: [], sources: new Set(), links: new Set() };
+    causes = { ids: [], sources: new Set(), links: new Set(), automatic: false };
     batch.causes.set(node, causes);
   }
   causes.ids.push(event.eventId);
   causes.sources.add(source);
+  if (source === 'automaticity') causes.automatic = true;
   if (event.type === 'conduction_arrived') causes.links.add(event.linkId);
 }
 
 function attempt(run, batch, node, source, triggerId) {
   const event = emit(run, batch, 'stimulus_attempted', { nodeId: node.id, source, triggerId });
   addCause(batch, node, event, source);
+}
+
+// Pulses enter the stimulus phase by train command order; each schedules its successor.
+function pulse(run, batch, { train, index }) {
+  if (!train.active) return;
+  attempt(run, batch, train.node, 'stimulus', `${train.commandId}#${index}`);
+  train.delivered = index;
+  if (index < train.count) {
+    run.agenda.push({ tick: addTicks(batch.tick, train.cycle), phase: STIMULUS, order: train.order, train, index: index + 1 });
+  } else {
+    train.active = false;
+    batch.trains.push({ train, cancelled: false });
+  }
 }
 
 function arrive(run, batch, transit) {
@@ -214,6 +474,19 @@ function arrive(run, batch, transit) {
   addCause(batch, transit.to, event, 'conduction');
 }
 
+// §C. A driven capture earlier than the cycle grows suppression; a spontaneous firing decays it.
+function updateSuppression(run, node, spontaneous, interval, tick) {
+  const auto = node.auto;
+  const { gain, max, warmup } = auto.overdrive;
+  if (spontaneous) {
+    auto.suppression = Math.round(warmup * auto.suppression);
+    return;
+  }
+  if (interval === null) return;
+  const cycle = effectiveCycle(run, node, tick);
+  if (interval < cycle) auto.suppression = Math.min(max, auto.suppression + Math.round(gain * (cycle - interval)));
+}
+
 function determineOutcomes(run, batch) {
   const captures = [];
   for (const node of [...batch.causes.keys()].sort(byId)) {
@@ -224,6 +497,17 @@ function determineOutcomes(run, batch) {
       causeIds: Object.freeze(causes.ids),
       incomingLinkIds: Object.freeze([...causes.links].sort()),
     };
+    // §D entrance block: only the focus's own automatic attempt can capture it.
+    if (node.auto.protected && !causes.automatic) {
+      const refractory = node.until !== null && batch.tick < node.until;
+      emit(run, batch, 'activation_blocked', {
+        ...common,
+        cause: 'protected',
+        remainingErpMs: refractory ? toMs(node.until - batch.tick) : 0,
+        refractoryUntilMs: toMs(node.until),
+      });
+      continue;
+    }
     if (node.until !== null && batch.tick < node.until) {
       emit(run, batch, 'activation_blocked', {
         ...common,
@@ -236,18 +520,27 @@ function determineOutcomes(run, batch) {
     const priorUntil = node.until;
     const previous = node.last;
     const recoveryBefore = recoveryAt(node, batch.tick);
+    const interval = previous === null ? null : batch.tick - previous;
+    // §A uses the pre-capture state: DI is measured from the previous refractory end.
+    const diastolicInterval = priorUntil === null ? null : batch.tick - priorUntil;
+    const erp = node.restitution === null ? restedErp(node) : agentErp(node, restitutionErp(node.restitution, diastolicInterval));
+    if (node.auto.overdrive !== null && node.auto.cycle !== null) {
+      updateSuppression(run, node, causes.automatic, interval, batch.tick);
+    }
     node.last = batch.tick;
-    node.until = addTicks(batch.tick, node.erp);
+    node.until = addTicks(batch.tick, erp);
     batch.nodes.add(node);
-    const activation = emit(run, batch, 'activation', {
+    const payload = {
       ...common,
       priorActivationMs: toMs(previous),
-      intervalMs: previous === null ? null : toMs(batch.tick - previous),
-      erpMs: toMs(node.erp),
+      intervalMs: interval === null ? null : toMs(interval),
+      erpMs: toMs(erp),
       refractoryUntilMs: toMs(node.until),
       recoveryBefore,
-    });
-    captures.push({ node, activation, priorUntil, incoming: causes.links });
+    };
+    if (run.v11) payload.diastolicIntervalMs = toMs(diastolicInterval);
+    const activation = emit(run, batch, 'activation', payload);
+    captures.push({ node, activation, priorUntil, incoming: causes.links, interval });
   }
   return captures;
 }
@@ -259,12 +552,44 @@ function transitDuration(settings, tick, priorUntil) {
   return addTicks(delay, Math.round(decrement.maxExtra * Math.exp(-recoveryInterval / decrement.tau)));
 }
 
+function nodalFactor(run, node, tick) {
+  if (node.tissue !== 'nodal') return 1;
+  let factor = 1;
+  if (run.tone !== 0) factor *= 1 - TONE_DECREMENT * run.tone;
+  if (run.autonomic?.nodal) factor *= breathFactor(run.autonomic, tick);
+  return factor;
+}
+
+// Contract 1.1.0 travel time: link delay (with lesion), Slow, source decrement, then §B entry
+// slowing from the destination state after every outcome of this batch.
+function delayParts(run, capture, link, direction, to, departure) {
+  const settings = link[direction];
+  const base = settings.delay;
+  const linkDelay = link.lesion === null ? base : lesionDelay(base, link.lesion.progress);
+  const agent = run.slowLevel > 0 && !link.nodal ? slowExtra(linkDelay, run.slowLevel, capture.interval) : 0;
+  let source = 0;
+  if (settings.decrement !== null && capture.priorUntil !== null) {
+    source = decrementExtra(settings.decrement, Math.max(0, departure - capture.priorUntil), nodalFactor(run, capture.node, departure));
+  }
+  const nominal = addTicks(departure, linkDelay + agent + source);
+  const entry = settings.entry !== null && to.until !== null && nominal >= to.until ? entryExtra(settings.entry, nominal - to.until) : 0;
+  return { base, lesion: linkDelay - base, agent, source, entry };
+}
+
 function launch(run, batch, capture, link, direction) {
   const ordinal = ++run.transitSeq;
   const departure = batch.tick;
-  const arrival = addTicks(departure, transitDuration(link[direction], departure, capture.priorUntil));
   const to = run.nodes.get(direction === 'ab' ? link.b : link.a);
-  const event = emit(run, batch, 'conduction_launched', {
+  let parts = null;
+  let duration;
+  if (run.v11) {
+    parts = delayParts(run, capture, link, direction, to, departure);
+    duration = parts.base + parts.lesion + parts.agent + parts.source + parts.entry;
+  } else {
+    duration = transitDuration(link[direction], departure, capture.priorUntil);
+  }
+  const arrival = addTicks(departure, duration);
+  const payload = {
     transitId: `t${ordinal}`,
     activationId: capture.activation.eventId,
     linkId: link.id,
@@ -273,7 +598,14 @@ function launch(run, batch, capture, link, direction) {
     toNodeId: to.id,
     departureMs: toMs(departure),
     arrivalMs: toMs(arrival),
-  });
+  };
+  if (parts !== null) {
+    payload.delayParts = Object.freeze({
+      baseMs: toMs(parts.base), sourceMs: toMs(parts.source), entryMs: toMs(parts.entry),
+      lesionMs: toMs(parts.lesion), agentMs: toMs(parts.agent),
+    });
+  }
+  const event = emit(run, batch, 'conduction_launched', payload);
   const transit = { ordinal, event, direction, departure, arrival, link, to };
   for (const existing of link.active.values()) considerCollision(run, batch, link, existing, transit);
   link.active.set(ordinal, transit);
@@ -288,11 +620,45 @@ function drain(run, batch, phase, process) {
   }
 }
 
+// §D. Each accepted activation of a coupling source shifts the target's next attempt.
+// Inputs outside the target's current cycle (phase < 0 or >= 1) leave it unchanged.
+function modulate(run, batch, captures, planned) {
+  for (const capture of captures) {
+    for (const coupling of run.couplingsFrom.get(capture.node) ?? []) {
+      charge(batch);
+      const target = coupling.target;
+      const auto = target.auto;
+      if (coupling.amplitude === 0 || auto.cycle === null) continue;
+      const pending = planned.has(target) ? planned.get(target) : (auto.token === null ? null : auto.next);
+      if (pending === null) continue;
+      const cycle = effectiveCycle(run, target, batch.tick);
+      const phase = (batch.tick - auto.origin) / cycle;
+      if (phase < 0 || phase >= 1) continue;
+      const shift = phaseShift(cycle, coupling.amplitude, phase);
+      const next = Math.max(addTicks(batch.tick, 1), addTicks(pending, shift));
+      planned.set(target, next);
+      emit(run, batch, 'phase_modulated', {
+        nodeId: target.id,
+        couplingId: coupling.id,
+        sourceActivationId: capture.activation.eventId,
+        phase,
+        shiftMs: toMs(shift),
+        nextAttemptMs: toMs(next),
+      });
+    }
+  }
+}
+
 function processBatch(run, tick, budget) {
-  const batch = { tick, budget, events: [], nodes: new Set(), links: new Set(), transits: new Map(), causes: new Map() };
+  const batch = {
+    tick, budget, events: [], nodes: new Set(), links: new Set(), transits: new Map(), causes: new Map(), trains: [],
+  };
   drain(run, batch, EDIT, edit => applyEdit(run, batch, edit));
   drain(run, batch, COLLISION, collision => applyCollision(run, batch, collision));
-  drain(run, batch, STIMULUS, item => attempt(run, batch, item.target, 'stimulus', item.commandId));
+  drain(run, batch, STIMULUS, item => {
+    if (item.train !== undefined) pulse(run, batch, item);
+    else attempt(run, batch, item.target, 'stimulus', item.commandId);
+  });
   const dueAutomatic = [];
   drain(run, batch, AUTOMATIC, ({ node, token }) => {
     if (node.auto.token !== token) return;
@@ -315,7 +681,17 @@ function processBatch(run, tick, budget) {
   // Finish that collision in this batch after its causal launch.
   drain(run, batch, COLLISION, collision => applyCollision(run, batch, collision));
   for (const node of dueAutomatic) resetAutomatic.add(node);
-  for (const node of resetAutomatic) scheduleNextAutomatic(run, node, tick);
+  // Reset first, then modulate (§D), then commit the schedules.
+  const planned = new Map();
+  for (const node of resetAutomatic) planned.set(node, planNextAutomatic(run, node, tick));
+  if (run.couplingsFrom.size > 0) modulate(run, batch, captures, planned);
+  for (const [node, next] of planned) scheduleAutomatic(run, node, next);
+  // Trains close in the order they closed: cancellations (edit phase), then completions (stimulus phase).
+  for (const { train, cancelled } of batch.trains) {
+    emit(run, batch, 'train_completed', {
+      commandId: train.commandId, trainId: train.commandId, delivered: train.delivered, count: train.count, cancelled,
+    });
+  }
   return batch;
 }
 
@@ -328,18 +704,21 @@ export class Engine {
   #run = null;
   #options;
 
-  constructor({ processingBudget = 10_000, historyBatches = 4096, maxNodes = 4096, maxLinks = 8192 } = {}) {
+  constructor({
+    processingBudget = 10_000, historyBatches = 4096, maxNodes = 4096, maxLinks = 8192, maxConcurrentTrains = TRAIN_CONCURRENCY_MAX,
+  } = {}) {
     this.#options = {
       processingBudget: requireLimit(processingBudget, 'Processing budget'),
       historyBatches: requireLimit(historyBatches, 'History batch limit'),
       maxNodes: requireLimit(maxNodes, 'Maximum nodes'),
       maxLinks: requireLimit(maxLinks, 'Maximum links'),
+      maxConcurrentTrains: requireLimit(maxConcurrentTrains, 'Maximum concurrent trains'),
     };
   }
 
   reset(world, freshRunId) {
     requireId(freshRunId, 'runId');
-    const { worldId, nodes, links } = readWorld(world, this.#options);
+    const { worldId, nodes, links, v11, coupling, autonomic, maxConcurrentTrains } = readWorld(world, this.#options);
     nodes.sort(byId);
     links.sort(byId);
     const run = {
@@ -354,14 +733,37 @@ export class Engine {
       transitSeq: 0,
       autoSeq: 0,
       fault: null,
+      v11,
+      autonomic,
+      autonomicGeneration: 0,
+      maxConcurrentTrains,
+      lineClosures: new Map(),
+      tone: 0,
+      toneGeneration: 0,
+      couplings: new Map(coupling.map(entry => [entry.id, entry])),
+      couplingsFrom: new Map(),
+      trains: new Map(),
+      stillness: [],
+      slowRamp: null,
+      slowLevel: 0,
     };
     for (const link of links) {
       run.nodes.get(link.a).incident.push({ link, direction: 'ab' });
       run.nodes.get(link.b).incident.push({ link, direction: 'ba' });
     }
+    for (const entry of [...coupling].sort(byId)) {
+      const from = run.nodes.get(entry.from);
+      entry.target = run.nodes.get(entry.to);
+      if (!run.couplingsFrom.has(from)) run.couplingsFrom.set(from, []);
+      run.couplingsFrom.get(from).push(entry);
+    }
     for (const [order, node] of nodes.entries()) {
       node.order = order;
-      if (node.auto.firstAttempt !== null) scheduleAutomatic(run, node, node.auto.firstAttempt);
+      if (node.auto.firstAttempt !== null) {
+        // Before its first attempt a focus is treated as having fired one cycle earlier.
+        node.auto.origin = node.auto.firstAttempt - node.auto.cycle;
+        scheduleAutomatic(run, node, node.auto.firstAttempt);
+      }
     }
     run.history = new History(run, this.#options.historyBatches);
     const initial = run.history.snapshot(run, 0);
@@ -380,11 +782,54 @@ export class Engine {
     return run;
   }
 
+  // Train admission depends only on earlier commands, never on the horizon, so a
+  // command log is accepted identically live and on replay.
+  #admitTrain(run, { value: { start, last } }) {
+    let overlapping = 0;
+    for (const train of run.trains.values()) {
+      const end = Math.min(train.last, train.cancelTick - 1);
+      if (end >= train.start && train.start <= last && start <= end) overlapping++;
+    }
+    if (overlapping >= run.maxConcurrentTrains) {
+      throw new RangeError(`At most ${run.maxConcurrentTrains} trains may overlap in time`);
+    }
+  }
+
+  // §F. The first complete ablate of a link (by time, then submission) closes it at start +
+  // duration for the rest of the run. Judged from earlier commands only, like train admission.
+  #admitLinkEdit(run, accepted) {
+    const closure = run.lineClosures.get(accepted.target);
+    if (accepted.type === 'setLinkEnabled' && accepted.value && closure !== undefined && closure.end <= accepted.tick) {
+      throw new RangeError(`Link ${accepted.target.id} is closed by the complete lesion ${closure.commandId}; reset the run to reopen it`);
+    }
+  }
+
+  #noteClosure(run, { type, target, tick, value, commandId }) {
+    if (type !== 'ablate' || value.completeness !== 1) return;
+    const closure = run.lineClosures.get(target);
+    if (closure === undefined || tick < closure.start) {
+      run.lineClosures.set(target, { start: tick, end: addTicks(tick, value.duration), commandId });
+    }
+  }
+
   enqueue(command) {
     const run = this.#running();
     const accepted = readCommand(command, run);
+    if (accepted.type === 'stimulateTrain') this.#admitTrain(run, accepted);
+    if (accepted.type === 'setLinkEnabled' && run.v11) this.#admitLinkEdit(run, accepted);
     const order = run.commandIds.size;
     run.commandIds.add(accepted.commandId);
+    this.#noteClosure(run, accepted);
+    if (accepted.type === 'stimulateTrain') {
+      const { start, cycle, count, last } = accepted.value;
+      const train = {
+        commandId: accepted.commandId, node: accepted.target, start, cycle, count, last, order, active: true, cancelTick: Infinity, delivered: 0,
+      };
+      run.trains.set(train.commandId, train);
+      run.agenda.push({ tick: start, phase: STIMULUS, order, train, index: 1 });
+      return;
+    }
+    if (accepted.type === 'cancelTrain') accepted.target.cancelTick = Math.min(accepted.target.cancelTick, accepted.tick);
     run.agenda.push({ ...accepted, order, phase: accepted.type === 'stimulate' ? STIMULUS : EDIT });
   }
 

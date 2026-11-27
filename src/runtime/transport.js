@@ -1,4 +1,6 @@
 export const DEFAULT_DILATION = 4;
+// Creator decision (2026-11-27): playback runs at 1/4 to 1/12 of real time.
+export const MAX_DILATION = 12;
 export const WAKE_WALL_MS = 25;
 export const LOOKAHEAD_WALL_MS = 60;
 export const INPUT_MARGIN_WALL_MS = 5;
@@ -23,8 +25,8 @@ export function createTransport({
   onFault = () => {},
   onStateChange = () => {},
 }) {
-  if (!Number.isFinite(dilation) || dilation < 1 || dilation > 8) {
-    throw new RangeError('Dilation must be between 1 and 8');
+  if (!Number.isFinite(dilation) || dilation < 1 || dilation > MAX_DILATION) {
+    throw new RangeError(`Dilation must be between 1 and ${MAX_DILATION}`);
   }
 
   const usedRunIds = new Set();
@@ -239,8 +241,8 @@ export function createTransport({
   }
 
   function setDilation(value) {
-    if (!Number.isFinite(value) || value < 1 || value > 8) {
-      throw new RangeError('Dilation must be between 1 and 8');
+    if (!Number.isFinite(value) || value < 1 || value > MAX_DILATION) {
+      throw new RangeError(`Dilation must be between 1 and ${MAX_DILATION}`);
     }
     if (isPlaying()) refresh(nowSec());
     if (value === (pendingDilation() ?? dilation)) return false;

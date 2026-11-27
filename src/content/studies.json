@@ -1,0 +1,141 @@
+[
+  {
+    "id": "prelude",
+    "numeral": "I",
+    "title": "Prelude",
+    "subtitle": "A pause, then the rhythm finds its way back",
+    "layer2Term": "fermata",
+    "glossaryIds": [
+      "rhythm",
+      "pause",
+      "tempo",
+      "faster",
+      "fermata"
+    ],
+    "epMechanism": "In this lumped-element model, sinus rhythm with overdrive suppression and optional respiratory sinus arrhythmia; releasing atrial pacing produces a long first return followed by a warm-up.",
+    "tryThis": "Hold a tempo for a little while, then let go and listen for the return."
+  },
+  {
+    "id": "echo",
+    "numeral": "II",
+    "title": "Echo",
+    "subtitle": "An arpeggio folds into a chord",
+    "layer2Term": null,
+    "glossaryIds": [
+      "arpeggio",
+      "chord",
+      "echo",
+      "rhythm"
+    ],
+    "epMechanism": "In this lumped-element model, dual AV-nodal pathways: a premature atrial beat blocks in the fast pathway, conducts slowly down the slow one, and may return up the fast one.",
+    "tryThis": "Tap one early beat and listen for the sound that comes back."
+  },
+  {
+    "id": "meter",
+    "numeral": "III",
+    "title": "Meter",
+    "subtitle": "Beats fall into groups",
+    "layer2Term": "meter",
+    "glossaryIds": [
+      "beat",
+      "rhythm",
+      "rest",
+      "slower",
+      "meter"
+    ],
+    "epMechanism": "In this lumped-element model, progressive nodal decrement produces Wenckebach periodicity as the drive cycle shortens; an infranodal mode drops beats without prolongation.",
+    "tryThis": "Hold a tempo and quicken it slowly until a beat goes missing."
+  },
+  {
+    "id": "ostinato",
+    "numeral": "IV",
+    "title": "Ostinato",
+    "subtitle": "A fast figure and its slower shadow",
+    "layer2Term": "ostinato",
+    "glossaryIds": [
+      "rhythm",
+      "beat",
+      "slower",
+      "faster",
+      "ostinato"
+    ],
+    "epMechanism": "In this lumped-element model, a macroreentrant atrial ring filtered by a nodal chain gives variable conduction to the ventricle; entrainment and isthmus ablation are available gestures.",
+    "tryThis": "Draw a line across the ring and watch the figure slow, then stop."
+  },
+  {
+    "id": "retrograde",
+    "numeral": "V",
+    "title": "Retrograde",
+    "subtitle": "A melody, then the same melody backwards",
+    "layer2Term": "retrograde",
+    "glossaryIds": [
+      "melody",
+      "rhythm",
+      "beat",
+      "retrograde"
+    ],
+    "epMechanism": "In this lumped-element model, an accessory pathway supports orthodromic and antidromic circulation, which visit the shared sites in opposite orders.",
+    "tryThis": "Start a circuit with an early tap, then try one from the other side."
+  },
+  {
+    "id": "ghost",
+    "numeral": "VI",
+    "title": "Ghost",
+    "subtitle": "One voice goes quiet and stays quiet",
+    "layer2Term": null,
+    "glossaryIds": [
+      "rhythm",
+      "beat",
+      "rest",
+      "pause"
+    ],
+    "epMechanism": "In this lumped-element model, concealed retrograde penetration keeps one bundle refractory under steady pacing, so it stays silent until a longer interval releases it.",
+    "tryThis": "Hold a tempo, then leave out one beat and listen for the voice to return."
+  },
+  {
+    "id": "canon",
+    "numeral": "VII",
+    "title": "Canon",
+    "subtitle": "One melody, two voices, half a lap apart",
+    "layer2Term": "canon",
+    "glossaryIds": [
+      "melody",
+      "round",
+      "rhythm",
+      "beat",
+      "canon"
+    ],
+    "epMechanism": "In this lumped-element model, a single circulating wave is joined by a second wave in the excitable gap, and entry slowing settles their spacing at half a lap.",
+    "tryThis": "Add one well-timed tap and watch the second voice find its place."
+  },
+  {
+    "id": "hemiola",
+    "numeral": "VIII",
+    "title": "Hemiola",
+    "subtitle": "Two tempos learn to line up",
+    "layer2Term": "hemiola",
+    "glossaryIds": [
+      "tempo",
+      "rhythm",
+      "beat",
+      "hemiola"
+    ],
+    "epMechanism": "In this lumped-element model, modulated parasystole: electrotonic coupling lets one automatic focus shift another, which can phase-lock the two at ratios such as 3:2 and 4:3.",
+    "tryThis": "Turn up Listen to each other slowly and notice when the two voices settle."
+  },
+  {
+    "id": "unknown",
+    "numeral": "Coda",
+    "title": "Unknown",
+    "subtitle": "A hidden rhythm to work out",
+    "layer2Term": null,
+    "glossaryIds": [
+      "rhythm",
+      "beat",
+      "pause",
+      "rest"
+    ],
+    "epMechanism": "In this lumped-element model, a generated hidden substrate that you probe with pacing and taps; the consequences emerge from the same engine as every other study.",
+    "tryThis": "Tap and listen, then say what you think is hidden."
+  }
+]

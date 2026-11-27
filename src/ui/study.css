@@ -1,0 +1,102 @@
+/* Study No. 2 additions: study line, view switcher, inspector card layer,
+   reading sheet and the Laboratory study panel. Plate palette, fine lines. */
+#worlds .study-button{margin-left:clamp(4px,1.6vw,18px);position:relative}
+#worlds .study-button::before{content:"";position:absolute;left:calc(-1 * clamp(3px,1vw,11px));top:30%;bottom:30%;border-left:1px solid #34383b}
+#study-line{text-align:center;margin:10px 12px 0}
+.study-title{margin:0;font:clamp(22px,2.6vw,30px) Georgia,'Times New Roman',serif;font-style:italic;letter-spacing:.3px}
+#study-numeral{font-style:normal;font-size:.62em;letter-spacing:2px;color:var(--muted);vertical-align:.18em}
+.study-subtitle{margin:4px 0 0;color:#c2c1bb;font:15px Georgia,serif;display:flex;justify-content:center;align-items:baseline;flex-wrap:wrap;gap:0 4px}
+.study-subtitle>span[aria-hidden]{color:var(--muted)}
+.text-link{min-height:32px;padding:4px 6px;border:0;background:transparent!important;color:var(--gold);font:inherit;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.chip{min-height:26px;margin-left:8px;padding:2px 10px;border-radius:999px;border-color:#83A9C8;color:#cfe3f3;font:12px system-ui}
+#views{display:flex;justify-content:center;align-items:center;gap:2px;margin:6px 0 2px;color:#5d6366}
+#views button{min-height:36px;padding:6px 10px;border-color:transparent;background:transparent;color:var(--muted);font:13px Georgia,serif;letter-spacing:.4px}
+#views button:hover{color:var(--ink)}
+#views button[aria-pressed=true]{color:var(--ink);box-shadow:inset 0 -1px var(--gold);border-radius:0}
+#view-canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
+#stage canvas[hidden]{display:none}
+.inspect-list{margin-top:14px}
+.inspect-list .hint{margin:4px 0 6px}
+.inspect-list .cuts button{font-size:12px}
+#card-layer{display:none}
+#card-layer.open{display:block;position:fixed;z-index:20;right:16px;top:76px;max-height:calc(100vh - 92px);overflow:auto;border-radius:10px;box-shadow:0 18px 50px #000a}
+#card-layer .lab-card{width:min(420px,calc(100vw - 32px))}
+@media(min-width:601px){
+  main:has(> #card-layer.open + #lab:not([hidden])){--card-width:clamp(260px,33vw,420px)}
+  #card-layer.open:has(+ #lab:not([hidden])) .lab-card{width:var(--card-width)}
+  #card-layer.open:has(+ #lab:not([hidden])) .lab-card-fields{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  #card-layer.open + #lab:not([hidden]){width:min(900px,calc(100% - var(--card-width) - 48px));margin-inline-end:max(calc(var(--card-width) + 32px),calc((100% - 900px)/2))}
+}
+dialog#notes-sheet{width:min(720px,100vw);max-height:min(88vh,900px);padding:0;border:1px solid #30383e;border-radius:12px;background:#0d1318;color:var(--ink)}
+dialog#notes-sheet::backdrop{background:#04070acc}
+.notes-bar{position:sticky;top:0;display:flex;align-items:center;gap:12px;padding:10px 12px 10px 22px;background:#0d1318;border-bottom:1px solid #20292e;font:12px system-ui;color:var(--muted)}
+.notes-bar #notes-title{flex:1;letter-spacing:.5px}
+.notes-bar button{min-height:40px;min-width:40px;padding:0;border:0;background:transparent;font-size:22px;color:var(--muted)}
+.draft-mark{padding:2px 8px;border:1px solid var(--gold);border-radius:4px;color:var(--gold);letter-spacing:2px;font-size:11px}
+.notes-body{max-width:62ch;margin:0 auto;padding:18px 24px 40px;font:17px/1.6 ui-serif,Georgia,'Times New Roman',serif;color:#ddd6c8}
+.notes-body h2{font:italic 32px Georgia,serif;margin:18px 0 4px}
+.notes-body h3{font:600 13px system-ui;letter-spacing:1.6px;text-transform:uppercase;color:var(--gold);margin:26px 0 6px}
+.notes-body blockquote{margin:12px 0;padding:2px 14px;border-left:2px solid #83A9C8;color:var(--muted);font-size:14px}
+.notes-body ul{padding-left:20px}
+#lab-study{margin-bottom:18px}
+.study-lab{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.study-lab-panel{padding:14px 16px;background:#0D1520;border:1px solid #1B2736;border-radius:10px}
+.study-lab-panel h3{margin:0 0 6px;font:italic 21px Georgia,serif;font-weight:400}
+.study-lab-panel p{margin:4px 0 10px}
+.study-lab-mechanism{color:#d9d4ca!important}
+.study-lab-model-note,.study-lab-hint{font-size:12px}
+.study-lab-guided{color:#cfe3f3!important;font-size:13px}
+.study-lab-guided:empty{display:none}
+.study-lab-fields,.study-lab-curve-controls{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,170px),1fr));gap:8px 14px;margin:10px 0}
+.study-lab-field{display:flex;flex-direction:column;gap:4px;color:var(--muted);font-size:12px}
+.study-lab-field input,.study-lab-field select{min-width:0;width:100%;min-height:38px;padding:6px 8px;color:var(--ink);background:#070B12;border:1px solid #2a3644;border-radius:6px}
+.study-lab-actions{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
+.study-lab progress{width:100%;height:6px;accent-color:#C8A878}
+.study-lab-status{font-size:13px;color:#d9d4ca!important;min-height:1.2em}
+.study-lab-plots{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:14px}
+.study-lab-figure{margin:0;padding:8px;background:#070B12;border:1px solid #1B2736;border-radius:8px;min-width:0}
+.study-lab-figure canvas{display:block;width:100%;height:300px}
+.study-lab-figure figcaption{margin:6px 4px 0;font-size:12px;color:var(--muted)}
+.study-lab-table summary{min-height:32px;padding:6px 4px;text-align:left;font-size:12px}
+.study-lab-table div{max-height:220px;overflow:auto}
+.study-lab-table table{width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums}
+.study-lab-table caption{text-align:left;color:var(--muted);padding:2px 4px}
+.study-lab-table th,.study-lab-table td{padding:2px 6px;text-align:right;border-bottom:1px solid #1B2736}
+.study-lab-glossary{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));gap:10px}
+.study-lab-word{padding:10px 12px;border:1px solid #2b3540;border-radius:8px}
+.study-lab-word h4{margin:0 0 4px;font:italic 17px Georgia,serif;color:var(--gold)}
+.study-lab-word.layer-2 h4{color:#83A9C8}
+.study-lab-word p{margin:2px 0;font-size:13px}
+.study-lab-word .study-note{color:#cfe3f3!important}
+@media(max-width:600px){
+  #card-layer.open{left:0;right:0;top:auto;bottom:0;max-height:72vh;border-radius:12px 12px 0 0}
+  #card-layer .lab-card{width:100%;border-radius:12px 12px 0 0}
+  .lab-card-plot canvas{height:260px}
+  .study-title{font-size:23px}
+  .study-subtitle{font-size:14px}
+  .study-lab-figure canvas{height:250px}
+  .notes-body{font-size:16px;padding:14px 18px 30px}
+}
+/* The page's header and summary rules must not reach inside the card. */
+#card-layer .lab-card-header{padding:0;justify-content:flex-start}
+#card-layer .lab-card-header h3{font-size:21px}
+#card-layer .lab-card-close{min-height:36px;min-width:36px;padding:0;border:0}
+#card-layer summary{text-align:left;min-height:32px;padding:6px 0}
+/* Ladder and Staves keep their lower margin for calipers: status moves to the top. */
+#stage.alt-view #status{top:6px;bottom:auto}
+@media(max-width:600px){
+  #stage.alt-view{display:grid;grid-template-rows:auto minmax(0,1fr)}
+  #stage.alt-view #status{position:static;grid-row:1;padding:6px 12% 0}
+  #stage.alt-view #view-canvas{position:static;grid-row:2;min-height:0}
+}
+
+/* Lab · Model controls (revise M2) */
+.study-lab-model { display: grid; gap: 0.75rem; margin: 0.5rem 0; }
+.study-lab-model-row { display: grid; grid-template-columns: minmax(10rem, 1fr) minmax(8rem, 2fr) 4.5rem; align-items: center; gap: 0.25rem 0.75rem; }
+.study-lab-model-row input[type=range] { width: 100%; min-height: 44px; }
+.study-lab-model-value { font-variant-numeric: tabular-nums; text-align: right; }
+.study-lab-model-row .study-lab-hint { grid-column: 1 / -1; margin: 0; }
+@media (max-width: 560px) {
+  .study-lab-model-row { grid-template-columns: 1fr 4.5rem; }
+  .study-lab-model-row input[type=range] { grid-column: 1 / -1; grid-row: 2; }
+}

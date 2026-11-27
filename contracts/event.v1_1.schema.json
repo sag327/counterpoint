@@ -1,0 +1,1956 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$comment": "Counterpoint contract 1.1.0 events. Every 1.0.0 event also validates here; 1.1.0 runs add the optional fields and the new event types.",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "stimulus_attempted"
+          ]
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "enum": [
+            "stimulus",
+            "automaticity"
+          ]
+        },
+        "triggerId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "nodeId",
+        "source",
+        "triggerId"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "conduction_arrived"
+          ]
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "linkId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "transitId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "nodeId",
+        "linkId",
+        "transitId"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "activation"
+          ]
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "enum": [
+            "stimulus",
+            "automaticity",
+            "conduction",
+            "mixed"
+          ]
+        },
+        "causeIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "incomingLinkIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "priorActivationMs": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "intervalMs": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "erpMs": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "refractoryUntilMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "recoveryBefore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "diastolicIntervalMs": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "nodeId",
+        "source",
+        "causeIds",
+        "incomingLinkIds",
+        "priorActivationMs",
+        "intervalMs",
+        "erpMs",
+        "refractoryUntilMs",
+        "recoveryBefore"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "activation_blocked"
+          ]
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "enum": [
+            "stimulus",
+            "automaticity",
+            "conduction",
+            "mixed"
+          ]
+        },
+        "causeIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "incomingLinkIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "cause": {
+          "enum": [
+            "refractory"
+          ]
+        },
+        "remainingErpMs": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "refractoryUntilMs": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "nodeId",
+        "source",
+        "causeIds",
+        "incomingLinkIds",
+        "cause",
+        "remainingErpMs",
+        "refractoryUntilMs"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "activation_blocked"
+          ]
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "enum": [
+            "stimulus",
+            "automaticity",
+            "conduction",
+            "mixed"
+          ]
+        },
+        "causeIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "incomingLinkIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "cause": {
+          "enum": [
+            "protected"
+          ]
+        },
+        "remainingErpMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "refractoryUntilMs": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "nodeId",
+        "source",
+        "causeIds",
+        "incomingLinkIds",
+        "cause",
+        "remainingErpMs",
+        "refractoryUntilMs"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "conduction_launched"
+          ]
+        },
+        "transitId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "activationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "linkId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "linkGeneration": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fromNodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "toNodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "departureMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "arrivalMs": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "delayParts": {
+          "type": "object",
+          "properties": {
+            "baseMs": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "sourceMs": {
+              "type": "number",
+              "minimum": 0
+            },
+            "entryMs": {
+              "type": "number",
+              "minimum": 0
+            },
+            "lesionMs": {
+              "type": "number",
+              "minimum": 0
+            },
+            "agentMs": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "baseMs",
+            "sourceMs",
+            "entryMs",
+            "lesionMs",
+            "agentMs"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "transitId",
+        "activationId",
+        "linkId",
+        "linkGeneration",
+        "fromNodeId",
+        "toNodeId",
+        "departureMs",
+        "arrivalMs"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "conduction_collision"
+          ]
+        },
+        "linkId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "transitIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true
+        },
+        "position": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "linkId",
+        "transitIds",
+        "position"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "conduction_canceled"
+          ]
+        },
+        "linkId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "transitId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cause": {
+          "enum": [
+            "cut",
+            "lesion"
+          ]
+        },
+        "position": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "linkId",
+        "transitId",
+        "cause",
+        "position"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "link_changed"
+          ]
+        },
+        "linkId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "previous": {
+          "type": "boolean"
+        },
+        "value": {
+          "type": "boolean"
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cause": {
+          "enum": [
+            "command",
+            "lesion"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "linkId",
+        "previous",
+        "value",
+        "generation",
+        "commandId"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "parameter_changed"
+          ]
+        },
+        "parameter": {
+          "enum": [
+            "erpMs"
+          ]
+        },
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "previous": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "value": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "cause": {
+          "enum": [
+            "command",
+            "agent"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "parameter",
+        "commandId",
+        "generation",
+        "nodeId",
+        "previous",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "parameter_changed"
+          ]
+        },
+        "parameter": {
+          "enum": [
+            "cycleMs"
+          ]
+        },
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "previous": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cause": {
+          "enum": [
+            "command",
+            "agent"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "parameter",
+        "commandId",
+        "generation",
+        "nodeId",
+        "previous",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "parameter_changed"
+          ]
+        },
+        "parameter": {
+          "enum": [
+            "delayMs"
+          ]
+        },
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "linkId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "direction": {
+          "enum": [
+            "ab",
+            "ba"
+          ]
+        },
+        "previous": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "value": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "cause": {
+          "enum": [
+            "command",
+            "lesion"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "parameter",
+        "commandId",
+        "generation",
+        "linkId",
+        "direction",
+        "previous",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "parameter_changed"
+          ]
+        },
+        "parameter": {
+          "enum": [
+            "restitution"
+          ]
+        },
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "previous": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "erpMaxMs": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "amplitudeMs": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "tauMs": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "erpMinMs": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              },
+              "required": [
+                "erpMaxMs",
+                "amplitudeMs",
+                "tauMs",
+                "erpMinMs"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "erpMaxMs": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "amplitudeMs": {
+              "type": "number",
+              "minimum": 0
+            },
+            "tauMs": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "erpMinMs": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "erpMaxMs",
+            "amplitudeMs",
+            "tauMs",
+            "erpMinMs"
+          ],
+          "additionalProperties": false
+        },
+        "cause": {
+          "enum": [
+            "command"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "parameter",
+        "commandId",
+        "generation",
+        "nodeId",
+        "previous",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "parameter_changed"
+          ]
+        },
+        "parameter": {
+          "enum": [
+            "decrement"
+          ]
+        },
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "linkId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "direction": {
+          "enum": [
+            "ab",
+            "ba"
+          ]
+        },
+        "previous": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "maxExtraMs": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "tauMs": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              },
+              "required": [
+                "maxExtraMs",
+                "tauMs"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "maxExtraMs": {
+              "type": "number",
+              "minimum": 0
+            },
+            "tauMs": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "maxExtraMs",
+            "tauMs"
+          ],
+          "additionalProperties": false
+        },
+        "cause": {
+          "enum": [
+            "command"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "parameter",
+        "commandId",
+        "generation",
+        "linkId",
+        "direction",
+        "previous",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "parameter_changed"
+          ]
+        },
+        "parameter": {
+          "enum": [
+            "entry"
+          ]
+        },
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "linkId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "direction": {
+          "enum": [
+            "ab",
+            "ba"
+          ]
+        },
+        "previous": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "maxExtraMs": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "tauMs": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              },
+              "required": [
+                "maxExtraMs",
+                "tauMs"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "maxExtraMs": {
+              "type": "number",
+              "minimum": 0
+            },
+            "tauMs": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "maxExtraMs",
+            "tauMs"
+          ],
+          "additionalProperties": false
+        },
+        "cause": {
+          "enum": [
+            "command"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "parameter",
+        "commandId",
+        "generation",
+        "linkId",
+        "direction",
+        "previous",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "parameter_changed"
+          ]
+        },
+        "parameter": {
+          "enum": [
+            "coupling"
+          ]
+        },
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "couplingId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "previous": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "value": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "cause": {
+          "enum": [
+            "command"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "parameter",
+        "commandId",
+        "generation",
+        "couplingId",
+        "previous",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "parameter_changed"
+          ]
+        },
+        "parameter": {
+          "enum": [
+            "tone"
+          ]
+        },
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "previous": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "value": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "cause": {
+          "enum": [
+            "command"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "parameter",
+        "commandId",
+        "generation",
+        "previous",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "parameter_changed"
+          ]
+        },
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "parameter": {
+          "enum": [
+            "autonomic"
+          ]
+        },
+        "previous": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "breathPeriodMs": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "depth": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 0.5
+                },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "sinus",
+                      "nodal"
+                    ]
+                  },
+                  "uniqueItems": true,
+                  "maxItems": 2
+                }
+              },
+              "required": [
+                "breathPeriodMs",
+                "depth",
+                "targets"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "breathPeriodMs": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "depth": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 0.5
+                },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "sinus",
+                      "nodal"
+                    ]
+                  },
+                  "uniqueItems": true,
+                  "maxItems": 2
+                }
+              },
+              "required": [
+                "breathPeriodMs",
+                "depth",
+                "targets"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cause": {
+          "enum": [
+            "command"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "parameter",
+        "commandId",
+        "generation",
+        "previous",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "parameter_changed"
+          ]
+        },
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "parameter": {
+          "enum": [
+            "protected"
+          ]
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "previous": {
+          "type": "boolean"
+        },
+        "value": {
+          "type": "boolean"
+        },
+        "cause": {
+          "enum": [
+            "command"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "parameter",
+        "commandId",
+        "generation",
+        "nodeId",
+        "previous",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "parameter_changed"
+          ]
+        },
+        "parameter": {
+          "enum": [
+            "slowing"
+          ]
+        },
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "linkId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "previous": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "value": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "cause": {
+          "enum": [
+            "agent"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "parameter",
+        "commandId",
+        "generation",
+        "linkId",
+        "previous",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "phase_modulated"
+          ]
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "couplingId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceActivationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "phase": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 1
+        },
+        "shiftMs": {
+          "type": "number"
+        },
+        "nextAttemptMs": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "nodeId",
+        "couplingId",
+        "sourceActivationId",
+        "phase",
+        "shiftMs",
+        "nextAttemptMs"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "lesion_changed"
+          ]
+        },
+        "linkId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "progress": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "completeness": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "linkId",
+        "progress",
+        "completeness"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "train_completed"
+          ]
+        },
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "delivered": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 64
+        },
+        "trainId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "cancelled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "commandId",
+        "delivered",
+        "trainId",
+        "count",
+        "cancelled"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

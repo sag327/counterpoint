@@ -1,32 +1,54 @@
+import { lesionDelay, restedErp } from './laws.js';
 import { clampUnit, toMs } from './time.js';
 
 const CHECKPOINT_INTERVAL = 64;
 
-function nodeState(node) {
-  return { erp: node.erp, tail: node.tail, last: node.last, until: node.until };
+function extraState(law) {
+  return law === null ? null : Object.freeze({ maxExtraMs: toMs(law.maxExtra), tauMs: toMs(law.tau) });
 }
 
-function directionState(direction) {
-  const decrement = direction.decrement === null ? null : Object.freeze({
-    maxExtraMs: toMs(direction.decrement.maxExtra),
-    tauMs: toMs(direction.decrement.tau),
-  });
-  return Object.freeze({
+// Contract 1.1.0 runs add restitution and suppression; 1.0.0 snapshots are unchanged.
+function nodeState(node, v11) {
+  const state = { erp: restedErp(node), tail: node.tail, last: node.last, until: node.until };
+  if (v11) {
+    const law = node.restitution;
+    state.extra = Object.freeze({
+      restitution: law === null ? null : Object.freeze({
+        erpMaxMs: toMs(law.erpMax), amplitudeMs: toMs(law.amplitude), tauMs: toMs(law.tau), erpMinMs: toMs(law.erpMin),
+      }),
+      suppressionMs: node.auto.overdrive === null ? null : toMs(node.auto.suppression),
+    });
+  }
+  return state;
+}
+
+function directionState(direction, link, v11) {
+  const progress = link.lesion?.progress ?? 0;
+  const state = {
     enabled: direction.enabled,
-    delayMs: toMs(direction.delay),
-    decrement,
-  });
+    delayMs: toMs(lesionDelay(direction.delay, progress)),
+    decrement: extraState(direction.decrement),
+  };
+  if (v11) state.entry = extraState(direction.entry);
+  return Object.freeze(state);
 }
 
-function linkState(link) {
-  return Object.freeze({
+function linkState(link, v11) {
+  const state = {
     a: link.a,
     b: link.b,
     enabled: link.enabled,
     generation: link.generation,
-    ab: directionState(link.ab),
-    ba: directionState(link.ba),
-  });
+    ab: directionState(link.ab, link, v11),
+    ba: directionState(link.ba, link, v11),
+  };
+  if (v11) {
+    state.lesion = link.lesion === null ? null : Object.freeze({
+      progress: link.lesion.progress,
+      completeness: link.lesion.completeness,
+    });
+  }
+  return Object.freeze(state);
 }
 
 export function recoveryAt(node, tick) {
@@ -58,6 +80,7 @@ function readSnapshot(run, tick, state) {
     recoveryTailMs: toMs(node.tail),
     recovery: recoveryAt(node, tick),
     excitable: node.until === null || tick >= node.until,
+    ...node.extra,
   })]);
   return Object.freeze({
     runId: run.id,
@@ -76,12 +99,14 @@ export class History {
   #base;
   #head;
   #limit;
+  #v11;
 
   constructor(run, limit) {
     this.#limit = limit;
+    this.#v11 = run.v11;
     this.#base = {
-      nodes: new Map(Array.from(run.nodes, ([id, node]) => [id, nodeState(node)])),
-      links: new Map(Array.from(run.links, ([id, link]) => [id, linkState(link)])),
+      nodes: new Map(Array.from(run.nodes, ([id, node]) => [id, nodeState(node, run.v11)])),
+      links: new Map(Array.from(run.links, ([id, link]) => [id, linkState(link, run.v11)])),
       transits: new Map(),
     };
     this.#head = copyState(this.#base);
@@ -99,8 +124,8 @@ export class History {
     if (batch.nodes.size === 0 && batch.links.size === 0 && batch.transits.size === 0) return;
     const entry = {
       tick,
-      nodes: Array.from(batch.nodes, node => [node.id, nodeState(node)]),
-      links: Array.from(batch.links, link => [link.id, linkState(link)]),
+      nodes: Array.from(batch.nodes, node => [node.id, nodeState(node, this.#v11)]),
+      links: Array.from(batch.links, link => [link.id, linkState(link, this.#v11)]),
       transits: batch.transits,
       checkpoint: null,
     };
