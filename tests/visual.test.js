@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createRenderer } from '../src/visuals/renderer.js';
+import { createWeaveHistory, sampleWeave, pathPassages } from '../src/visuals/weave.js';
 import { Engine } from '../src/engine/index.js';
 import { circulationWorld } from '../src/worlds/circulation.js';
 import { conductionWorld } from '../src/worlds/conduction.js';
@@ -120,12 +121,14 @@ assert.ok(at(doubleCapture, ringPoint(4)) > 235);
 const block = frame(protocolB.events, 300);
 const blockReduced = frame(protocolB.events, 300, true);
 const refractory = ringPoint(1);
-assert.ok(at(block, refractory) < 150 && at(blockReduced, refractory) < 150);
+assert.ok(at(blockReduced, refractory) < 150);
 const blockArc = { x: refractory.x - 7, y: refractory.y - 4 };
-assert.ok(at(block, blockArc, 3) > 165 && at(blockReduced, blockArc, 3) > 165);
+assert.ok(at(blockReduced, blockArc, 3) > 165);
+assert.ok(at(block, ringPoint(.94), 6) > at(frame(protocolB.events, 380), ringPoint(.94), 6),
+  'refractory block lights the incoming filaments before fading');
 const partiallyRecovered = frame(protocolB.events, 420);
 const fullyRecovered = frame(protocolB.events, 480);
-assert.ok(at(partiallyRecovered, refractory) > at(block, refractory));
+assert.ok(at(partiallyRecovered, refractory) > at(blockReduced, refractory));
 assert.ok(at(fullyRecovered, refractory) > at(partiallyRecovered, refractory));
 const returnWave = frame(protocolB.events, 450);
 assert.ok(at(returnWave, ringPoint(4.5)) > 210);
@@ -182,8 +185,9 @@ const collisionApproach = frame(collisionEvents, 24);
 const collision = frame(collisionEvents, 30);
 const collisionPoint = ringPoint(0.5);
 assert.ok(at(collisionApproach, ringPoint(0.4)) > 210 && at(collisionApproach, ringPoint(0.6)) > 210);
-assert.ok(at(collision, collisionPoint) < 175);
-assert.ok(brightness(collision, collisionPoint.x + 4.4, collisionPoint.y) > 170);
+assert.ok(at(collision, collisionPoint, 5) > 160, 'collision lights the strands at the meeting point');
+const fadedCollision = frame(collisionEvents, 110);
+assert.ok(at(collision, collisionPoint, 5) > at(fadedCollision, collisionPoint, 5));
 assert.deepEqual(fixtureSnapshot(collisionEvents, 30).activeTransits, []);
 
 // Run the production engine ahead of each cursor and compare its native Canvas frame
@@ -365,3 +369,19 @@ if (process.argv[3]) {
   ]);
 }
 console.log('Visual checks passed for all worlds with engine snapshots, contract fixtures and native Canvas 2D.');
+
+// Each fork leg uses its own transit timing and only its own launch history.
+{
+  const engine = new Engine();
+  engine.reset(conductionWorld, 'fork-weave');
+  const events = engine.advanceTo(200);
+  const history = createWeaveHistory()(events, 'fork-weave');
+  const launch = events.find(event => event.type === 'conduction_launched' && event.linkId === 'HV1');
+  const time = launch.departureMs + 17;
+  const atBranch = (id, field = history) =>
+    sampleWeave(pathPassages(field, [], id, time, 260, 0), 'H', .5, time, 260).opening;
+  assert.ok(atBranch('HV1') > 0, 'the faster leg opens behind its halfway point');
+  assert.equal(atBranch('HV2'), 0, 'the slower leg remains gathered ahead of its wave');
+  const missingBranch = createWeaveHistory()(events.filter(event => event.linkId !== 'HV1'), 'fork-weave');
+  assert.equal(atBranch('HV1', missingBranch), 0, 'a junction capture alone cannot open an idle leg');
+}
