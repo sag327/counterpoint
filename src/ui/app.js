@@ -2,7 +2,7 @@ import { CIRCULATION_S2_MS } from '../worlds/circulation.js';
 import { Engine } from '../engine/index.js';
 import { createTransport, LOOKAHEAD_WALL_MS } from '../runtime/transport.js';
 import { createRenderer } from '../visuals/renderer.js';
-import { mapActivation, createAudioMixer, describeNodeMusic, musicTableFor, PALETTES, CHAMBER_VOICINGS } from '../music/index.js';
+import { mapActivation, createAudioMixer, describeNodeMusic, musicTableFor } from '../music/index.js';
 import { createInspector } from './inspector.js';
 import { createInspectorCard } from '../lab/inspector-card.js';
 import { DILATIONS, dilationLabel, readPreferences, savePreferences } from './preferences.js';
@@ -19,9 +19,8 @@ const $ = id => document.getElementById(id);
 const WORLDS = SCENES;
 const NOTES = { echo: ECHO_NOTES };
 
-const preferences = readPreferences(PALETTES, CHAMBER_VOICINGS, EDITION.storageSuffix);
-// An edition can fix the sound (the Circulation edition: Chamber, balanced voicing).
-if (EDITION.sound) Object.assign(preferences, EDITION.sound);
+const preferences = readPreferences(EDITION.storageSuffix);
+const sound = Object.freeze({ palette: 'chamber', voicing: 'balanced' });
 const engine = new Engine();
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
 const EVENT_LIMIT = 4096;
@@ -79,7 +78,7 @@ function retainEvents(events) {
 }
 
 function musicOptions() {
-  return musicTable ? { ...preferences, nodes: musicTable } : preferences;
+  return musicTable ? { ...sound, nodes: musicTable } : sound;
 }
 
 const transport = createTransport({
@@ -240,7 +239,6 @@ function chooseWorld(id) {
   $('single').hidden = $('guide').hidden = id !== 'circulation';
   $('premature').hidden = id !== 'conduction';
   $('find-echo').hidden = $('find-arrhythmia').hidden = id !== 'echo';
-  updatePaletteControls();
   $('protocol-hint').textContent = settings.hint;
   setupCard();
   views.configure(settings, world, { lab: labOpen() });
@@ -351,11 +349,6 @@ function updateButtons() {
   for (const id of ['single', 'guide', 'premature', 'find-echo', 'find-arrhythmia', 'reset']) $(id).disabled = !started;
   $('pause').textContent = transport.status === 'pausing' ? 'Pausing…' : running ? 'Pause' : 'Resume';
   $('pause').disabled = !started || ['pausing', 'faulted'].includes(transport.status);
-}
-
-function updatePaletteControls() {
-  $('palette-control').hidden = Boolean(EDITION.sound);
-  $('voicing-control').hidden = Boolean(EDITION.sound) || worldId !== 'circulation' || preferences.palette !== 'chamber';
 }
 
 async function begin(silent) {
@@ -578,8 +571,7 @@ function updateInspection(frame, now) {
     lookaheadMs: LOOKAHEAD_WALL_MS,
     audioState: context?.state ?? (started ? 'silent' : 'awaiting Begin'),
     audioDiagnostics: mixer?.diagnostics(),
-    palette: preferences.palette,
-    voicing: preferences.voicing,
+    ...sound,
     volume: preferences.volume,
     muted: preferences.muted,
     fps,
@@ -653,20 +645,9 @@ $('dilation').replaceChildren(...DILATIONS.map(value => {
   return option;
 }));
 $('dilation').value = String(preferences.dilation);
-$('palette').value = preferences.palette;
-$('voicing').value = preferences.voicing;
 $('dilation').onchange = () => {
   preferences.dilation = Number($('dilation').value);
   transport.setDilation(preferences.dilation);
-  savePreferences(preferences);
-};
-$('palette').onchange = () => {
-  preferences.palette = $('palette').value;
-  updatePaletteControls();
-  savePreferences(preferences);
-};
-$('voicing').onchange = () => {
-  preferences.voicing = $('voicing').value;
   savePreferences(preferences);
 };
 $('lab-toggle').hidden = !SHOW_LABORATORY;

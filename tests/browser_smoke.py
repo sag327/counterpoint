@@ -147,7 +147,7 @@ def desktop_smoke(browser, output):
     page.locator("#reset").click()
     page.wait_for_function("(run) => counterpoint.transport.runId !== run && counterpoint.events.length === 0", arg=run_id)
     page.locator("#dilation").select_option("5")
-    assert page.locator("#dilation option").all_inner_texts() == ["1/4 speed", "1/5 speed", "1/6 speed", "1/8 speed", "1/10 speed", "1/12 speed"]
+    assert page.locator("#dilation option").all_inner_texts() == ["1/4", "1/5", "1/6", "1/8", "1/10", "1/12"]
     page.get_by_role("button", name="Stimulate site R3").focus()
     page.keyboard.press("Space")
     page.wait_for_function("counterpoint.events.some(e => e.type === 'stimulus_attempted' && e.nodeId === 'R3')")
@@ -216,22 +216,19 @@ def mobile_smoke(browser, url, output):
     site.tap()
     page.wait_for_function("counterpoint.events.some(e => e.type === 'stimulus_attempted' && e.nodeId === 'R5')")
     ring_drag(page, 1, touch=True, context=context)
-    run_id = page.evaluate("counterpoint.transport.runId")
-    page.locator("#palette").select_option("minimalism")
-    assert page.evaluate("counterpoint.transport.runId") == run_id
     screenshot(page, output, "mobile-running")
     if page.locator("#lab-toggle").is_visible():
         page.locator("#lab-toggle").tap()
         page.get_by_role("heading", name="Activation raster").wait_for(state="visible", timeout=5000)
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
     page.reload()
-    assert page.locator("#palette").input_value() == "minimalism"
+    assert page.locator("#palette, #voicing").count() == 0
     # The URL fragment keeps the chosen world across a reload (Study No. 2).
     assert page.get_by_role("button", name="Circulation", exact=True).get_attribute("aria-pressed") == "true"
     assert page.evaluate("counterpoint.mixer == null")
     assert not errors, errors
     check_network(requests, url)
-    print("PASS Chromium HTTP, 360 CSS px / DPR 2, reduced motion, touch tap/drag, Web Audio, palette/preferences, inspector", flush=True)
+    print("PASS Chromium HTTP, 360 CSS px / DPR 2, reduced motion, touch tap/drag, Web Audio, inspector", flush=True)
     context.close()
 
 
@@ -311,7 +308,7 @@ def circulation_edition_smoke(browser, output):
             worldsHidden: document.getElementById('worlds').hidden,
             viewsHidden: document.getElementById('views').hidden,
             view: counterpoint.view,
-            sound: document.getElementById('palette-control').hidden && document.getElementById('voicing-control').hidden,
+            sound: !document.querySelector('#palette, #voicing'),
             lab: document.getElementById('lab-toggle').hidden,
         })""")
         assert state == {"worlds": ["circulation"], "worldsHidden": True, "viewsHidden": True, "view": "network", "sound": True, "lab": True}, state

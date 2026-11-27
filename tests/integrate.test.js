@@ -178,8 +178,8 @@ test('Playback speeds run from 1/4 to 1/12 of real time and read as fractions', 
   const { MAX_DILATION, createTransport } = await import('../src/runtime/transport.js');
   assert.deepEqual(DILATIONS, [4, 5, 6, 8, 10, 12]);
   assert.equal(MAX_DILATION, 12);
-  assert.equal(dilationLabel(4), '1/4 speed');
-  assert.equal(dilationLabel(8), '1/8 speed');
-  assert.equal(dilationLabel(12), '1/12 speed');
+  assert.equal(dilationLabel(4), '1/4');
+  assert.equal(dilationLabel(8), '1/8');
+  assert.equal(dilationLabel(12), '1/12');
   assert.equal(typeof createTransport, 'function');
 });
