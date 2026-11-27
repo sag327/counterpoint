@@ -1,3 +1,5 @@
+import { createNetworkMarks } from './marks.js';
+
 const GROUND = '#080C13';
 const BRASS = '#C8A878';
 const ICE = '#83A9C8';
@@ -378,6 +380,22 @@ export function createRenderer(canvas, world, { reducedMotion = false } = {}) {
   let height = 1;
   let ratio = 1;
   let backdropKey;
+  let network;
+  let overlay = null;
+
+  // Adapter the Study No. 2 marks (marks.js) use to reach this renderer's geometry.
+  const adapter = {
+    nodePoint: (id) => { const node = geometry.nodes.get(id); return node ? { x: node.x, y: node.y } : null; },
+    linkColor: (id) => geometry.links.get(id)?.color ?? BRASS,
+    linkPoint: (id, u) => { const link = geometry.links.get(id); return link ? atFraction(link.curve, u) : null; },
+    strokeLink: (ctx, id, u0, u1, color, lineWidth, alpha) => {
+      const link = geometry.links.get(id);
+      if (!link) return;
+      ctx.globalAlpha = alpha ?? 1;
+      strokeCurve(ctx, link.curve, clamp(Math.min(u0, u1)), clamp(Math.max(u0, u1)), color, lineWidth);
+      ctx.globalAlpha = 1;
+    },
+  };
 
   function resize(cssWidth, cssHeight, dpr) {
     const size = canvas.getBoundingClientRect();
@@ -391,6 +409,7 @@ export function createRenderer(canvas, world, { reducedMotion = false } = {}) {
     backdropCanvas.width = canvas.width = Math.round(width * ratio);
     backdropCanvas.height = canvas.height = Math.round(height * ratio);
     geometry = makeGeometry(world, width, height);
+    network = createNetworkMarks({ world, geometry: adapter, reducedMotion });
     backdropKey = null;
   }
 
@@ -409,7 +428,7 @@ export function createRenderer(canvas, world, { reducedMotion = false } = {}) {
     for (const [id, node] of geometry.nodes) drawNode(ctx, node, snapshot.nodes[id]);
     for (const transit of snapshot.activeTransits) {
       const link = geometry.links.get(transit.linkId);
-      if (link) drawTransit(ctx, link, transit, tMs, reducedMotion);
+      if (link && !network.drawConcealedTransit(ctx, transit, tMs, events)) drawTransit(ctx, link, transit, tMs, reducedMotion);
     }
 
     // History is ordered by time and may include the committed lookahead.
@@ -417,9 +436,13 @@ export function createRenderer(canvas, world, { reducedMotion = false } = {}) {
       const event = events[i];
       if (event.tMs > tMs || event.runId !== snapshot.runId) continue;
       if (event.tMs <= tMs - GLYPH_LIFETIME) break;
-      drawEvent(ctx, geometry, event, tMs, reducedMotion);
+      if (!(event.type === 'activation_blocked' && network.isConcealedBlock(events, event.eventId))) {
+        drawEvent(ctx, geometry, event, tMs, reducedMotion);
+      }
       if (event.type === 'stimulus_attempted') gestures.delete(event.triggerId);
     }
+    network.draw(ctx, tMs, events);
+    ctx.globalAlpha = 1;
     for (const [commandId, gesture] of gestures) {
       if (gesture.runId !== snapshot.runId || tMs >= gesture.targetMs) {
         gestures.delete(commandId);
@@ -430,6 +453,7 @@ export function createRenderer(canvas, world, { reducedMotion = false } = {}) {
       arc(ctx, node.x, node.y, 15, 0, TURN, cssColor(INPUT, 0.74));
       ctx.setLineDash([]);
     }
+    overlay?.(ctx, { tMs, snapshot, events, width, height });
   }
 
   function hitTest(x, y) {
@@ -471,9 +495,15 @@ export function createRenderer(canvas, world, { reducedMotion = false } = {}) {
     if (geometry.nodes.has(nodeId)) gestures.set(commandId, { nodeId, targetMs, runId });
   }
 
+  function linkPoint(linkId, fraction) {
+    return adapter.linkPoint(linkId, fraction);
+  }
+
   resize();
-  return { resize, render, hitTest, nodePosition, crossedLinks, markGesture,
-    setReducedMotion(value) { reducedMotion = value; },
+  return { resize, render, hitTest, nodePosition, crossedLinks, markGesture, linkPoint,
+    // Overlay hook (Map, listening point): called at the end of render with (ctx, { tMs, snapshot, events, width, height }).
+    setOverlay(fn) { overlay = fn ?? null; },
+    setReducedMotion(value) { reducedMotion = value; network?.setReducedMotion(value); },
     clearGestures() { gestures.clear(); },
   };
 }
