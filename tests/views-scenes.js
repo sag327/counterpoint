@@ -85,3 +85,56 @@ export function runOstinato(throughMs = 3000) {
   engine.enqueue({ commandId: 'c3', runId: 'o', type: 'setLinkEnabled', linkId: 'L9', enabled: true, tMs: 120 });
   return engine.advanceTo(throughMs);
 }
+
+// Circulation as a 1.1.0 world: S1-S2 induction, a lesion on L3, then a stimulus beside the line (spec §F).
+import { createCirculationWorld } from '../src/worlds/circulation.js';
+export function runLesionRing(throughMs = 9000) {
+  const world = createCirculationWorld();
+  world.contractVersion = '1.1.0';
+  const engine = createEngine({ processingBudget: 1e6 });
+  engine.reset(world, 'l');
+  const cmds = [
+    { commandId: 'S1', type: 'stimulate', nodeId: 'R0', tMs: 0 }, { commandId: 'S2', type: 'stimulate', nodeId: 'R0', tMs: 240 },
+    { commandId: 'abl', type: 'ablate', target: 'L3', durationMs: 2000, completeness: 1, tMs: 1000 },
+    { commandId: 'probe', type: 'stimulate', nodeId: 'R3', tMs: 6000 },
+  ];
+  for (const c of cmds) engine.enqueue({ runId: 'l', ...c });
+  return { world, events: engine.advanceTo(throughMs) };
+}
+
+// Hemiola: Duality with B protected and coupled from A (spec §D), for phase_modulated arcs.
+import { createDualityWorld } from '../src/worlds/duality.js';
+export function runHemiola(throughMs = 6000) {
+  const world = createDualityWorld();
+  world.contractVersion = '1.1.0';
+  world.nodes.find((n) => n.id === 'B').automaticity.protected = true;
+  world.coupling = [{ id: 'AB', from: 'A', to: 'B', amplitude: 0.17 }];
+  const engine = createEngine({ processingBudget: 1e6 });
+  engine.reset(world, 'h');
+  return { world, events: engine.advanceTo(throughMs) };
+}
+
+// Fusion: a stimulus meets the circulating wave at R1 on the same tick (mixed-source capture).
+export function runFusion() {
+  const world = createCirculationWorld();
+  const engine = createEngine({ processingBudget: 1e6 });
+  engine.reset(world, 'f');
+  engine.enqueue({ runId: 'f', commandId: 'a', type: 'stimulate', nodeId: 'R0', tMs: 0 });
+  engine.enqueue({ runId: 'f', commandId: 'b', type: 'stimulate', nodeId: 'R1', tMs: 60 });
+  return { world, events: engine.advanceTo(600) };
+}
+
+// Entrainment: pace an Ostinato circulation 11 ms faster than its 261 ms cycle for eight beats, then release.
+export function runEntrainment(cycleMs = 250) {
+  const world = ostinatoWorld();
+  const engine = createEngine({ processingBudget: 1e6 });
+  engine.reset(world, 'e');
+  const cmds = [
+    { commandId: 'c1', type: 'setLinkEnabled', linkId: 'L9', enabled: false, tMs: 0 },
+    { commandId: 'c2', type: 'stimulate', nodeId: 'R0', tMs: 10 },
+    { commandId: 'c3', type: 'setLinkEnabled', linkId: 'L9', enabled: true, tMs: 120 },
+    { commandId: 'pace', type: 'stimulateTrain', nodeId: 'R0', startMs: 2594, cycleMs, count: 8, label: 'pace', tMs: 1000 },
+  ];
+  for (const c of cmds) engine.enqueue({ runId: 'e', ...c });
+  return { world, events: engine.advanceTo(6000) };
+}
