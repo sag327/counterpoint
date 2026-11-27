@@ -48,7 +48,6 @@ test('Laboratory renders actual state at the presentation boundary and routes va
   const callbackCalls = [];
   const inspector = createInspector(tree, {
     onStimulus: (...args) => callbackCalls.push(['stimulus', ...args]),
-    onToggleLink: (...args) => callbackCalls.push(['toggle', ...args]),
     onSelectNode: (...args) => callbackCalls.push(['site', ...args]),
     onSelectLink: (...args) => callbackCalls.push(['link', ...args]),
     onProtocolChange: (...args) => callbackCalls.push(['coupling', ...args]),
@@ -101,9 +100,8 @@ test('Laboratory renders actual state at the presentation boundary and routes va
   assert.equal(reading('link-state'), 'Enabled');
   renderRing(1210);
   assert.equal(reading('link-state'), 'Cut');
-  assert.equal(control('toggle-link').textContent, 'Restore link');
+  assert.equal(control('toggle-link'), undefined, 'connections can no longer be cut from the Lab');
   assert.equal(reading('transits'), 'None');
-  control('toggle-link').onclick();
   control('node').value = 'R4';
   control('node').onchange();
   control('link').value = 'L2';
@@ -124,7 +122,7 @@ test('Laboratory renders actual state at the presentation boundary and routes va
   control('coupling').onkeydown({ key: 'Enter', preventDefault() {} });
   control('guide').onclick();
   assert.deepEqual(callbackCalls, [
-    ['toggle', 'L0'], ['site', 'R4'], ['link', 'L2'], ['stimulus', 'R4'],
+    ['site', 'R4'], ['link', 'L2'], ['stimulus', 'R4'],
     ['protocol', 'single', 'R4'], ['reset'], ['coupling', 222], ['protocol', 'guide', 'R0', 222],
   ]);
 
@@ -141,7 +139,6 @@ test('Laboratory renders actual state at the presentation boundary and routes va
   assert.equal(control('ring-protocol').hidden, true);
   assert.equal(control('conduction-protocol').hidden, false);
   assert.equal(control('stimulate').disabled, true);
-  assert.equal(control('toggle-link').disabled, true);
   inspector.render({ runId: 'branch', snapshot: engine.readAt(50), presentedMs: 50 }, contextual);
   assert.equal(reading('automatic-cycle'), '900 ms');
   control('premature').onclick();

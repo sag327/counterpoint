@@ -173,13 +173,13 @@ test('Single-file build: no network references, Echo bundled, embedded worker ru
   }
 });
 
-test('Playback speeds run from 1/4 to 1/12 of real time and read as fractions and percentages', async () => {
+test('Playback speeds run from 1/4 to 1/12 of real time and read as fractions', async () => {
   const { DILATIONS, dilationLabel } = await import('../src/ui/preferences.js');
   const { MAX_DILATION, createTransport } = await import('../src/runtime/transport.js');
   assert.deepEqual(DILATIONS, [4, 5, 6, 8, 10, 12]);
   assert.equal(MAX_DILATION, 12);
-  assert.equal(dilationLabel(4), '1/4 speed · 25%');
-  assert.equal(dilationLabel(8), '1/8 speed · 12.5%');
-  assert.equal(dilationLabel(12), '1/12 speed · 8.3%');
+  assert.equal(dilationLabel(4), '1/4 speed');
+  assert.equal(dilationLabel(8), '1/8 speed');
+  assert.equal(dilationLabel(12), '1/12 speed');
   assert.equal(typeof createTransport, 'function');
 });

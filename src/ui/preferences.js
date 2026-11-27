@@ -22,9 +22,7 @@ export function savePreferences(preferences) {
   catch { /* Storage may be unavailable when a browser opens the local HTML. */ }
 }
 
-// A dilation as the creator asked to see it: a fraction of real time and a percentage.
+// A dilation as the creator asked to see it: a fraction of real time (2026-11-27).
 export function dilationLabel(dilation) {
-  const percent = 100 / dilation;
-  const text = Number.isInteger(percent) ? String(percent) : percent.toFixed(1).replace(/\.0$/, '');
-  return `1/${dilation} speed · ${text}%`;
+  return `1/${dilation} speed`;
 }

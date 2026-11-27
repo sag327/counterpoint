@@ -292,33 +292,21 @@ await firstResume;
 assert.equal(cp.transport.status, "paused", "A hide/show during Web Audio Resume must keep the run paused");
 await select("pause").click();
 runFor(250);
+// Connections can no longer be cut (creator decision 2026-11-27): a drag across
+// the ring submits nothing, and there are no cut or restore buttons.
 const ringCenter = { x: 640, y: 292.5 };
-const cutAngle = 5 * Math.PI / 8;
+const dragAngle = 5 * Math.PI / 8;
 const atRadius = radius => ({
-  x: ringCenter.x + radius * Math.cos(cutAngle),
-  y: ringCenter.y + radius * Math.sin(cutAngle),
+  x: ringCenter.x + radius * Math.cos(dragAngle),
+  y: ringCenter.y + radius * Math.sin(dragAngle),
 });
 const commandCount = cp.transport.commandLog().length;
 pointer("pointerdown", atRadius(140));
 pointer("pointermove", atRadius(230));
 pointer("pointerup", atRadius(230));
 runFor(100);
-const swipeCommands = cp.transport.commandLog().slice(commandCount);
-assert.deepEqual(Array.from(swipeCommands, e => [e.type, e.linkId, e.enabled]), [["setLinkEnabled", "L4", false]]);
-assert.equal(select("cuts").children[4].getAttribute("aria-pressed"), "true");
-pointer("pointerdown", atRadius(140));
-pointer("pointerup", atRadius(230));
-assert.equal(cp.transport.commandLog().length, commandCount + 1, "Repeated swipes cannot restore or recut");
-const l1 = select("cuts").children.find(button => button.dataset.link === "L1");
-l1.click();
-runFor(100);
-assert.equal(l1.getAttribute("aria-pressed"), "true");
-runFor(2000);
-const finalCutCount = activations().length;
-select("restore").click();
-runFor(800);
-assert.equal(activations().length, finalCutCount);
-assert.ok(select("cuts").children.every((button) => button.attributes.get("aria-pressed") === "false"));
+assert.equal(cp.transport.commandLog().length, commandCount, "a drag submits no command");
+assert.equal(select("cuts").children.length, 0);
 
 select("guide").click();
 const samples = [];

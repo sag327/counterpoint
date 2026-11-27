@@ -21,10 +21,10 @@ const NOTES = { echo: ECHO_NOTES };
 const preferences = readPreferences(PALETTES, CHAMBER_VOICINGS);
 const engine = new Engine();
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
-const pendingLinks = new Map();
 const EVENT_LIMIT = 4096;
 const GUIDE_COUPLING_MS = 240;
-const SWIPE_THRESHOLD = 10;
+// A pointer that travels this far is a drag, not a tap or a hold: it does nothing.
+const DRAG_THRESHOLD = 10;
 const HOLD_SITE_MS = 500;
 const HOLD_CENTRE_MS = 600;
 // "Find the chord" starts at the jump: in the shipped tuning S2 from 299 to 265 ms
@@ -116,7 +116,6 @@ const transport = createTransport({
     captureTotal = 0;
     visualFloorMs = -1;
     lastFrame = undefined;
-    pendingLinks.clear();
     cancelGesture();
     stillnessDoses = [];
     renderer.clearGestures();
@@ -228,6 +227,7 @@ function chooseWorld(id) {
   renderer = nextRenderer;
   musicTable = musicTableFor(world, settings.presentation);
   selectedNodeId = world.nodes.find(node => node.audible !== false)?.id ?? world.nodes[0].id;
+  renderer.setSelected(selectedNodeId);
   selectedLinkId = world.links[0].id;
   guidedNext = { 'find-echo': 0, 'find-chord': 0 };
   guidedLast = null;
@@ -238,15 +238,11 @@ function chooseWorld(id) {
   $('single').hidden = $('guide').hidden = id !== 'circulation';
   $('premature').hidden = id !== 'conduction';
   $('find-echo').hidden = $('find-chord').hidden = $('stillness').hidden = id !== 'echo';
-  updateStudyLine();
   updatePaletteControls();
-  $('protocol-hint').textContent = id === 'conduction'
-    ? settings.hint + ' Premature impulse resets the pathway for the reference trial.'
-    : settings.hint;
+  $('protocol-hint').textContent = settings.hint;
   setupCard();
   views.configure(settings, world, { lab: labOpen() });
   buildSiteButtons();
-  buildLinkButtons();
   buildInspectButtons();
   if (studyLab) setupStudyLab();
   $('lab-study').hidden = !settings.study;
@@ -255,19 +251,6 @@ function chooseWorld(id) {
   // After the reset, which may have kept the old world's last run, start the curve afresh.
   liveCurve.clear();
   updateFragment();
-}
-
-function updateStudyLine() {
-  const line = $('study-line');
-  line.hidden = !scene.study;
-  if (!scene.study) return;
-  $('study-numeral').textContent = scene.numeral;
-  $('study-name').textContent = scene.name;
-  $('study-subtitle').textContent = scene.subtitle;
-  // Echo has no layer 2 term, so no chip; a study with one shows it as a "+" chip.
-  $('study-chip').hidden = !scene.layer2Term;
-  $('study-chip').textContent = scene.layer2Term ? `${scene.layer2Term} +` : '';
-  $('notes-link').hidden = !NOTES[worldId];
 }
 
 function setupCard() {
@@ -363,8 +346,6 @@ function updateButtons() {
   const running = transport.status === 'running';
   if (!running) cancelGesture();
   for (const button of $('sites').children) button.disabled = !running;
-  for (const button of $('cuts').children) button.disabled = !running;
-  $('restore').disabled = !running;
   for (const id of ['single', 'guide', 'premature', 'find-echo', 'find-chord', 'reset']) $(id).disabled = !started;
   $('stillness').disabled = !running;
   $('pause').textContent = transport.status === 'pausing' ? 'Pausing…' : running ? 'Pause' : 'Resume';
@@ -373,13 +354,6 @@ function updateButtons() {
 
 function updatePaletteControls() {
   $('voicing-control').hidden = worldId !== 'circulation' || preferences.palette !== 'chamber';
-}
-
-function updateAudioControls() {
-  $('mute').disabled = !mixer;
-  $('volume').disabled = !mixer;
-  $('mute').textContent = !mixer ? 'Sound disabled' : preferences.muted ? 'Unmute' : 'Mute';
-  $('mute').setAttribute('aria-pressed', String(Boolean(mixer && preferences.muted)));
 }
 
 async function begin(silent) {
@@ -394,8 +368,9 @@ async function begin(silent) {
       candidate = new AudioContext();
       await candidate.resume();
       context = candidate;
+      // No in-app volume or mute: listeners use the device's own controls (creator decision 2026-11-27).
       mixer = createAudioMixer(context, { volume: preferences.volume });
-      mixer.setMuted(preferences.muted);
+      mixer.setMuted(false);
       context.onstatechange = () => {
         if (['suspended', 'interrupted'].includes(context.state)) transport.interrupt('audio-interrupted');
       };
@@ -403,7 +378,6 @@ async function begin(silent) {
     started = true;
     $('intro').hidden = true;
     $('performance').hidden = false;
-    updateAudioControls();
     const stillVisible = !document.hidden && visibilityAtRequest === visibilityChanges;
     startRun(worldId === 'circulation' ? 'single' : 'quiet', selectedNodeId, couplingMs, stillVisible);
     if (!stillVisible) $('status').textContent = 'Paused while away. Resume when ready.';
@@ -421,6 +395,7 @@ async function begin(silent) {
 function selectNode(nodeId) {
   if (!world.nodes.some(node => node.id === nodeId)) return;
   selectedNodeId = nodeId;
+  renderer.setSelected(nodeId);
   inspectionDirty = true;
 }
 
@@ -455,23 +430,6 @@ function stillnessLevel(frame) {
   return level;
 }
 
-function linkEnabled(linkId) {
-  return pendingLinks.get(linkId)?.enabled ?? lastFrame?.snapshot.links[linkId]?.enabled ?? true;
-}
-
-function setLinkEnabled(linkId, enabled) {
-  if (transport.status !== 'running' || !world.links.some(link => link.id === linkId) || linkEnabled(linkId) === enabled) return false;
-  const command = transport.submit({ type: 'setLinkEnabled', linkId, enabled });
-  if (!command) return false;
-  pendingLinks.set(linkId, { enabled, tMs: command.tMs });
-  return true;
-}
-
-function toggleLink(linkId) {
-  selectLink(linkId);
-  setLinkEnabled(linkId, !linkEnabled(linkId));
-}
-
 function siteLabel(id) {
   return scene.labels?.plain?.[id] ? `${scene.labels.plain[id]} (${id})` : id;
 }
@@ -489,6 +447,7 @@ function buildSiteButtons() {
       : `Stimulate site ${id}`);
     // Pointer activation is handled on the stage so a stroke can start on a site.
     button.onclick = event => { if (!event.detail) stimulate(id); };
+    button.onfocus = () => selectNode(id);
     if (scene.study) {
       button.onkeydown = event => {
         if ((event.key === 'i' || event.key === 'I') && !event.metaKey && !event.ctrlKey && !event.altKey) {
@@ -498,19 +457,6 @@ function buildSiteButtons() {
       };
     }
     $('sites').append(button);
-  }
-}
-
-function buildLinkButtons() {
-  $('cuts').replaceChildren();
-  for (const link of world.links) {
-    const button = document.createElement('button');
-    button.textContent = `${link.a}–${link.b}`;
-    button.setAttribute('aria-label', `Cut or restore connection ${link.a} to ${link.b}`);
-    button.setAttribute('aria-pressed', 'false');
-    button.onclick = () => toggleLink(link.id);
-    button.dataset.link = link.id;
-    $('cuts').append(button);
   }
 }
 
@@ -574,15 +520,6 @@ function canvasPoint(event) {
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 }
 
-function crossConnections(from, to, previous) {
-  for (const linkId of renderer.crossedLinks(from, to, previous)) {
-    if (!setLinkEnabled(linkId, false)) continue;
-    selectLink(linkId);
-    const link = world.links.find(link => link.id === linkId);
-    $('status').textContent = `Connection ${link.a}–${link.b} cut.`;
-  }
-}
-
 function cancelGesture() {
   if (gesture?.timer) clearTimeout(gesture.timer);
   gesture = undefined;
@@ -600,18 +537,14 @@ function trackGesture(event) {
       active.last = point;
       continue;
     }
-    if (active.swiping) {
-      crossConnections(active.last, point, active.previous);
-    } else {
-      active.path.push(point);
+    if (!active.dragged) {
       active.travel += Math.hypot(point.x - active.last.x, point.y - active.last.y);
-      if (active.travel >= SWIPE_THRESHOLD) {
-        active.swiping = true;
+      if (active.travel >= DRAG_THRESHOLD) {
+        // Connections can no longer be cut (creator decision 2026-11-27): a drag
+        // simply cancels the tap or hold.
+        active.dragged = true;
         if (active.timer) clearTimeout(active.timer);
         active.timer = null;
-        for (let i = 1; i < active.path.length; i++) {
-          crossConnections(active.path[i - 1], active.path[i], active.path[i - 2]);
-        }
       }
     }
     active.previous = active.last;
@@ -628,7 +561,7 @@ function armHold(active, point) {
   const inCentre = !active.site && !link && centre && Math.hypot(point.x - centre.x, point.y - centre.y) < centre.radius * 0.8;
   if (!active.site && !link && !inCentre) return;
   active.timer = setTimeout(() => {
-    if (gesture !== active || active.swiping) return;
+    if (gesture !== active || active.dragged) return;
     active.held = true;
     active.timer = null;
     if (active.site) openCard({ kind: 'node', id: active.site });
@@ -643,7 +576,7 @@ stage.addEventListener('pointerdown', event => {
   if (gesture || !event.isPrimary || event.button !== 0 || transport.status !== 'running') return;
   const point = canvasPoint(event);
   const site = renderer.hitTest(point.x, point.y);
-  gesture = { pointerId: event.pointerId, last: point, path: [point], travel: 0, swiping: false, site, held: false, timer: null };
+  gesture = { pointerId: event.pointerId, last: point, travel: 0, dragged: false, site, held: false, timer: null };
   armHold(gesture, point);
   stage.setPointerCapture(event.pointerId);
 });
@@ -652,9 +585,9 @@ stage.addEventListener('pointerup', event => {
   if (gesture?.pointerId !== event.pointerId) return;
   trackGesture(event);
   if (!gesture) return;
-  const { site, swiping, held } = gesture;
+  const { site, dragged, held } = gesture;
   cancelGesture();
-  if (site && !swiping && !held) stimulate(site);
+  if (site && !dragged && !held) stimulate(site);
 });
 for (const type of ['pointercancel', 'lostpointercapture']) {
   stage.addEventListener(type, event => {
@@ -667,10 +600,6 @@ document.addEventListener('keydown', event => {
   const tag = event.target?.tagName;
   if (['INPUT', 'SELECT', 'TEXTAREA'].includes(tag) || event.target?.isContentEditable) return;
   if (event.target?.getAttribute?.('role') === 'slider') return;
-  if ((event.key === 's' || event.key === 'S') && scene.study && started) {
-    event.preventDefault();
-    stillness();
-  }
   if (event.key === 'Escape' && card?.target) card.close();
 });
 
@@ -681,7 +610,6 @@ function updateInspection(frame, now) {
   const settings = WORLDS[worldId];
   inspector ??= createInspector($('lab-content'), {
     onStimulus: stimulate,
-    onToggleLink: toggleLink,
     onSelectNode: selectNode,
     onSelectLink: selectLink,
     onProtocolChange(interval) { couplingMs = interval; inspectionDirty = true; },
@@ -759,7 +687,6 @@ $('find-echo').onclick = () => startRun('find-echo');
 $('find-chord').onclick = () => startRun('find-chord');
 $('stillness').onclick = stillness;
 $('reset').onclick = () => startRun();
-$('notes-link').onclick = openNotes;
 $('notes-close').onclick = () => $('notes-sheet').close?.() ?? $('notes-sheet').removeAttribute('open');
 $('notes-sheet').addEventListener('click', event => { if (event.target === $('notes-sheet')) $('notes-sheet').close(); });
 for (const button of $('worlds').children) button.onclick = () => chooseWorld(button.dataset.world);
@@ -773,7 +700,6 @@ $('dilation').replaceChildren(...DILATIONS.map(value => {
 $('dilation').value = String(preferences.dilation);
 $('palette').value = preferences.palette;
 $('voicing').value = preferences.voicing;
-$('volume').value = String(preferences.volume);
 $('dilation').onchange = () => {
   preferences.dilation = Number($('dilation').value);
   transport.setDilation(preferences.dilation);
@@ -787,24 +713,6 @@ $('palette').onchange = () => {
 $('voicing').onchange = () => {
   preferences.voicing = $('voicing').value;
   savePreferences(preferences);
-};
-$('mute').onclick = () => {
-  preferences.muted = !preferences.muted;
-  mixer?.setMuted(preferences.muted);
-  updateAudioControls();
-  savePreferences(preferences);
-};
-$('volume').oninput = () => {
-  preferences.volume = Number($('volume').value);
-  mixer?.setVolume(preferences.volume);
-  savePreferences(preferences);
-};
-$('restore').onclick = () => {
-  let restored = false;
-  for (const link of world.links) {
-    if (setLinkEnabled(link.id, true)) restored = true;
-  }
-  if (restored) $('status').textContent = 'Connections restored.';
 };
 $('lab-toggle').onclick = () => {
   const open = $('lab').hidden;
@@ -879,13 +787,6 @@ function draw(now) {
       } else {
         views.draw({ events, presentedMs: frame.presentedMs, lab: labOpen() });
       }
-      for (const [id, pending] of pendingLinks) {
-        if (pending.tMs <= frame.presentedMs) pendingLinks.delete(id);
-      }
-      for (const button of $('cuts').children) {
-        const pressed = String(!frame.snapshot.links[button.dataset.link].enabled);
-        if (button.getAttribute('aria-pressed') !== pressed) button.setAttribute('aria-pressed', pressed);
-      }
       updateCard(frame, now);
     }
     updateInspection(frame, now);
@@ -910,5 +811,6 @@ window.counterpoint = {
   get views() { return views; },
   get musicTable() { return musicTable; },
   get liveCurve() { return liveCurve.points; },
+  get selectedSite() { return renderer?.selected ?? null; },
   stillnessLevel: () => (lastFrame ? stillnessLevel(lastFrame) : 0),
 };

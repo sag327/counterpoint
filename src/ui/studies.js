@@ -36,14 +36,14 @@ const SCENE_LIST = {
     create: createConductionWorld,
     name: 'Conduction',
     topology: 'Six sites in a branching pathway, led by an automatic focus.',
-    hint: 'Tap a site to stimulate it. Swipe across a connection to cut it.',
+    hint: 'Tap a site to stimulate it.',
     status: 'An automatic impulse leads the way.',
   },
   circulation: {
     create: createCirculationWorld,
     name: 'Circulation',
     topology: 'Eight excitable sites joined in a bidirectional ring.',
-    hint: 'Swipe across a connection to cut it. Find a rhythm resets the ring and sends two impulses.',
+    hint: 'Tap a site to stimulate it.',
     status: 'The ring rests until a site is stimulated.',
   },
   ...Object.fromEntries(STUDIES.map(study => {
@@ -64,7 +64,7 @@ const SCENE_LIST = {
       tryThis: copy.tryThis,
       labels: study.id === 'echo' ? ECHO_LABELS : null,
       topology: 'Two routes through the junction between upper and lower chambers. Silent sites are open rings.',
-      hint: 'Tap a site to touch it. Press and hold a site or connection to inspect it. Press and hold the open centre, or press S, for Stillness.',
+      hint: 'Tap a site to stimulate it · Hold a site to inspect it · Hold the centre for Stillness',
       status: 'Steady rhythm: atrium, then ventricle.',
     }];
   })),
