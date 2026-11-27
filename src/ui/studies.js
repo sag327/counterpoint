@@ -13,6 +13,9 @@ import GLOSSARY from '../content/glossary.json' with { type: 'json' };
 // labels. Musical subtitles, chips, pitch names and the Staves view are hidden but
 // kept in the source so they can return. Duality is withdrawn from the menu.
 export const SHOW_MUSIC_LABELS = false;
+// The Laboratory panel (diagnostics, live curves, Model sliders, protocol runner,
+// liner notes) is hidden for now (creator decision 2026-11-27). Its code stays.
+export const SHOW_LABORATORY = false;
 export const ALL_VIEWS = Object.freeze(['network', 'ladder', 'staves']);
 export const VIEWS = Object.freeze(['network', 'ladder']);
 

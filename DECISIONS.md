@@ -68,3 +68,7 @@ The creator found the music analogy too strong for electrophysiologists. The sou
 ## 2026-11-27 · second creator review: simplify
 
 Cutting connections is removed from the app: it added complexity with little teaching value. The engine command stays for replays and future studies. Volume and mute are removed in favour of the device's own controls, and the S shortcut for Stillness is removed. Playback speed shows fractions only. Instructions are one short, readable line above the controls, and the selected site is highlighted on the map. Echo loses its header so all three worlds share one layout. Still to do: guided runs start from a preconditioned state just before the last S1 (M5); the inspector card leads with key readouts and moves detail into expandable sections; and inspect and tune work in every world (M6).
+
+## 2026-11-27 · Laboratory hidden; inspector curves reset on edit
+
+The Laboratory does not earn its place yet, so it is hidden behind `SHOW_LABORATORY` and its code is kept. When the player edits an element's curve in the inspector, that element's earlier data points are erased, because they no longer describe the model. The data points are drawn larger and brighter.

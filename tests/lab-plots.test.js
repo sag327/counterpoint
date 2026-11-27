@@ -198,3 +198,23 @@ if (process.argv[2]) {
     console.log(`wrote ${file}`);
   }
 }
+
+test('card curves drop data points from before the last edit and draw them prominently', async () => {
+  const { restitutionModel, conductionModel } = await import('../src/lab/plots.js');
+  const law = { erpMaxMs: 304, amplitudeMs: 60, tauMs: 120, erpMinMs: 244 };
+  const dots = [100, 300, 500].map((diMs, i) => ({ tMs: 1000 * (i + 1), diMs, erpMs: 300 }));
+  const all = restitutionModel({ siteLabel: 'FP', law, dots });
+  const edited = restitutionModel({ siteLabel: 'FP', law, dots, sinceMs: 2500 });
+  const dotLayers = model => model.layers.filter(layer => layer.type === 'dots');
+  assert.equal(dotLayers(all).length, 1);
+  assert.equal(dotLayers(edited).length, 1, 'no greyed layer of earlier captures');
+  assert.deepEqual(dotLayers(edited)[0].points, [[500, 300]]);
+  assert.ok(dotLayers(edited)[0].radius >= 3.5 && dotLayers(edited)[0].halo);
+  assert.equal(edited.table.rows.length, 1);
+  assert.match(edited.summary, /since the last edit/);
+  const empty = restitutionModel({ siteLabel: 'FP', law, dots, sinceMs: 9000 });
+  assert.match(empty.summary, /no captures yet since the last edit/);
+  const launches = [50, 200].map((recoveryMs, i) => ({ tMs: 1000 * (i + 1), recoveryMs, totalMs: 120, slackMs: null, parts: null }));
+  const link = conductionModel({ linkLabel: 'SL', delayMs: 100, dots: launches, sinceMs: 1500 });
+  assert.deepEqual(link.layers.filter(layer => layer.type === 'dots').flatMap(layer => layer.points), [[200, 120]]);
+});
