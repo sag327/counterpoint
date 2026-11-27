@@ -5755,8 +5755,104 @@ function createNetworkMarks({ world, geometry, palette: pal, reducedMotion = fal
 
 return {PHASE_ARC_MS,FUSION_MS,DOUBLE_POTENTIAL_MS,DOUBLE_POTENTIAL_MAX_GAP_MS,ENTRAINMENT_WINDOW_MS,ENTRAINMENT_MS,doublePotentialGapPx,traceNetworkMarks,createNetworkMarks,PALETTE};
 })();
+__modules["src/visuals/weave.js"] = (()=>{
+const { clamp, memoByEvents } = __modules["src/visuals/common.js"];
+const { indexEvents } = __modules["src/visuals/trace.js"];
+
+const smooth = (x) => { const t = clamp(x); return t * t * (3 - 2 * t); };
+
+// Terminal events can arrive in the committed lookahead. Apply their limits
+// only once presented, so a wave never changes shape in anticipation of block.
+function createWeaveHistory() {
+  return memoByEvents((events, runId) => {
+    const trace = indexEvents(events.filter(event => event.runId === runId));
+    const links = new Map();
+    for (const launch of trace.launchList) {
+      const arrival = trace.arrivals.get(launch.transitId);
+      const terminal = trace.collisions.get(launch.transitId) ?? trace.cancels.get(launch.transitId)
+        ?? (arrival && trace.outcomeByCause.get(arrival.eventId));
+      let link = links.get(launch.linkId);
+      if (!link) {
+        link = { passages: [], longest: 0 };
+        links.set(launch.linkId, link);
+      }
+      link.passages.push({ launch, terminal });
+      link.longest = Math.max(link.longest, launch.arrivalMs - launch.departureMs);
+    }
+    return links;
+  });
+}
+
+function pathPassages(history, active, linkId, time, maxErp, generation) {
+  const link = history.get(linkId);
+  const passages = [];
+  const retained = new Set();
+  if (link) {
+    for (let i = link.passages.length - 1; i >= 0; i--) {
+      const passage = link.passages[i];
+      const { launch } = passage;
+      if (launch.departureMs < time - link.longest - maxErp) break;
+      if (launch.departureMs > time || (generation !== undefined && launch.linkGeneration !== generation)) continue;
+      passages.push(passage);
+      retained.add(launch.transitId);
+    }
+  }
+  for (const launch of active) {
+    if (launch.linkId === linkId && !retained.has(launch.transitId)) passages.push({ launch });
+  }
+  return passages;
+}
+
+// Fractions measure arc length, using the same clock and curve as the wavehead.
+function sampleWeave(passages, sourceId, fraction, time, erp) {
+  let opening = 0;
+  let glow = 0;
+  for (const { launch, terminal } of passages) {
+    const forward = launch.fromNodeId === sourceId;
+    const progress = forward ? fraction : 1 - fraction;
+    const duration = launch.arrivalMs - launch.departureMs;
+    const crossing = launch.departureMs + progress * duration;
+    const age = time - crossing;
+    if (age <= 0 || age >= erp) continue;
+    let weight = 1;
+    if (terminal && terminal.tMs <= time) {
+      if (terminal.position !== undefined && (forward ? fraction > terminal.position : fraction < terminal.position)) continue;
+      if (terminal.type === 'activation_blocked') weight = 1 - smooth((progress - .78) / .22);
+    }
+    const recovery = weight * (1 - age / erp) ** .55;
+    opening = Math.max(opening, recovery * smooth(age / 11));
+    // A point glows for 58% of the transit duration, about 2.5 times the
+    // old centerline tail. The clock keeps running after arrival.
+    const trailAge = age / (.58 * duration);
+    glow = Math.max(glow, recovery * smooth(trailAge / .16) * (1 - clamp(trailAge)) ** 1.4);
+  }
+  return { opening, glow };
+}
+
+function threadShape(phase, strand) {
+  const swell = .76 + .22 * Math.sin(3 * phase + .7) + .13 * Math.sin(7 * phase - 1.1);
+  const drift = 2.4 * Math.sin(5 * phase + .4) + 1.2 * Math.sin(9 * phase + 1.3);
+  if (strand === 0) return drift - 9 * swell + 2.8 * Math.sin(4 * phase + .3);
+  if (strand === 1) return drift + 3.8 * Math.sin(3 * phase + 1.8) + 1.5 * Math.sin(8 * phase);
+  return drift + 8 * swell + 3.2 * Math.sin(6 * phase + 2.1);
+}
+
+function junctionTaper(distance) {
+  return smooth(distance / 15);
+}
+
+function junctionOpening(state, time) {
+  const start = state?.lastActivationMs;
+  const end = state?.refractoryUntilMs;
+  if (start == null || end == null || time <= start || time >= end) return 0;
+  return ((end - time) / (end - start)) ** .55 * smooth((time - start) / 11);
+}
+
+return {createWeaveHistory,pathPassages,sampleWeave,threadShape,junctionTaper,junctionOpening};
+})();
 __modules["src/visuals/renderer.js"] = (()=>{
 const { createNetworkMarks } = __modules["src/visuals/marks.js"];
+const { createWeaveHistory, pathPassages, sampleWeave, threadShape, junctionTaper, junctionOpening } = __modules["src/visuals/weave.js"];
 
 const GROUND = '#080C13';
 const BRASS = '#C8A878';
@@ -5769,13 +5865,6 @@ const SAMPLES = 64;
 const GLYPH_LIFETIME = 74;
 const HIT_RADIUS = 22;
 const CROSSING_EPSILON = 1e-7;
-const ECHOES = [
-  { offset: -1.02, twist: 0.5, width: 0.44, alpha: 0.36 },
-  { offset: -0.46, twist: -0.78, width: 0.51, alpha: 0.31 },
-  { offset: 0.40, twist: 0.57, width: 0.51, alpha: 0.42 },
-  { offset: 1.12, twist: -0.62, width: 0.44, alpha: 0.34 },
-];
-
 const clamp = (value) => Math.max(0, Math.min(1, value));
 const mix = (a, b, t) => a + (b - a) * t;
 const ease = (value) => value * value * (3 - 2 * value);
@@ -5959,7 +6048,7 @@ function makeGeometry(world, width, height, layout = null) {
   const cx = width / 2;
   const cy = height / 2;
   const radius = Math.min(width, height) * 0.33;
-  const filamentSpread = Math.max(4, Math.min(12, radius * 0.056));
+  const weaveScale = Math.max(.7, Math.min(1.4, radius / 127));
   const isRing = world.nodes.length === 8 && world.nodes.every(({ id }) => /^R[0-7]$/.test(id));
   const sculpture = layout ? sculptureFromLayout(world, layout)
     : Object.hasOwn(SCULPTURES, world.worldId) ? SCULPTURES[world.worldId] : null;
@@ -5974,7 +6063,7 @@ function makeGeometry(world, width, height, layout = null) {
     return [id, { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius,
       angle, color: Math.cos(angle) > 0.08 ? ICE : BRASS }];
   }));
-  const links = new Map(world.links.map(({ id, a, b, enabled }) => {
+  const links = new Map(world.links.map(({ id, a, b, enabled }, linkIndex) => {
     const start = nodes.get(a);
     const end = nodes.get(b);
     const sweep = Math.atan2(Math.sin(end.angle - start.angle), Math.cos(end.angle - start.angle));
@@ -5995,16 +6084,46 @@ function makeGeometry(world, width, height, layout = null) {
       return { x: mix(start.x, end.x, u) - dy * offset / length,
         y: mix(start.y, end.y, u) + dx * offset / length };
     };
-    return [id, { a, b, enabled, color, curve: makeCurve(positionAt),
-      echoes: ECHOES.map((thread, i) => ({
-        ...thread,
-        color: i === 1 || i === 3 ? (color === BRASS ? ICE : BRASS) : color,
-        curve: makeCurve((u) => positionAt(u, filamentSpread * Math.sin(Math.PI * u)
-          * (thread.offset + thread.twist * Math.sin(TURN * u + start.angle + i * 0.43)))),
-      })),
-    }];
+    const curve = makeCurve(positionAt);
+    const phase = start.angle + (isRing ? Math.PI / 2 : (linkIndex + 1) * 1.37);
+    const samples = curve.points.map((point, index) => {
+      const u = index / SAMPLES;
+      const normal = positionAt(u, 1);
+      return {
+        x: point.x, y: point.y, nx: normal.x - point.x, ny: normal.y - point.y,
+        distance: point.distance, fraction: point.distance / curve.length,
+        taper: isRing ? 1 : junctionTaper(Math.min(point.distance, curve.length - point.distance)),
+        offsets: [0, 1, 2].map(strand => weaveScale * threadShape(phase + (isRing ? sweep : .61) * u, strand)),
+      };
+    });
+    return [id, { a, b, enabled, color, curve, samples }];
   }));
-  return { nodes, links, cx, cy, radius };
+  const incident = new Map([...nodes.keys()].map(id => [id, []]));
+  for (const [id, link] of links) {
+    incident.get(link.a).push({ id, link, start: true });
+    incident.get(link.b).push({ id, link, start: false });
+  }
+  const junctions = [];
+  for (const [id, arms] of incident) {
+    if (arms.length < 2) continue;
+    const reach = (arms.length === 2 ? 12 : 21) * weaveScale;
+    const node = nodes.get(id);
+    const ports = arms.map(({ id, link, start }) => {
+      const distance = sample => start ? sample.distance : link.curve.length - sample.distance;
+      const samples = link.samples.map((sample, index) => ({ sample, index, distance: distance(sample) }));
+      if (!start) samples.reverse();
+      const target = Math.min(reach, link.curve.length * .30);
+      const port = samples.find(({ distance }) => distance >= target);
+      const blend = Math.min(11 * weaveScale, link.curve.length * .12);
+      // Increasing strand index is the same side as rotation from the outward
+      // tangent when a link starts here. Reverse that order when it ends here.
+      const sign = start ? 1 : -1;
+      const angle = Math.atan2(port.sample.y - node.y, port.sample.x - node.x);
+      return { id, port, samples, blend, sign, angle };
+    }).sort((a, b) => a.angle - b.angle);
+    junctions.push({ id, ports });
+  }
+  return { nodes, links, junctions, isRing, weaveScale, cx, cy, radius };
 }
 
 function strokeCurve(ctx, curve, start, end, color, width) {
@@ -6046,7 +6165,7 @@ function halo(ctx, x, y, radius, color, intensity) {
   ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
 }
 
-function drawBackdrop(ctx, geometry, links, width, height) {
+function drawBackdrop(ctx, geometry, width, height) {
   ctx.fillStyle = GROUND;
   ctx.fillRect(0, 0, width, height);
   const { cx, cy, radius } = geometry;
@@ -6059,26 +6178,179 @@ function drawBackdrop(ctx, geometry, links, width, height) {
   ctx.fillStyle = ambient;
   ctx.fillRect(0, 0, width, height);
 
-  ctx.lineCap = 'round';
-  for (const [id, link] of geometry.links) {
-    const enabled = links[id]?.enabled ?? link.enabled;
-    const gap = Math.min(0.31, 8 / link.curve.length);
-    const spans = enabled ? [[0, 1]] : [[0, 0.5 - gap], [0.5 + gap, 1]];
-    const dim = enabled ? 1 : 0.53;
-    for (const [start, end] of spans) {
-      for (const thread of link.echoes) {
-        strokeCurve(ctx, thread.curve, start, end, cssColor(thread.color, thread.alpha * dim), thread.width);
-      }
-      strokeCurve(ctx, link.curve, start, end, cssColor(link.color, 0.09 * dim), 3.5);
-      strokeCurve(ctx, link.curve, start, end, cssColor(link.color, 0.68 * dim), 0.89);
+}
+
+function strandPoint(sample, offset) {
+  return { x: sample.x + sample.nx * offset, y: sample.y + sample.ny * offset };
+}
+
+function wakeOffset(sample, strand, opening) {
+  return (strand - 1) * .33 + opening * sample.offsets[strand];
+}
+
+function setJunctionPoint(field, index, strand, point, amount) {
+  const base = field.points[index][strand];
+  field.points[index][strand] = { x: mix(base.x, point.x, amount), y: mix(base.y, point.y, amount) };
+}
+
+function blendPort(field, arm, strand, offset, amount) {
+  for (const { sample, index, distance } of arm.samples) {
+    if (distance < arm.port.distance) continue;
+    if (distance >= arm.port.distance + arm.blend) break;
+    const blend = ease((distance - arm.port.distance) / arm.blend);
+    const point = strandPoint(sample, mix(offset, wakeOffset(sample, strand, field.samples[index].opening), blend));
+    setJunctionPoint(field, index, strand, point, amount);
+  }
+}
+
+function joinStrands(from, to, fromStrand, toStrand, offset, amount, fields, cleft = false) {
+  const fromOffset = fromStrand === 1 ? 0 : from.sign * offset;
+  const toOffset = toStrand === 1 ? 0 : -to.sign * offset;
+  const a = strandPoint(from.port.sample, fromOffset);
+  const b = strandPoint(to.port.sample, toOffset);
+  const inward = ({ nx, ny }, sign) => ({ x: -sign * ny, y: sign * nx });
+  const u = inward(from.port.sample, from.sign);
+  const v = inward(to.port.sample, to.sign);
+  const cross = (a, b) => a.x * b.y - a.y * b.x;
+  const delta = { x: b.x - a.x, y: b.y - a.y };
+  const denominator = cross(u, v);
+  // For a tight cleft the two offset tangents meet before the node.
+  // Use that meeting point to round the corner without looping the strands.
+  const handleLength = (arm, tangent) => cleft && Math.abs(denominator) > .01
+    ? Math.max(arm.port.distance * .15, Math.min(cross(delta, tangent) / denominator * .75, arm.port.distance * .83))
+    : arm.port.distance * .67;
+  const da = handleLength(from, v);
+  const db = handleLength(to, u);
+  const handleA = { x: a.x + u.x * da, y: a.y + u.y * da };
+  const handleB = { x: b.x + v.x * db, y: b.y + v.y * db };
+  for (const [arm, strand, offset, reverse] of [
+    [from, fromStrand, fromOffset, false], [to, toStrand, toOffset, true],
+  ]) {
+    const field = fields.get(arm.id);
+    for (const { index, distance } of arm.samples) {
+      if (distance >= arm.port.distance) break;
+      const half = (1 - distance / arm.port.distance) / 2;
+      const point = cubicPosition(a, b, handleA, handleB, reverse ? 1 - half : half, 0);
+      setJunctionPoint(field, index, strand, point, amount);
     }
-    if (!enabled) {
-      for (const fraction of [0.5 - gap, 0.5 + gap]) {
-        const point = atFraction(link.curve, fraction);
-        dot(ctx, point.x, point.y, 1.07, cssColor(link.color, 0.72));
+    blendPort(field, arm, strand, offset, amount);
+  }
+}
+
+function shapeJunctions(geometry, fields, nodes, time, reducedMotion) {
+  for (const { id, ports } of geometry.junctions) {
+    const arms = ports.filter(({ id }) => fields.get(id).enabled);
+    if (arms.length < 2) continue;
+    const opening = reducedMotion ? 0 : junctionOpening(nodes[id], time);
+    if (geometry.isRing) {
+      for (const arm of arms) {
+        const field = fields.get(arm.id);
+        for (const { sample, index, distance } of arm.samples) {
+          if (distance >= arm.blend) break;
+          const blend = ease(distance / arm.blend);
+          const width = mix(opening, field.samples[index].opening, blend);
+          field.points[index] = [0, 1, 2].map(strand => strandPoint(sample, wakeOffset(sample, strand, width)));
+        }
+      }
+      continue;
+    }
+    if (opening === 0) continue;
+    // As the opening closes, the strands return to the original curves.
+    const amount = ease(clamp(opening / .38));
+    const width = .33 + opening * 8.5 * geometry.weaveScale;
+    // Each sector connects the facing rails of two consecutive arms.
+    for (let i = 0; i < arms.length; i++) {
+      const from = arms[i];
+      const to = arms[(i + 1) % arms.length];
+      const angle = (to.angle - from.angle + TURN) % TURN;
+      const a = from.port.sample;
+      const b = to.port.sample;
+      // Facing rails share the available space in a narrow fork.
+      const cleft = angle < Math.PI / 2;
+      const offset = cleft ? Math.min(width, Math.hypot(a.x - b.x, a.y - b.y) * .4) : width;
+      joinStrands(from, to, 1 + from.sign, 1 - to.sign, offset, amount, fields, cleft);
+    }
+    if (arms.length === 2) joinStrands(arms[0], arms[1], 1, 1, 0, amount, fields);
+    else {
+      for (const arm of arms) {
+        const field = fields.get(arm.id);
+        for (const { sample, index, distance } of arm.samples) {
+          if (distance >= arm.port.distance) break;
+          setJunctionPoint(field, index, 1, sample, amount);
+        }
+        blendPort(field, arm, 1, 0, amount);
       }
     }
   }
+}
+
+function drawWeave(ctx, link, { points, enabled }) {
+  for (let strand = 0; strand < 3; strand++) {
+    ctx.beginPath();
+    let drawing = false;
+    for (let i = 0; i < link.samples.length; i++) {
+      const sample = link.samples[i];
+      if (!enabled && Math.abs(sample.fraction - .5) * link.curve.length < Math.min(8, link.curve.length * .31)) {
+        drawing = false;
+        continue;
+      }
+      const { x, y } = points[i][strand];
+      if (drawing) ctx.lineTo(x, y);
+      else ctx.moveTo(x, y);
+      drawing = true;
+    }
+    ctx.strokeStyle = cssColor(link.color, (strand === 1 ? .68 : .47) * (enabled ? 1 : .53));
+    ctx.lineWidth = strand === 1 ? 1.08 : .8;
+    ctx.stroke();
+  }
+}
+
+function strokeLitStrands(ctx, a, b, tint, opacity) {
+  for (let strand = 0; strand < 3; strand++) {
+    const start = a[strand];
+    const end = b[strand];
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y);
+    ctx.lineTo(end.x, end.y);
+    ctx.strokeStyle = cssColor(tint, opacity * (strand === 1 ? .85 : .7));
+    ctx.lineWidth = 1.25;
+    ctx.stroke();
+  }
+}
+
+function drawWake(ctx, link, { samples, points }) {
+  const tint = link.color === BRASS ? FLASH : COOL_FLASH;
+  for (let i = 1; i < samples.length; i++) {
+    const a = samples[i - 1];
+    const b = samples[i];
+    const intensity = Math.min(a.glow, b.glow);
+    if (intensity < .01) continue;
+    strokeLitStrands(ctx, points[i - 1], points[i], tint, intensity);
+  }
+}
+
+function drawDissipation(ctx, geometry, fields, event, age) {
+  const collision = event.type === 'conduction_collision';
+  const linkIds = collision ? [event.linkId] : event.incomingLinkIds;
+  const spread = 16 + 6 * clamp(age / 35);
+  const envelope = (.6 + .4 * clamp(age / 5)) * (1 - age / GLYPH_LIFETIME) ** 1.8;
+  for (const id of linkIds) {
+    const link = geometry.links.get(id);
+    const field = fields.get(id);
+    if (!link || !field?.enabled) continue;
+    const center = collision ? event.position : (event.nodeId === link.a ? 0 : 1);
+    for (let i = 1; i < link.samples.length; i++) {
+      const a = link.samples[i - 1];
+      const b = link.samples[i];
+      const distance = Math.abs((a.fraction + b.fraction) / 2 - center) * link.curve.length;
+      if (distance >= spread) continue;
+      const opacity = envelope * Math.cos(distance / spread * Math.PI / 2) ** 2;
+      ctx.shadowColor = cssColor(ICE, opacity * .7);
+      ctx.shadowBlur = 7;
+      strokeLitStrands(ctx, field.points[i - 1], field.points[i], COOL_FLASH, opacity);
+    }
+  }
+  ctx.shadowBlur = 0;
 }
 
 function drawTransit(ctx, link, transit, tMs, reducedMotion) {
@@ -6091,16 +6363,6 @@ function drawTransit(ctx, link, transit, tMs, reducedMotion) {
     return;
   }
   const forward = transit.fromNodeId === link.a;
-  for (let i = 0; i < 8; i += 1) {
-    const start = Math.max(0, progress - 0.23 + 0.23 * (i / 8));
-    const end = Math.max(0, progress - 0.23 + 0.23 * ((i + 1) / 8));
-    if (start >= end) continue;
-    const opacity = (i + 1) / 8;
-    const from = forward ? start : 1 - end;
-    const to = forward ? end : 1 - start;
-    strokeCurve(ctx, link.curve, from, to, cssColor(link.color, 0.23 * opacity), 2.4 + 1.2 * opacity);
-    strokeCurve(ctx, link.curve, from, to, cssColor(link.color, 0.72 * opacity), 0.8 + opacity);
-  }
   const head = atFraction(link.curve, forward ? progress : 1 - progress);
   halo(ctx, head.x, head.y, 13, link.color, 0.49);
   dot(ctx, head.x, head.y, 2.4, link.color === BRASS ? FLASH : COOL_FLASH);
@@ -6126,9 +6388,16 @@ function drawNode(ctx, node, state) {
   if (recovery > 0) dot(ctx, x - 0.42, y - 0.51, 0.72, cssColor(core, recovery * 0.91));
 }
 
-function drawEvent(ctx, geometry, event, tMs, reducedMotion) {
+function drawEvent(ctx, geometry, event, tMs, reducedMotion, fields) {
   const age = tMs - event.tMs;
   const node = geometry.nodes.get(event.nodeId);
+  const collision = event.type === 'conduction_collision';
+  const meeting = event.type === 'activation' && (event.incomingLinkIds?.length ?? 0) > 1;
+  const conductionBlock = event.type === 'activation_blocked' && event.incomingLinkIds.length > 0;
+  if (!reducedMotion && (collision || meeting || conductionBlock)) {
+    drawDissipation(ctx, geometry, fields, event, age);
+    if (!meeting) return;
+  }
   if (event.type === 'activation' && age < 54 && node) {
     const t = age / 54;
     const flash = (1 - t) ** 2.7;
@@ -6187,7 +6456,8 @@ function createRenderer(canvas, world, { reducedMotion = false, layout = null } 
   let width = 1;
   let height = 1;
   let ratio = 1;
-  let backdropKey;
+  let backdropDirty = true;
+  const weaveHistory = createWeaveHistory();
   let network;
   let overlay = null;
   let modified = { nodes: new Set(), links: new Set() };
@@ -6220,20 +6490,42 @@ function createRenderer(canvas, world, { reducedMotion = false, layout = null } 
     backdropCanvas.height = canvas.height = Math.round(height * ratio);
     geometry = makeGeometry(world, width, height, layout);
     network = createNetworkMarks({ world, geometry: adapter, reducedMotion });
-    backdropKey = null;
+    backdropDirty = true;
   }
 
   function render(snapshot, events = [], tMs = snapshot.tMs) {
-    const enabledKey = [...geometry.links].map(([id, link]) => (snapshot.links[id]?.enabled ?? link.enabled) ? '1' : '0').join('');
-    if (backdropKey !== enabledKey) {
+    if (backdropDirty) {
       backdrop.setTransform(ratio, 0, 0, ratio, 0, 0);
-      drawBackdrop(backdrop, geometry, snapshot.links, width + 1, height + 1);
-      backdropKey = enabledKey;
+      drawBackdrop(backdrop, geometry, width + 1, height + 1);
+      backdropDirty = false;
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(backdropCanvas, 0, 0);
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     ctx.lineCap = 'round';
+
+    const history = !reducedMotion && weaveHistory(events, snapshot.runId);
+    const fields = new Map();
+    for (const [id, link] of geometry.links) {
+      const state = snapshot.links[id];
+      const enabled = state?.enabled ?? link.enabled;
+      const erpA = snapshot.nodes[link.a]?.erpMs ?? 0;
+      const erpB = snapshot.nodes[link.b]?.erpMs ?? 0;
+      const passages = history ? pathPassages(history, snapshot.activeTransits, id, tMs,
+        Math.max(erpA, erpB), state?.generation).filter(({ launch }) =>
+          !network.isConcealedTransit(events, launch.transitId)) : [];
+      const samples = link.samples.map(({ fraction }) =>
+        sampleWeave(passages, link.a, fraction, tMs, mix(erpA, erpB, fraction)));
+      const points = link.samples.map((sample, index) => [0, 1, 2].map(strand =>
+        strandPoint(sample, sample.taper * wakeOffset(sample, strand, samples[index].opening))));
+      fields.set(id, { enabled, samples, points, hasWake: passages.length > 0 });
+    }
+    shapeJunctions(geometry, fields, snapshot.nodes, tMs, reducedMotion);
+    for (const [id, link] of geometry.links) {
+      const field = fields.get(id);
+      drawWeave(ctx, link, field);
+      if (field.enabled && field.hasWake) drawWake(ctx, link, field);
+    }
 
     for (const [id, node] of geometry.nodes) drawNode(ctx, node, snapshot.nodes[id]);
     // The selected site (last touched or inspected) wears a quiet gold halo.
@@ -6263,7 +6555,7 @@ function createRenderer(canvas, world, { reducedMotion = false, layout = null } 
       if (event.tMs > tMs || event.runId !== snapshot.runId) continue;
       if (event.tMs <= tMs - GLYPH_LIFETIME) break;
       if (!(event.type === 'activation_blocked' && network.isConcealedBlock(events, event.eventId))) {
-        drawEvent(ctx, geometry, event, tMs, reducedMotion);
+        drawEvent(ctx, geometry, event, tMs, reducedMotion, fields);
       }
       if (event.type === 'stimulus_attempted') gestures.delete(event.triggerId);
     }

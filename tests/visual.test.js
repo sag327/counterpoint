@@ -384,4 +384,30 @@ console.log('Visual checks passed for all worlds with engine snapshots, contract
   assert.equal(atBranch('HV2'), 0, 'the slower leg remains gathered ahead of its wave');
   const missingBranch = createWeaveHistory()(events.filter(event => event.linkId !== 'HV1'), 'fork-weave');
   assert.equal(atBranch('HV1', missingBranch), 0, 'a junction capture alone cannot open an idle leg');
+
+  const snapshot = engine.readAt(190);
+  const { renderer, image } = setup(false, width, height, conductionWorld);
+  const node = renderer.nodePosition('H');
+  const cleft = { x: node.x + 1, y: node.y + 16 };
+  const distalArm = place(-.31, .71);
+  const noWake = { ...snapshot, activeTransits: [] };
+  renderer.render(noWake);
+  assert.ok(at(image, cleft) > 65, 'the joined inner strands round the open fork');
+  const distalBrightness = at(image, distalArm);
+  const openFork = image.toBuffer('image/png');
+  renderer.render({ ...noWake, nodes: { ...noWake.nodes, H: { ...snapshot.nodes.H, erpMs: 10 } } });
+  assert.ok(image.toBuffer('image/png').equals(openFork), 'the fork uses the recorded refractory deadline');
+  renderer.render({ ...noWake, nodes: { ...noWake.nodes, H: { ...snapshot.nodes.H, refractoryUntilMs: 189 } } });
+  assert.ok(at(image, cleft) < 30, 'the cleft gathers once the actual refractory deadline passes');
+  assert.equal(at(image, distalArm), distalBrightness, 'the shared opening stays near the fork');
+
+  const blocked = { type: 'activation_blocked', eventId: 'block', cause: 'refractory', causeIds: [],
+    runId: snapshot.runId, nodeId: 'H', incomingLinkIds: ['NH'], tMs: 189 };
+  renderer.render(noWake, [{ ...blocked, tMs: 191 }]);
+  assert.ok(image.toBuffer('image/png').equals(openFork), 'a future block leaves the presented fork unchanged');
+  const stem = { x: node.x, y: node.y - 10 };
+  const stemBrightness = at(image, stem, 6);
+  renderer.render(noWake, [blocked]);
+  assert.ok(at(image, stem, 6) > stemBrightness + 25, 'a blocked arrival lights the entering strands');
+  assert.ok(at(image, cleft) > 65, 'a block leaves the fork on the earlier capture recovery');
 }

@@ -82,3 +82,10 @@ export function threadShape(phase, strand) {
 export function junctionTaper(distance) {
   return smooth(distance / 15);
 }
+
+export function junctionOpening(state, time) {
+  const start = state?.lastActivationMs;
+  const end = state?.refractoryUntilMs;
+  if (start == null || end == null || time <= start || time >= end) return 0;
+  return ((end - time) / (end - start)) ** .55 * smooth((time - start) / 11);
+}
