@@ -13,8 +13,8 @@ export const METER_CHAIN = deepFreeze({
 
 // The nodal chain as a reusable fragment (Ostinato and Retrograde reuse it).
 // `from` is the atrial site feeding N1; `to` is the His site.
-export function meterChain(from, to, { prefix = '' } = {}) {
-  const c = METER_CHAIN;
+export function meterChain(from, to, { prefix = '', chain = METER_CHAIN } = {}) {
+  const c = chain;
   const id = name => `${prefix}${name}`;
   const nodes = ['N1', 'N2', 'N3'].map(n => site(id(n), 'nodal', c.erp[n], { restitution: [...c.restitution[n]] }));
   const links = [
