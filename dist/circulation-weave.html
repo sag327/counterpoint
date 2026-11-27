@@ -1,0 +1,2363 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Counterpoint · Reweaving</title><style>:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#090e17;color:#d8dce3}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% 40%,#131d2b 0, #090e17 66%);min-height:100vh}main{max-width:850px;margin:auto;padding:38px 24px 24px}header{text-align:center}.eyebrow,footer{font-size:9px;letter-spacing:.24em;color:#87909d}h1{font:normal 43px Georgia,serif;letter-spacing:-.03em;margin:17px 0 12px}header p{color:#929caa;font:14px/1.65 Georgia,serif;margin:0}.stage{position:relative;height:460px}canvas{width:100%;height:100%;display:block}.center{position:absolute;top:46%;left:24%;width:52%;text-align:center;pointer-events:none}.center>span{font:23px Georgia,serif;color:#d8dce3}.center p{font-size:11px;line-height:1.7;color:#939eae;margin:10px auto;max-width:185px}.region{position:absolute;top:48%;font-size:9px;letter-spacing:.18em}.region span{display:block;font:11px Georgia,serif;letter-spacing:0;margin-top:7px;color:#929caa}.gold{left:1%;color:#c9a570}.blue{right:1%;color:#7ca6c9}.controls{max-width:560px;margin:auto}button,select{font:inherit;color:#abb5c3;background:transparent;border:1px solid #303b4b;border-radius:30px;padding:10px 16px;cursor:pointer}button:hover,button:focus-visible,select:focus-visible{border-color:#aab9cb;color:#edf2f8}button[aria-pressed=true]{border-color:#9aa9bb;background:#202c3b;color:#f0f2f5}.scenarios{display:flex;justify-content:center;gap:10px;margin:0 0 24px}.scenarios button{font-size:12px}.transport{display:flex;align-items:center;gap:12px}.transport button{font-size:11px;white-space:nowrap}#play{min-width:65px}#restart{font-size:18px;padding:5px 12px}input{min-width:30px;flex:1;accent-color:#a8b9cb;height:25px}.foot{display:flex;justify-content:space-between;align-items:center;color:#818d9d;font-size:10px;margin:16px 0}.foot select{border:0;font-size:10px;padding:5px}details{max-width:560px;margin:30px auto;color:#8c98a8;font-size:12px;line-height:1.7}summary{cursor:pointer;font-size:11px}footer{text-align:center;margin-top:40px;font-size:8px}@media(max-width:550px){main{padding:26px 15px 20px}h1{font-size:36px}.stage{height:365px}.region{top:88%}.gold{left:12%}.blue{right:12%}.center{top:40%}.center>span{font-size:21px}.center p{max-width:145px;font-size:10px}.scenarios{gap:6px;margin-top:15px}.scenarios button{padding:9px 12px;font-size:11px}.transport{gap:7px}.transport button{padding:8px 10px}.foot{font-size:9px;gap:8px}footer{font-size:7px}}
+</style></head><body>
+<main><header><span class="eyebrow">COUNTERPOINT / MOTION STUDY</span><h1>Reweaving</h1><p>A passing impulse loosens the weave.<br>As it gathers, the path becomes ready again.</p></header>
+<section class="stage" aria-label="Animated conduction ring"><canvas id="ring" role="img" aria-label="Gold and blue filaments show local recovery. An open weave is refractory, a gathered line is ready."></canvas><div class="center"><span id="phase">Ready to begin</span><p id="explanation">Two paths. Different recovery.</p></div><span class="region gold">GOLD<span>gathers sooner</span></span><span class="region blue">BLUE<span>gathers later</span></span></section>
+<section class="controls" aria-label="Playback controls"><div class="scenarios" role="group" aria-label="Choose an experiment"><button data-mode="single">One impulse</button><button data-mode="reentry" aria-pressed="true">Find a rhythm</button><button data-mode="late">Wait longer</button></div><div class="transport"><button id="play">Play</button><button id="restart" aria-label="Restart experiment">↺</button><input id="timeline" type="range" min="0" max="3600" step="1" value="0" aria-label="Scrub simulation"><button id="sound" aria-pressed="false">Sound off</button></div><div class="foot"><span>Open weave · recovering &nbsp; / &nbsp; Fine line · ready</span><label>Motion <select id="speed" aria-label="Playback speed"><option value="6">Slow</option><option value="4" selected>Gentle</option><option value="2">Flowing</option></select></label></div></section>
+<details><summary>Inside this study</summary><p>Gold tissue has a shorter refractory period than blue tissue. Conduction speed is the same on both paths. “Find a rhythm” delivers a second impulse while the blue entrance is still refractory. Its wave stops there, while the other wave travels around the ring and returns after the blue tissue has recovered.</p><p>The filament spacing represents remaining refractoriness at each simulation site. The curves between sites are an artistic interpolation. Every traveling impulse and block comes from the Counterpoint simulation.</p></details><footer>AN EXPLORATION OF RHYTHM, RECOVERY & RETURN</footer></main><script>const __modules = {};
+__modules["src/engine/agenda.js"] = (()=>{
+function earlier(a, b) {
+  return a.tick - b.tick || a.phase - b.phase || a.order - b.order ||
+    (a.secondOrder ?? 0) - (b.secondOrder ?? 0);
+}
+
+class Agenda {
+  #items = [];
+
+  get size() {
+    return this.#items.length;
+  }
+
+  peek() {
+    return this.#items[0];
+  }
+
+  push(item) {
+    const items = this.#items;
+    let index = items.length;
+    while (index > 0) {
+      const parent = Math.floor((index - 1) / 2);
+      if (earlier(item, items[parent]) >= 0) break;
+      items[index] = items[parent];
+      index = parent;
+    }
+    items[index] = item;
+  }
+
+  pop() {
+    const items = this.#items;
+    const first = items[0];
+    const last = items.pop();
+    if (items.length === 0) return first;
+    let index = 0;
+    while (index * 2 + 1 < items.length) {
+      let child = index * 2 + 1;
+      if (child + 1 < items.length && earlier(items[child + 1], items[child]) < 0) child++;
+      if (earlier(last, items[child]) <= 0) break;
+      items[index] = items[child];
+      index = child;
+    }
+    items[index] = last;
+    return first;
+  }
+}
+
+return {Agenda};
+})();
+__modules["src/engine/laws.js"] = (()=>{
+// Contract 1.1.0 laws. Every argument and result that is a time is an integer
+// microsecond tick. A law that produces a time rounds once with Math.round
+// (half ticks toward +infinity), so fixtures can repeat the arithmetic exactly.
+
+const LESION_STEP = 250_000;
+const AGENT_STEP = 100_000;
+const STILLNESS_RISE = 1_500_000;
+const STILLNESS_HOLD = 2_000_000;
+const STILLNESS_DECAY = 6_000_000;
+const STILLNESS_END = STILLNESS_RISE + STILLNESS_HOLD + STILLNESS_DECAY;
+const SLOW_RAMP = 3_000_000;
+const STILLNESS_NODAL_ERP = 600_000;
+const STILLNESS_ATRIAL_ERP = 0.2;
+const STILLNESS_SINUS_CYCLE = 0.5;
+const SLOW_GAIN = 0.3;
+const SLOW_USE_CYCLE = 400_000;
+const TONE_CYCLE = 0.2;
+const TONE_DECREMENT = 0.5;
+
+// §A. A site that has never been activated (di null) uses erpMax.
+function restitutionErp(restitution, di) {
+  const { erpMax, amplitude, tau, erpMin } = restitution;
+  if (di === null) return erpMax;
+  return Math.min(erpMax, Math.max(erpMin, Math.round(erpMax - amplitude * Math.exp(-di / tau))));
+}
+
+// §B. slack is the nominal arrival minus the destination's refractoryUntil (>= 0).
+function entryExtra(entry, slack) {
+  return Math.round(entry.maxExtra * Math.exp(-slack / entry.tau));
+}
+
+// v1.0 decrement with an optional multiplier for nodal tone and breath.
+function decrementExtra(decrement, recoveryInterval, factor = 1) {
+  const maxExtra = factor === 1 ? decrement.maxExtra : decrement.maxExtra * factor;
+  return Math.round(maxExtra * Math.exp(-recoveryInterval / decrement.tau));
+}
+
+// §F. Delay of a direction after lesion progress p.
+function lesionDelay(delay, progress) {
+  return progress === 0 ? delay : Math.round(delay * (1 + 3 * progress * progress));
+}
+
+// §C. Respiratory factor at an instant.
+function breathFactor(autonomic, tick) {
+  return 1 + autonomic.depth * Math.sin((2 * Math.PI * tick) / autonomic.period);
+}
+
+// §D. Sinusoidal phase-response curve.
+function phaseShift(cycle, amplitude, phase) {
+  return Math.round(cycle * amplitude * Math.sin(2 * Math.PI * phase));
+}
+
+// Stillness envelope e(t) in [0, 1] for elapsed ticks since the command.
+function stillnessEnvelope(elapsed) {
+  if (elapsed <= 0 || elapsed >= STILLNESS_END) return 0;
+  if (elapsed <= STILLNESS_RISE) return elapsed / STILLNESS_RISE;
+  if (elapsed <= STILLNESS_RISE + STILLNESS_HOLD) return 1;
+  return 1 - (elapsed - STILLNESS_RISE - STILLNESS_HOLD) / STILLNESS_DECAY;
+}
+
+// Slow the current: extra ticks on a non-nodal link. cycle is the source's
+// preceding cycle, null on its first activation (no use dependence).
+function slowExtra(linkDelay, level, cycle) {
+  const use = cycle === null ? 0 : Math.max(0, (SLOW_USE_CYCLE - cycle) / SLOW_USE_CYCLE);
+  return Math.round(linkDelay * SLOW_GAIN * level * (1 + use));
+}
+
+// Stillness modifies a site's ERP after its own law: nodal adds, atrial scales.
+function agentErp(node, erp) {
+  if (node.agentErpAdd !== 0) return erp + node.agentErpAdd;
+  if (node.agentErpScale !== 1) return Math.round(erp * node.agentErpScale);
+  return erp;
+}
+
+// The ERP a capture would receive after a long rest, as reported by
+// parameter_changed (erpMs) and readAt. node.erp tracks erpMax under restitution.
+function restedErp(node) {
+  return agentErp(node, node.erp);
+}
+
+function agentCycle(node, cycle) {
+  return cycle === null || node.agentCycleScale === 1 ? cycle : Math.round(cycle * node.agentCycleScale);
+}
+
+return {LESION_STEP,AGENT_STEP,STILLNESS_RISE,STILLNESS_HOLD,STILLNESS_DECAY,STILLNESS_END,SLOW_RAMP,STILLNESS_NODAL_ERP,STILLNESS_ATRIAL_ERP,STILLNESS_SINUS_CYCLE,SLOW_GAIN,SLOW_USE_CYCLE,TONE_CYCLE,TONE_DECREMENT,restitutionErp,entryExtra,decrementExtra,lesionDelay,breathFactor,phaseShift,stillnessEnvelope,slowExtra,agentErp,restedErp,agentCycle};
+})();
+__modules["src/engine/time.js"] = (()=>{
+const TICKS_PER_MS = 1000;
+
+function toTick(value, label) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    throw new RangeError(`${label} must be a finite nonnegative number`);
+  }
+  // Shift the decimal wire value before rounding. Binary multiplication can put
+  // a decimal half-tick such as 0.5005 ms just below its intended tie.
+  const [mantissa, exponent = '0'] = String(value).split('e');
+  const [whole, fraction = ''] = mantissa.split('.');
+  const digits = BigInt(whole + fraction);
+  const shift = Number(exponent) + 3 - fraction.length;
+  let tick;
+  if (shift >= 0) {
+    tick = digits * 10n ** BigInt(shift);
+  } else {
+    const divisor = 10n ** BigInt(-shift);
+    tick = (2n * digits + divisor) / (2n * divisor);
+  }
+  if (tick > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new RangeError(`${label} exceeds the safe simulation timeline`);
+  }
+  return Number(tick);
+}
+
+function toMs(tick) {
+  return tick === null ? null : tick / TICKS_PER_MS;
+}
+
+function addTicks(tick, duration) {
+  const result = tick + duration;
+  if (!Number.isSafeInteger(result)) {
+    throw new RangeError('Scheduled instant exceeds the safe simulation timeline');
+  }
+  return result;
+}
+
+function clampUnit(value) {
+  return Math.max(0, Math.min(1, value));
+}
+
+return {TICKS_PER_MS,toTick,toMs,addTicks,clampUnit};
+})();
+__modules["src/engine/history.js"] = (()=>{
+const { lesionDelay, restedErp } = __modules["src/engine/laws.js"];
+const { clampUnit, toMs } = __modules["src/engine/time.js"];
+
+const CHECKPOINT_INTERVAL = 64;
+
+function extraState(law) {
+  return law === null ? null : Object.freeze({ maxExtraMs: toMs(law.maxExtra), tauMs: toMs(law.tau) });
+}
+
+// Contract 1.1.0 runs add restitution and suppression; 1.0.0 snapshots are unchanged.
+function nodeState(node, v11) {
+  const state = { erp: restedErp(node), tail: node.tail, last: node.last, until: node.until };
+  if (v11) {
+    const law = node.restitution;
+    state.extra = Object.freeze({
+      restitution: law === null ? null : Object.freeze({
+        erpMaxMs: toMs(law.erpMax), amplitudeMs: toMs(law.amplitude), tauMs: toMs(law.tau), erpMinMs: toMs(law.erpMin),
+      }),
+      suppressionMs: node.auto.overdrive === null ? null : toMs(node.auto.suppression),
+    });
+  }
+  return state;
+}
+
+function directionState(direction, link, v11) {
+  const progress = link.lesion?.progress ?? 0;
+  const state = {
+    enabled: direction.enabled,
+    delayMs: toMs(lesionDelay(direction.delay, progress)),
+    decrement: extraState(direction.decrement),
+  };
+  if (v11) state.entry = extraState(direction.entry);
+  return Object.freeze(state);
+}
+
+function linkState(link, v11) {
+  const state = {
+    a: link.a,
+    b: link.b,
+    enabled: link.enabled,
+    generation: link.generation,
+    ab: directionState(link.ab, link, v11),
+    ba: directionState(link.ba, link, v11),
+  };
+  if (v11) {
+    state.lesion = link.lesion === null ? null : Object.freeze({
+      progress: link.lesion.progress,
+      completeness: link.lesion.completeness,
+    });
+  }
+  return Object.freeze(state);
+}
+
+function recoveryAt(node, tick) {
+  return node.last === null ? 1 : clampUnit((tick - node.until) / node.tail);
+}
+
+function copyState(state) {
+  return {
+    nodes: new Map(state.nodes),
+    links: new Map(state.links),
+    transits: new Map(state.transits),
+  };
+}
+
+function applyChanges(state, { nodes, links, transits }) {
+  for (const [id, value] of nodes) state.nodes.set(id, value);
+  for (const [id, value] of links) state.links.set(id, value);
+  for (const [id, value] of transits) {
+    if (value === null) state.transits.delete(id);
+    else state.transits.set(id, value);
+  }
+}
+
+function readSnapshot(run, tick, state) {
+  const nodes = Array.from(state.nodes, ([id, node]) => [id, Object.freeze({
+    lastActivationMs: toMs(node.last),
+    refractoryUntilMs: toMs(node.until),
+    erpMs: toMs(node.erp),
+    recoveryTailMs: toMs(node.tail),
+    recovery: recoveryAt(node, tick),
+    excitable: node.until === null || tick >= node.until,
+    ...node.extra,
+  })]);
+  return Object.freeze({
+    runId: run.id,
+    worldId: run.worldId,
+    tMs: toMs(tick),
+    nodes: Object.freeze(Object.fromEntries(nodes)),
+    links: Object.freeze(Object.fromEntries(state.links)),
+    activeTransits: Object.freeze(Array.from(state.transits.values())),
+  });
+}
+
+class History {
+  #floor = 0;
+  #batches = [];
+  #count = 0;
+  #base;
+  #head;
+  #limit;
+  #v11;
+
+  constructor(run, limit) {
+    this.#limit = limit;
+    this.#v11 = run.v11;
+    this.#base = {
+      nodes: new Map(Array.from(run.nodes, ([id, node]) => [id, nodeState(node, run.v11)])),
+      links: new Map(Array.from(run.links, ([id, link]) => [id, linkState(link, run.v11)])),
+      transits: new Map(),
+    };
+    this.#head = copyState(this.#base);
+  }
+
+  get size() {
+    return this.#batches.length;
+  }
+
+  get earliestTick() {
+    return this.#floor;
+  }
+
+  record(tick, batch) {
+    if (batch.nodes.size === 0 && batch.links.size === 0 && batch.transits.size === 0) return;
+    const entry = {
+      tick,
+      nodes: Array.from(batch.nodes, node => [node.id, nodeState(node, this.#v11)]),
+      links: Array.from(batch.links, link => [link.id, linkState(link, this.#v11)]),
+      transits: batch.transits,
+      checkpoint: null,
+    };
+    applyChanges(this.#head, entry);
+    this.#count++;
+    if (this.#count % CHECKPOINT_INTERVAL === 0) entry.checkpoint = copyState(this.#head);
+    this.#batches.push(entry);
+    if (this.#batches.length > this.#limit) {
+      const oldest = this.#batches.shift();
+      applyChanges(this.#base, oldest);
+      this.#floor = oldest.tick;
+    }
+  }
+
+  snapshot(run, tick) {
+    if (tick < this.#floor) throw new RangeError('Read time is outside retained simulation history');
+    const batches = this.#batches;
+    let lower = 0;
+    let upper = batches.length;
+    while (lower < upper) {
+      const middle = Math.floor((lower + upper) / 2);
+      if (batches[middle].tick <= tick) lower = middle + 1;
+      else upper = middle;
+    }
+    const end = lower;
+    let checkpoint = end - 1;
+    while (checkpoint >= 0 && batches[checkpoint].checkpoint === null) checkpoint--;
+    const state = copyState(batches[checkpoint]?.checkpoint ?? this.#base);
+    for (let index = checkpoint + 1; index < end; index++) applyChanges(state, batches[index]);
+    return readSnapshot(run, tick, state);
+  }
+}
+
+return {recoveryAt,History};
+})();
+__modules["src/engine/input.js"] = (()=>{
+const { addTicks, toTick } = __modules["src/engine/time.js"];
+
+const CONTRACT_V10 = '1.0.0';
+const CONTRACT_V11 = '1.1.0';
+const TRAIN_MAX_PULSES = 64;
+// Concurrent trains: a world may declare limits.maxConcurrentTrains up to this value (default 4).
+const TRAIN_CONCURRENCY_DEFAULT = 4;
+const TRAIN_CONCURRENCY_MAX = 16;
+const TISSUES = Object.freeze(['sinus', 'atrial', 'nodal', 'hisPurkinje', 'ventricular', 'accessory']);
+
+const ERP_EDIT = [50, 1000];
+const DELAY_EDIT = [1, 500];
+const CYCLE_EDIT = [200, 3000];
+const ERP_FLOOR_EDIT = [10, 1000];
+const AMPLITUDE_EDIT = [0, 1000];
+const TAU_EDIT = [10, 1000];
+const EXTRA_EDIT = [0, 300];
+const TRAIN_CYCLE = [150, 10000];
+const LESION_DURATION = [1, 60000];
+const LABEL_LIMIT = 120;
+const commonCommandKeys = ['commandId', 'runId', 'tMs', 'type'];
+const commandKeys = new Map([
+  ['stimulate', ['nodeId']],
+  ['setLinkEnabled', ['linkId', 'enabled']],
+  ['setNodeERP', ['nodeId', 'erpMs']],
+  ['setDirectionDelay', ['linkId', 'direction', 'delayMs']],
+  ['setAutomaticity', ['nodeId', 'cycleMs']],
+  // Contract 1.1.0. These require a 1.1.0 run.
+  ['stimulateTrain', ['nodeId', 'startMs', 'cycleMs', 'count', 'label']],
+  ['cancelTrain', ['trainId']],
+  ['setTone', ['value']],
+  ['ablate', ['target', 'durationMs', 'completeness']],
+  ['applyAgent', ['agent', 'doseScale']],
+  ['setCoupling', ['couplingId', 'value']],
+  ['setRestitution', ['nodeId', 'erpMaxMs', 'amplitudeMs', 'tauMs', 'erpMinMs']],
+  ['setDecrement', ['linkId', 'direction', 'maxExtraMs', 'tauMs']],
+  ['setEntry', ['linkId', 'direction', 'maxExtraMs', 'tauMs']],
+  ['setAutonomic', ['value']],
+]);
+const v11Commands = new Set(['stimulateTrain', 'cancelTrain', 'setTone', 'ablate', 'applyAgent', 'setCoupling',
+  'setRestitution', 'setDecrement', 'setEntry', 'setAutonomic']);
+const targetFields = { nodeId: 'nodes', linkId: 'links', target: 'links', couplingId: 'couplings', trainId: 'trains' };
+const WORLD_V11_KEYS = ['contractVersion', 'coupling', 'autonomic', 'limits'];
+const NODE_V11_KEYS = ['tissue', 'audible', 'restitution'];
+const AUTOMATICITY_V11_KEYS = ['overdrive', 'protected'];
+const DIRECTION_V11_KEYS = ['entry'];
+
+function objectWithKeys(value, keys, label, optional = []) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value) ||
+      !keys.every(key => Object.hasOwn(value, key)) ||
+      !Object.keys(value).every(key => keys.includes(key) || optional.includes(key))) {
+    const extra = optional.length === 0 ? '' : ` and optionally ${optional.join(', ')}`;
+    throw new TypeError(`${label} must have fields ${keys.join(', ')}${extra}`);
+  }
+  return optional.some(key => Object.hasOwn(value, key));
+}
+
+function requireId(value, label) {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new TypeError(`${label} must be a nonempty string`);
+  }
+}
+
+function requireBoolean(value, label) {
+  if (typeof value !== 'boolean') throw new TypeError(`${label} must be boolean`);
+}
+
+function requireNumber(value, label, minimum, maximum, { exclusiveMinimum = false } = {}) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value > maximum ||
+      (exclusiveMinimum ? value <= minimum : value < minimum)) {
+    const lower = exclusiveMinimum ? `above ${minimum}` : `at least ${minimum}`;
+    throw new RangeError(`${label} must be a finite number ${lower} and no more than ${maximum}`);
+  }
+  return value;
+}
+
+function positiveTick(value, label, minimumMs = 0) {
+  const tick = toTick(value, label);
+  if (tick <= 0 || value < minimumMs) throw new RangeError(`${label} is outside its duration range`);
+  return tick;
+}
+
+function editTick(value, label, [minimum, maximum]) {
+  const tick = positiveTick(value, label, minimum);
+  if (value > maximum) throw new RangeError(`${label} must be no more than ${maximum} ms`);
+  return tick;
+}
+
+// Like editTick, but zero is allowed when the range starts at zero.
+function rangeTick(value, label, [minimum, maximum]) {
+  const tick = toTick(value, label);
+  if (value < minimum || value > maximum) throw new RangeError(`${label} must lie within ${minimum}–${maximum} ms`);
+  return tick;
+}
+
+function uniqueId(id, seen, label) {
+  requireId(id, label);
+  if (seen.has(id)) throw new RangeError(`Duplicate ${label}: ${id}`);
+  seen.add(id);
+}
+
+function extraLaw(value, label) {
+  objectWithKeys(value, ['maxExtraMs', 'tauMs'], label);
+  return { maxExtra: toTick(value.maxExtraMs, `${label}.maxExtraMs`), tau: positiveTick(value.tauMs, `${label}.tauMs`) };
+}
+
+function noteVersion(version, hasV11Fields) {
+  if (hasV11Fields) version.v11 = true;
+}
+
+function direction(value, label, version) {
+  noteVersion(version, objectWithKeys(value, ['enabled', 'delayMs', 'decrement'], label, DIRECTION_V11_KEYS));
+  requireBoolean(value.enabled, `${label}.enabled`);
+  const delay = positiveTick(value.delayMs, `${label}.delayMs`, 1);
+  let decrement = null;
+  if (value.decrement !== null) {
+    decrement = extraLaw(value.decrement, `${label}.decrement`);
+    addTicks(delay, decrement.maxExtra);
+  }
+  let entry = null;
+  if (value.entry !== undefined && value.entry !== null) {
+    entry = extraLaw(value.entry, `${label}.entry`);
+    addTicks(delay, entry.maxExtra);
+  }
+  return { enabled: value.enabled, delay, decrement, generation: 0, entry, decrementGeneration: 0, entryGeneration: 0 };
+}
+
+function overdrive(value, label) {
+  if (value === undefined || value === null) return null;
+  objectWithKeys(value, ['gainPerBeat', 'maxMs', 'warmupFactor'], label);
+  return {
+    gain: requireNumber(value.gainPerBeat, `${label}.gainPerBeat`, 0, 1),
+    max: toTick(value.maxMs, `${label}.maxMs`),
+    warmup: requireNumber(value.warmupFactor, `${label}.warmupFactor`, 0, 1),
+  };
+}
+
+function automaticity(value, version) {
+  const fresh = { overdrive: null, protected: false, suppression: 0, next: null, origin: null };
+  if (value === null) return { cycle: null, firstAttempt: null, resetOnCapture: true, ...fresh };
+  noteVersion(version, objectWithKeys(value, ['cycleMs', 'firstAttemptMs', 'resetOnCapture'], 'automaticity', AUTOMATICITY_V11_KEYS));
+  requireBoolean(value.resetOnCapture, 'automaticity.resetOnCapture');
+  if (value.protected !== undefined) requireBoolean(value.protected, 'automaticity.protected');
+  return {
+    cycle: positiveTick(value.cycleMs, 'automaticity.cycleMs'),
+    firstAttempt: toTick(value.firstAttemptMs, 'automaticity.firstAttemptMs'),
+    resetOnCapture: value.resetOnCapture,
+    ...fresh,
+    overdrive: overdrive(value.overdrive, 'automaticity.overdrive'),
+    protected: value.protected ?? false,
+  };
+}
+
+function restitution(value, erp, label) {
+  if (value === undefined || value === null) return null;
+  objectWithKeys(value, ['erpMaxMs', 'amplitudeMs', 'tauMs', 'erpMinMs'], label);
+  const law = {
+    erpMax: positiveTick(value.erpMaxMs, `${label}.erpMaxMs`),
+    amplitude: toTick(value.amplitudeMs, `${label}.amplitudeMs`),
+    tau: positiveTick(value.tauMs, `${label}.tauMs`),
+    erpMin: positiveTick(value.erpMinMs, `${label}.erpMinMs`),
+  };
+  if (law.erpMin > law.erpMax) throw new RangeError(`${label}.erpMinMs must not exceed erpMaxMs`);
+  if (law.erpMax !== erp) throw new RangeError(`${label}.erpMaxMs must equal the node's erpMs`);
+  return withFloorOffset(law);
+}
+
+// §A. setNodeERP shifts erpMin with erpMax. The floor is kept as an offset below erpMax and
+// clamped to 1 ms only where it is used, so every setNodeERP edit can be undone exactly.
+function withFloorOffset(law) {
+  return { ...law, floorOffset: law.erpMax - law.erpMin };
+}
+
+function readNode(node, version) {
+  const tissue = node.tissue ?? 'atrial';
+  if (!TISSUES.includes(tissue)) throw new RangeError(`Node ${node.id} tissue must be one of ${TISSUES.join(', ')}`);
+  if (node.audible !== undefined) requireBoolean(node.audible, `Node ${node.id} audible`);
+  const erp = positiveTick(node.erpMs, `Node ${node.id} ERP`);
+  return {
+    id: node.id,
+    erp,
+    tail: positiveTick(node.recoveryTailMs, `Node ${node.id} recovery tail`),
+    last: null,
+    until: null,
+    erpGeneration: 0,
+    cycleGeneration: 0,
+    protectedGeneration: 0,
+    auto: { ...automaticity(node.automaticity, version), token: null },
+    incident: [],
+    tissue,
+    audible: node.audible ?? true,
+    restitution: restitution(node.restitution, erp, `Node ${node.id} restitution`),
+    restitutionGeneration: 0,
+    agentErpAdd: 0,
+    agentErpScale: 1,
+    agentCycleScale: 1,
+  };
+}
+
+function readCoupling(entries, nodes, maxLinks) {
+  if (!Array.isArray(entries)) throw new TypeError('World coupling must be an array');
+  if (entries.length > maxLinks) throw new RangeError('World exceeds the configured topology limits');
+  const ids = new Set();
+  return entries.map(entry => {
+    objectWithKeys(entry, ['id', 'from', 'to', 'amplitude'], 'coupling');
+    uniqueId(entry.id, ids, 'coupling ID');
+    const to = nodes.get(entry.to);
+    if (entry.from === entry.to || !nodes.has(entry.from) || to === undefined) {
+      throw new RangeError(`Coupling ${entry.id} must connect two distinct existing nodes`);
+    }
+    if (to.auto.cycle === null) throw new RangeError(`Coupling ${entry.id} must target an automatic focus`);
+    return {
+      id: entry.id,
+      from: entry.from,
+      to: entry.to,
+      amplitude: requireNumber(entry.amplitude, `Coupling ${entry.id} amplitude`, 0, 1),
+      generation: 0,
+    };
+  });
+}
+
+function readAutonomic(value, label = 'autonomic') {
+  if (value === null) return null;
+  objectWithKeys(value, ['breathPeriodMs', 'depth', 'targets'], label);
+  if (!Array.isArray(value.targets) || new Set(value.targets).size !== value.targets.length ||
+      !value.targets.every(target => target === 'sinus' || target === 'nodal')) {
+    throw new RangeError(`${label}.targets must list sinus and/or nodal at most once each`);
+  }
+  return {
+    period: positiveTick(value.breathPeriodMs, `${label}.breathPeriodMs`),
+    depth: requireNumber(value.depth, `${label}.depth`, 0, 0.5),
+    sinus: value.targets.includes('sinus'),
+    nodal: value.targets.includes('nodal'),
+  };
+}
+
+function readLimits(value, cap) {
+  objectWithKeys(value, [], 'limits', ['maxConcurrentTrains']);
+  const trains = value.maxConcurrentTrains ?? TRAIN_CONCURRENCY_DEFAULT;
+  if (!Number.isSafeInteger(trains) || trains < 1 || trains > TRAIN_CONCURRENCY_MAX) {
+    throw new RangeError(`limits.maxConcurrentTrains must be an integer from 1 to ${TRAIN_CONCURRENCY_MAX}`);
+  }
+  return { maxConcurrentTrains: trains, cap };
+}
+
+// The concurrent-train limit is part of the world, so a performance replays from its own
+// files. The engine option is only a host cap: a world asking for more is refused at reset.
+function trainLimit(limits, cap) {
+  if (limits.maxConcurrentTrains > cap) {
+    throw new RangeError(`World limits.maxConcurrentTrains (${limits.maxConcurrentTrains}) exceeds this engine's cap of ${cap}`);
+  }
+  return limits.maxConcurrentTrains;
+}
+
+// Accepts contract 1.0.0 worlds and 1.1.0 worlds. A world is read as 1.1.0 when it declares
+// contractVersion '1.1.0' or carries any 1.1.0 field. contractVersion '1.0.0' declares a
+// 1.0.0 world explicitly; such a world may not carry 1.1.0 fields.
+function readWorld(world, { maxNodes, maxLinks, maxConcurrentTrains = TRAIN_CONCURRENCY_MAX }) {
+  const version = { v11: objectWithKeys(world, ['worldId', 'nodes', 'links'], 'world', WORLD_V11_KEYS) };
+  requireId(world.worldId, 'worldId');
+  const declared = Object.hasOwn(world, 'contractVersion') ? world.contractVersion : undefined;
+  if (declared !== undefined && declared !== CONTRACT_V11 && declared !== CONTRACT_V10) {
+    throw new RangeError(`contractVersion must be ${CONTRACT_V11} or ${CONTRACT_V10}, or omitted`);
+  }
+  if (declared === CONTRACT_V10) version.v11 = Object.keys(world).some(key => key !== 'contractVersion' && WORLD_V11_KEYS.includes(key));
+  if (!Array.isArray(world.nodes) || !Array.isArray(world.links)) {
+    throw new TypeError('World nodes and links must be arrays');
+  }
+  if (world.nodes.length > maxNodes || world.links.length > maxLinks) {
+    throw new RangeError('World exceeds the configured topology limits');
+  }
+  const nodeIds = new Set();
+  const nodes = [];
+  for (const node of world.nodes) {
+    noteVersion(version, objectWithKeys(node, ['id', 'erpMs', 'recoveryTailMs', 'automaticity'], 'node', NODE_V11_KEYS));
+    uniqueId(node.id, nodeIds, 'node ID');
+    nodes.push(readNode(node, version));
+  }
+  const linkIds = new Set();
+  const links = [];
+  const byId = new Map(nodes.map(node => [node.id, node]));
+  for (const link of world.links) {
+    objectWithKeys(link, ['id', 'a', 'b', 'enabled', 'ab', 'ba'], 'link');
+    uniqueId(link.id, linkIds, 'link ID');
+    if (link.a === link.b || !nodeIds.has(link.a) || !nodeIds.has(link.b)) {
+      throw new RangeError(`Link ${link.id} must connect two distinct existing nodes`);
+    }
+    requireBoolean(link.enabled, `Link ${link.id} enabled`);
+    links.push({
+      id: link.id,
+      a: link.a,
+      b: link.b,
+      enabled: link.enabled,
+      generation: 0,
+      ab: direction(link.ab, `Link ${link.id} ab`, version),
+      ba: direction(link.ba, `Link ${link.id} ba`, version),
+      active: new Map(),
+      collision: null,
+      lesion: null,
+      nodal: byId.get(link.a).tissue === 'nodal' || byId.get(link.b).tissue === 'nodal',
+      slowingGeneration: 0,
+    });
+  }
+  const coupling = world.coupling === undefined ? [] : readCoupling(world.coupling, byId, maxLinks);
+  const autonomic = world.autonomic === undefined ? null : readAutonomic(world.autonomic);
+  if (declared === CONTRACT_V10 && version.v11) {
+    throw new RangeError(`A world that declares contractVersion ${CONTRACT_V10} must not carry ${CONTRACT_V11} fields`);
+  }
+  const limits = readLimits(world.limits ?? {}, maxConcurrentTrains);
+  const maxTrains = version.v11 ? trainLimit(limits, maxConcurrentTrains) : null;
+  return { worldId: world.worldId, nodes, links, v11: version.v11, coupling, autonomic, maxConcurrentTrains: maxTrains };
+}
+
+// Study-world lint (12a, 13a–13g): every site of a shipped study world declares its tissue, so
+// Stillness never quietly treats an untagged nodal or ventricular site as atrial. Returns one
+// finding per site, in world order; an empty array means the world passes.
+function lintStudyWorld(world) {
+  const nodes = Array.isArray(world?.nodes) ? world.nodes : [];
+  return Object.freeze(nodes.flatMap((node, index) => {
+    if (node !== null && typeof node === 'object' && Object.hasOwn(node, 'tissue')) return [];
+    const nodeId = typeof node?.id === 'string' ? node.id : `#${index}`;
+    return [Object.freeze({ code: 'MISSING_TISSUE', nodeId, message: `Site ${nodeId} does not declare tissue (the engine default is atrial)` })];
+  }));
+}
+
+function requireDirection(value) {
+  if (value !== 'ab' && value !== 'ba') throw new TypeError('Direction must be ab or ba');
+  return value;
+}
+
+function readCommand(command, run) {
+  const keys = commandKeys.get(command?.type);
+  if (keys === undefined) throw new TypeError('Unknown command type');
+  objectWithKeys(command, [...commonCommandKeys, ...keys], 'command');
+  requireId(command.commandId, 'commandId');
+  if (command.runId !== run.id) throw new RangeError('Command belongs to a different run');
+  if (run.commandIds.has(command.commandId)) throw new RangeError('Duplicate command ID');
+  const tick = toTick(command.tMs, 'Command time');
+  if (run.committed !== null && tick <= run.committed) {
+    throw new RangeError('Command time must follow the committed horizon');
+  }
+  if (v11Commands.has(command.type) && !run.v11) {
+    throw new TypeError(`${command.type} requires a contract ${CONTRACT_V11} world`);
+  }
+  const field = keys.find(key => Object.hasOwn(targetFields, key));
+  let target = null;
+  if (field !== undefined) {
+    const targetId = command[field];
+    target = run[targetFields[field]].get(targetId);
+    if (target === undefined) throw new RangeError(`Unknown command target: ${targetId}`);
+  }
+
+  const accepted = { tick, commandId: command.commandId, target, type: command.type };
+  switch (command.type) {
+    case 'setLinkEnabled':
+      requireBoolean(command.enabled, 'enabled');
+      accepted.value = command.enabled;
+      break;
+    case 'setNodeERP':
+      accepted.value = editTick(command.erpMs, 'ERP', ERP_EDIT);
+      break;
+    case 'setDirectionDelay':
+      accepted.direction = requireDirection(command.direction);
+      accepted.value = editTick(command.delayMs, 'Direction delay', DELAY_EDIT);
+      addTicks(accepted.value, target[accepted.direction].decrement?.maxExtra ?? 0);
+      break;
+    case 'setAutomaticity':
+      accepted.value = command.cycleMs === null ? null : editTick(command.cycleMs, 'Automaticity cycle', CYCLE_EDIT);
+      if (accepted.value !== null) addTicks(tick, accepted.value);
+      break;
+    case 'stimulateTrain': {
+      const start = toTick(command.startMs, 'Train start');
+      if (start < tick) throw new RangeError('Train start must not precede the command time');
+      const cycle = editTick(command.cycleMs, 'Train cycle', TRAIN_CYCLE);
+      if (!Number.isSafeInteger(command.count) || command.count < 1 || command.count > TRAIN_MAX_PULSES) {
+        throw new RangeError(`Train count must be an integer from 1 to ${TRAIN_MAX_PULSES}`);
+      }
+      if (typeof command.label !== 'string' || command.label.length > LABEL_LIMIT) {
+        throw new TypeError(`Train label must be a string of at most ${LABEL_LIMIT} characters`);
+      }
+      accepted.value = { start, cycle, count: command.count, last: addTicks(start, cycle * (command.count - 1)) };
+      break;
+    }
+    case 'setTone':
+      accepted.value = requireNumber(command.value, 'Tone', -1, 1);
+      break;
+    case 'setAutonomic':
+      if (command.value === undefined) throw new TypeError('Autonomic value must be an object or null');
+      accepted.value = readAutonomic(command.value, 'Autonomic value');
+      break;
+    case 'ablate':
+      accepted.value = {
+        duration: editTick(command.durationMs, 'Lesion duration', LESION_DURATION),
+        completeness: requireNumber(command.completeness, 'Lesion completeness', 0, 1, { exclusiveMinimum: true }),
+      };
+      break;
+    case 'applyAgent':
+      if (command.agent !== 'stillness' && command.agent !== 'slow') throw new TypeError('Agent must be stillness or slow');
+      accepted.value = { agent: command.agent, dose: requireNumber(command.doseScale, 'Dose scale', 0, 2, { exclusiveMinimum: true }) };
+      break;
+    case 'setCoupling':
+      accepted.value = requireNumber(command.value, 'Coupling amplitude', 0, 1);
+      break;
+    case 'setRestitution': {
+      const value = {
+        erpMax: editTick(command.erpMaxMs, 'Restitution erpMax', ERP_EDIT),
+        amplitude: rangeTick(command.amplitudeMs, 'Restitution amplitude', AMPLITUDE_EDIT),
+        tau: editTick(command.tauMs, 'Restitution tau', TAU_EDIT),
+        erpMin: editTick(command.erpMinMs, 'Restitution erpMin', ERP_FLOOR_EDIT),
+      };
+      if (value.erpMin > value.erpMax) throw new RangeError('Restitution erpMin must not exceed erpMax');
+      accepted.value = value;
+      break;
+    }
+    case 'setDecrement':
+    case 'setEntry':
+      accepted.direction = requireDirection(command.direction);
+      accepted.value = {
+        maxExtra: rangeTick(command.maxExtraMs, 'Maximum extra delay', EXTRA_EDIT),
+        tau: editTick(command.tauMs, 'Tau', TAU_EDIT),
+      };
+      addTicks(target[accepted.direction].delay, accepted.value.maxExtra);
+      break;
+  }
+  return accepted;
+}
+
+return {CONTRACT_V10,CONTRACT_V11,TRAIN_MAX_PULSES,TRAIN_CONCURRENCY_DEFAULT,TRAIN_CONCURRENCY_MAX,TISSUES,requireId,withFloorOffset,readWorld,lintStudyWorld,readCommand};
+})();
+__modules["src/engine/index.js"] = (()=>{
+const { Agenda } = __modules["src/engine/agenda.js"];
+const { History, recoveryAt } = __modules["src/engine/history.js"];
+const { TRAIN_CONCURRENCY_MAX, readCommand, readWorld, requireId, withFloorOffset } = __modules["src/engine/input.js"];
+const {
+  AGENT_STEP, LESION_STEP, SLOW_RAMP, STILLNESS_ATRIAL_ERP, STILLNESS_END, STILLNESS_NODAL_ERP, STILLNESS_SINUS_CYCLE,
+  TONE_CYCLE, TONE_DECREMENT, agentCycle, agentErp, breathFactor, decrementExtra, entryExtra, lesionDelay, phaseShift,
+  restedErp, restitutionErp, slowExtra, stillnessEnvelope,
+} = __modules["src/engine/laws.js"];
+const { addTicks, clampUnit, toMs, toTick } = __modules["src/engine/time.js"];
+
+const EDIT = 0;
+const COLLISION = 1;
+const STIMULUS = 2;
+const AUTOMATIC = 3;
+const ARRIVAL = 4;
+const EMPTY_EVENTS = Object.freeze([]);
+
+function byId(a, b) {
+  if (a.id < b.id) return -1;
+  if (a.id > b.id) return 1;
+  return 0;
+}
+
+class ProcessingBudgetError extends Error {}
+
+class SimulationFault extends Error {
+  constructor(cause, tick, committed, events) {
+    super(`Simulation stopped at ${toMs(tick)} ms. ${cause.message}`, { cause });
+    this.name = 'SimulationFault';
+    this.code = cause instanceof ProcessingBudgetError ? 'PROCESSING_BUDGET' : 'SIMULATION_FAULT';
+    this.tMs = toMs(tick);
+    this.committedThroughMs = toMs(committed);
+    this.events = Object.freeze(events);
+  }
+}
+
+function charge(batch) {
+  if (--batch.budget.remaining < 0) throw new ProcessingBudgetError('Processing budget exhausted. Reset the run to continue.');
+}
+
+function emit(run, batch, type, payload) {
+  charge(batch);
+  const seq = ++run.eventSeq;
+  const event = Object.freeze({
+    runId: run.id,
+    worldId: run.worldId,
+    seq,
+    eventId: `e${seq}`,
+    tMs: toMs(batch.tick),
+    type,
+    ...payload,
+  });
+  batch.events.push(event);
+  return event;
+}
+
+// Contract 1.1.0 annotations are added only to 1.1.0 runs, so 1.0.0 traces stay byte-identical.
+function withCause(run, payload, cause) {
+  return run.v11 ? { ...payload, cause } : payload;
+}
+
+function scheduleAutomatic(run, node, tick) {
+  const token = {};
+  node.auto.token = token;
+  node.auto.next = tick;
+  run.agenda.push({ tick, phase: AUTOMATIC, order: node.order, node, token });
+}
+
+// §C: sinus foci follow tone, Stillness and breath at scheduling time.
+// Positive tone is sympathetic: a shorter cycle. Negative tone is vagal.
+function effectiveCycle(run, node, tick) {
+  const cycle = node.auto.cycle;
+  if (!run.v11 || node.tissue !== 'sinus') return cycle;
+  let factor = node.agentCycleScale;
+  if (run.tone !== 0) factor *= 1 - TONE_CYCLE * run.tone;
+  if (run.autonomic?.sinus) factor *= breathFactor(run.autonomic, tick);
+  return factor === 1 ? cycle : Math.round(cycle * factor);
+}
+
+// The phase origin is the instant the pending cycle started. Suppression is 0 without overdrive.
+function planNextAutomatic(run, node, tick) {
+  node.auto.origin = tick;
+  return addTicks(tick, effectiveCycle(run, node, tick) + node.auto.suppression);
+}
+
+function scheduleNextAutomatic(run, node, tick) {
+  scheduleAutomatic(run, node, planNextAutomatic(run, node, tick));
+}
+
+function removeTransit(batch, transit) {
+  transit.link.active.delete(transit.ordinal);
+  batch.transits.set(transit.event.transitId, null);
+}
+
+function transitPosition(transit, tick) {
+  const progress = clampUnit((tick - transit.departure) / (transit.arrival - transit.departure));
+  return transit.direction === 'ab' ? progress : 1 - progress;
+}
+
+function parameterChanged(run, batch, parameter, commandId, generation, targetRef, previous, value, cause) {
+  emit(run, batch, 'parameter_changed', withCause(run, { parameter, commandId, generation, ...targetRef, previous, value }, cause));
+}
+
+function changeLinkEnabled(run, batch, link, value, commandId, cause) {
+  if (link.enabled === value) return;
+  const previous = link.enabled;
+  link.enabled = value;
+  const generation = ++link.generation;
+  batch.links.add(link);
+  emit(run, batch, 'link_changed', withCause(run, { linkId: link.id, previous, value, generation, commandId }, cause));
+  if (!value) {
+    link.collision = null;
+    for (const transit of link.active.values()) {
+      emit(run, batch, 'conduction_canceled', {
+        linkId: link.id,
+        transitId: transit.event.transitId,
+        cause: cause === 'lesion' ? 'lesion' : 'cut',
+        position: transitPosition(transit, batch.tick),
+      });
+      removeTransit(batch, transit);
+    }
+  }
+}
+
+const lawMs = law => law === null ? null : Object.freeze({
+  erpMaxMs: toMs(law.erpMax), amplitudeMs: toMs(law.amplitude), tauMs: toMs(law.tau), erpMinMs: toMs(law.erpMin),
+});
+const extraMs = law => law === null ? null : Object.freeze({ maxExtraMs: toMs(law.maxExtra), tauMs: toMs(law.tau) });
+const sameLaw = (a, b) => a !== null && Object.keys(b).every(key => a[key] === b[key]);
+
+// Under restitution, setNodeERP moves erpMax and shifts erpMin by the same amount (§A).
+// The floor keeps its offset below erpMax and is clamped to 1 ms only in use, so edits reverse exactly.
+function editErp(run, batch, { target: node, value, commandId }) {
+  if (node.erp === value) return;
+  const previous = restedErp(node);
+  const law = node.restitution;
+  if (law !== null) {
+    law.erpMin = Math.max(1000, value - law.floorOffset);
+    law.erpMax = value;
+  }
+  node.erp = value;
+  batch.nodes.add(node);
+  parameterChanged(run, batch, 'erpMs', commandId, ++node.erpGeneration, { nodeId: node.id },
+    toMs(previous), toMs(restedErp(node)), 'command');
+}
+
+function editDelay(run, batch, { target: link, direction, value, commandId }) {
+  const settings = link[direction];
+  if (settings.delay === value) return;
+  const progress = link.lesion?.progress ?? 0;
+  const previous = lesionDelay(settings.delay, progress);
+  settings.delay = value;
+  batch.links.add(link);
+  parameterChanged(run, batch, 'delayMs', commandId, ++settings.generation, { linkId: link.id, direction },
+    toMs(previous), toMs(lesionDelay(value, progress)), 'command');
+}
+
+function editCycle(run, batch, { target: node, value, commandId }) {
+  const auto = node.auto;
+  if (auto.cycle === value) return;
+  const previous = agentCycle(node, auto.cycle);
+  auto.cycle = value;
+  auto.token = null;
+  const generation = ++node.cycleGeneration;
+  if (value !== null) scheduleNextAutomatic(run, node, batch.tick);
+  parameterChanged(run, batch, 'cycleMs', commandId, generation, { nodeId: node.id },
+    toMs(previous), toMs(agentCycle(node, value)), 'command');
+  // §D: a focus without automaticity has no own attempt that could capture it, so its
+  // entrance block is lifted. Protection does not return if automaticity is restored.
+  if (value === null && auto.protected) {
+    auto.protected = false;
+    parameterChanged(run, batch, 'protected', commandId, ++node.protectedGeneration, { nodeId: node.id }, true, false, 'command');
+  }
+}
+
+// setRestitution replaces the law. When that moves the rested ERP it also emits erpMs.
+function editRestitution(run, batch, { target: node, value, commandId }) {
+  const previous = node.restitution;
+  if (sameLaw(previous, value) && previous.floorOffset === value.erpMax - value.erpMin) return;
+  const previousErp = restedErp(node);
+  node.restitution = withFloorOffset(value);
+  node.erp = value.erpMax;
+  batch.nodes.add(node);
+  parameterChanged(run, batch, 'restitution', commandId, ++node.restitutionGeneration, { nodeId: node.id },
+    lawMs(previous), lawMs(node.restitution), 'command');
+  const erp = restedErp(node);
+  if (erp !== previousErp) {
+    parameterChanged(run, batch, 'erpMs', commandId, ++node.erpGeneration, { nodeId: node.id }, toMs(previousErp), toMs(erp), 'command');
+  }
+}
+
+function editExtraLaw(run, batch, { target: link, direction, value, commandId, type }) {
+  const key = type === 'setDecrement' ? 'decrement' : 'entry';
+  const settings = link[direction];
+  const previous = settings[key];
+  if (sameLaw(previous, value)) return;
+  settings[key] = { ...value };
+  batch.links.add(link);
+  const generation = key === 'decrement' ? ++settings.decrementGeneration : ++settings.entryGeneration;
+  parameterChanged(run, batch, key, commandId, generation, { linkId: link.id, direction },
+    extraMs(previous), extraMs(value), 'command');
+}
+
+function editCoupling(run, batch, { target: coupling, value, commandId }) {
+  if (coupling.amplitude === value) return;
+  const previous = coupling.amplitude;
+  coupling.amplitude = value;
+  parameterChanged(run, batch, 'coupling', commandId, ++coupling.generation, { couplingId: coupling.id }, previous, value, 'command');
+}
+
+function editTone(run, batch, { value, commandId }) {
+  if (run.tone === value) return;
+  const previous = run.tone;
+  run.tone = value;
+  parameterChanged(run, batch, 'tone', commandId, ++run.toneGeneration, {}, previous, value, 'command');
+}
+
+const autonomicMs = law => law === null ? null : Object.freeze({
+  breathPeriodMs: toMs(law.period),
+  depth: law.depth,
+  targets: Object.freeze([...(law.sinus ? ['sinus'] : []), ...(law.nodal ? ['nodal'] : [])]),
+});
+const sameAutonomic = (a, b) => a === b || (a !== null && b !== null &&
+  a.period === b.period && a.depth === b.depth && a.sinus === b.sinus && a.nodal === b.nodal);
+
+// Live Breath toggle (§C). Applies prospectively at scheduling and departure. The breath
+// phase is sin(2 pi t / P) of absolute sim time, so toggling never resets it and replay matches.
+function editAutonomic(run, batch, { value, commandId }) {
+  if (sameAutonomic(run.autonomic, value)) return;
+  const previous = run.autonomic;
+  run.autonomic = value;
+  parameterChanged(run, batch, 'autonomic', commandId, ++run.autonomicGeneration, {}, autonomicMs(previous), autonomicMs(value), 'command');
+}
+
+// A cancelled train that has not closed yet closes in this batch with its partial count.
+function cancelTrain(run, batch, { target: train }) {
+  if (!train.active) return;
+  train.active = false;
+  batch.trains.push({ train, cancelled: true });
+}
+
+// A complete lesion stays closed until reset. Enqueue rejects an enable that the command
+// log shows would reopen it; this covers a log whose ablate was enqueued after the enable.
+function enableLink(run, batch, item) {
+  if (item.value && item.target.lesion?.progress === 1) return;
+  changeLinkEnabled(run, batch, item.target, item.value, item.commandId, 'command');
+}
+
+// §F. A lesion advances from its current progress to the commanded completeness.
+function scheduleLesionStep(run, plan) {
+  plan.step++;
+  const elapsed = Math.min(plan.step * LESION_STEP, plan.duration);
+  run.agenda.push({ tick: addTicks(plan.start, elapsed), phase: EDIT, order: plan.order, type: 'lesionStep', plan, elapsed });
+}
+
+// A lesion never shrinks: a pass at or below the current target is a no-op.
+function startLesion(run, batch, { target: link, value: { duration, completeness }, commandId, order }) {
+  if (completeness <= (link.lesion?.completeness ?? 0)) return;
+  const progress = link.lesion?.progress ?? 0;
+  const plan = { link, commandId, order, start: batch.tick, duration, from: progress, to: completeness, step: 0 };
+  link.lesion = { progress, completeness, plan };
+  batch.links.add(link);
+  scheduleLesionStep(run, plan);
+}
+
+function stepLesion(run, batch, { plan, elapsed }) {
+  const { link } = plan;
+  const lesion = link.lesion;
+  if (lesion.plan !== plan) return;
+  const before = lesion.progress;
+  const progress = elapsed === plan.duration ? plan.to : plan.from + (plan.to - plan.from) * elapsed / plan.duration;
+  lesion.progress = progress;
+  batch.links.add(link);
+  for (const direction of ['ab', 'ba']) {
+    const settings = link[direction];
+    const previous = lesionDelay(settings.delay, before);
+    const value = lesionDelay(settings.delay, progress);
+    if (previous !== value) {
+      parameterChanged(run, batch, 'delayMs', plan.commandId, ++settings.generation, { linkId: link.id, direction },
+        toMs(previous), toMs(value), 'lesion');
+    }
+  }
+  emit(run, batch, 'lesion_changed', { linkId: link.id, progress, completeness: plan.to });
+  if (elapsed < plan.duration) {
+    scheduleLesionStep(run, plan);
+    return;
+  }
+  lesion.plan = null;
+  if (plan.to === 1) changeLinkEnabled(run, batch, link, false, plan.commandId, 'lesion');
+}
+
+function scheduleAgentStep(run, plan, type) {
+  plan.step++;
+  run.agenda.push({ tick: addTicks(plan.start, plan.step * AGENT_STEP), phase: EDIT, order: plan.order, type, plan });
+}
+
+function startAgent(run, batch, { value: { agent, dose }, commandId, order }) {
+  if (agent === 'stillness') {
+    const plan = { start: batch.tick, dose, commandId, order, step: 0 };
+    run.stillness.push(plan);
+    scheduleAgentStep(run, plan, 'stillnessStep');
+  } else {
+    run.slowRamp = { start: batch.tick, from: run.slowLevel, to: dose, commandId, order, step: 0 };
+    scheduleAgentStep(run, run.slowRamp, 'slowStep');
+  }
+}
+
+function setErpModifier(run, batch, node, add, scale, commandId) {
+  const previous = restedErp(node);
+  node.agentErpAdd = add;
+  node.agentErpScale = scale;
+  const value = restedErp(node);
+  if (previous === value) return;
+  batch.nodes.add(node);
+  parameterChanged(run, batch, 'erpMs', commandId, ++node.erpGeneration, { nodeId: node.id }, toMs(previous), toMs(value), 'agent');
+}
+
+function setCycleModifier(run, batch, node, scale, commandId) {
+  const previous = agentCycle(node, node.auto.cycle);
+  node.agentCycleScale = scale;
+  const value = agentCycle(node, node.auto.cycle);
+  if (previous === value) return;
+  parameterChanged(run, batch, 'cycleMs', commandId, ++node.cycleGeneration, { nodeId: node.id }, toMs(previous), toMs(value), 'agent');
+}
+
+// Stillness: the strongest active envelope sets e(t) for every site, in node ID order.
+function stepStillness(run, batch, { plan }) {
+  const ended = plan.step * AGENT_STEP >= STILLNESS_END;
+  if (ended) run.stillness.splice(run.stillness.indexOf(plan), 1);
+  let level = 0;
+  for (const active of run.stillness) level = Math.max(level, active.dose * stillnessEnvelope(batch.tick - active.start));
+  for (const node of run.nodes.values()) {
+    if (node.tissue === 'nodal') setErpModifier(run, batch, node, Math.round(STILLNESS_NODAL_ERP * level), 1, plan.commandId);
+    else if (node.tissue === 'atrial') setErpModifier(run, batch, node, 0, 1 - STILLNESS_ATRIAL_ERP * level, plan.commandId);
+    else if (node.tissue === 'sinus') setCycleModifier(run, batch, node, 1 + STILLNESS_SINUS_CYCLE * level, plan.commandId);
+  }
+  if (!ended) scheduleAgentStep(run, plan, 'stillnessStep');
+}
+
+// Slow the current: the dose level ramps linearly and then persists until reset.
+function stepSlow(run, batch, { plan }) {
+  if (run.slowRamp !== plan) return;
+  const steps = SLOW_RAMP / AGENT_STEP;
+  const level = plan.step >= steps ? plan.to : plan.from + (plan.to - plan.from) * plan.step / steps;
+  const previous = run.slowLevel;
+  run.slowLevel = level;
+  if (level !== previous) {
+    for (const link of run.links.values()) {
+      if (!link.nodal) parameterChanged(run, batch, 'slowing', plan.commandId, ++link.slowingGeneration, { linkId: link.id }, previous, level, 'agent');
+    }
+  }
+  if (plan.step < steps) scheduleAgentStep(run, plan, 'slowStep');
+  else run.slowRamp = null;
+}
+
+function applyEdit(run, batch, item) {
+  switch (item.type) {
+    case 'setLinkEnabled': return enableLink(run, batch, item);
+    case 'setNodeERP': return editErp(run, batch, item);
+    case 'setDirectionDelay': return editDelay(run, batch, item);
+    case 'setAutomaticity': return editCycle(run, batch, item);
+    case 'setRestitution': return editRestitution(run, batch, item);
+    case 'setDecrement':
+    case 'setEntry': return editExtraLaw(run, batch, item);
+    case 'setCoupling': return editCoupling(run, batch, item);
+    case 'setTone': return editTone(run, batch, item);
+    case 'setAutonomic': return editAutonomic(run, batch, item);
+    case 'cancelTrain': return cancelTrain(run, batch, item);
+    case 'ablate': return startLesion(run, batch, item);
+    case 'lesionStep': return stepLesion(run, batch, item);
+    case 'applyAgent': return startAgent(run, batch, item);
+    case 'stillnessStep': return stepStillness(run, batch, item);
+    case 'slowStep': return stepSlow(run, batch, item);
+  }
+  throw new Error(`Unhandled edit ${item.type}`);
+}
+
+function intersection(a, b) {
+  if (a.direction === b.direction ||
+      Math.max(a.departure, b.departure) >= Math.min(a.arrival, b.arrival)) return null;
+  const [ab, ba] = a.direction === 'ab' ? [a, b] : [b, a];
+  const abDuration = BigInt(ab.arrival - ab.departure);
+  const baDuration = BigInt(ba.arrival - ba.departure);
+  // The exact rational keeps endpoint classification and half-tick rounding stable.
+  const positionNumerator = BigInt(ba.arrival - ab.departure);
+  const denominator = abDuration + baDuration;
+  const elapsed = (2n * abDuration * positionNumerator + denominator) / (2n * denominator);
+  const tick = ab.departure + Number(elapsed);
+  return {
+    tick,
+    phase: COLLISION,
+    order: Math.min(a.ordinal, b.ordinal),
+    secondOrder: Math.max(a.ordinal, b.ordinal),
+    first: a.ordinal < b.ordinal ? a : b,
+    second: a.ordinal < b.ordinal ? b : a,
+    position: Number(positionNumerator) / Number(denominator),
+  };
+}
+
+function considerCollision(run, batch, link, a, b) {
+  charge(batch);
+  const candidate = intersection(a, b);
+  if (candidate === null) return;
+  const current = link.collision;
+  if (current !== null && (candidate.tick - current.tick || candidate.order - current.order ||
+    candidate.secondOrder - current.secondOrder) >= 0) return;
+  link.collision = candidate;
+  run.agenda.push(candidate);
+}
+
+function recomputeCollisions(run, batch, link) {
+  const ab = [];
+  const ba = [];
+  for (const transit of link.active.values()) (transit.direction === 'ab' ? ab : ba).push(transit);
+  for (const a of ab) {
+    for (const b of ba) considerCollision(run, batch, link, a, b);
+  }
+}
+
+function applyCollision(run, batch, collision) {
+  const { first, second, position } = collision;
+  const link = first.link;
+  if (link.collision !== collision) return;
+  link.collision = null;
+  removeTransit(batch, first);
+  removeTransit(batch, second);
+  emit(run, batch, 'conduction_collision', {
+    linkId: link.id,
+    transitIds: Object.freeze([first.event.transitId, second.event.transitId]),
+    position,
+  });
+  recomputeCollisions(run, batch, link);
+}
+
+function addCause(batch, node, event, source) {
+  let causes = batch.causes.get(node);
+  if (causes === undefined) {
+    causes = { ids: [], sources: new Set(), links: new Set(), automatic: false };
+    batch.causes.set(node, causes);
+  }
+  causes.ids.push(event.eventId);
+  causes.sources.add(source);
+  if (source === 'automaticity') causes.automatic = true;
+  if (event.type === 'conduction_arrived') causes.links.add(event.linkId);
+}
+
+function attempt(run, batch, node, source, triggerId) {
+  const event = emit(run, batch, 'stimulus_attempted', { nodeId: node.id, source, triggerId });
+  addCause(batch, node, event, source);
+}
+
+// Pulses enter the stimulus phase by train command order; each schedules its successor.
+function pulse(run, batch, { train, index }) {
+  if (!train.active) return;
+  attempt(run, batch, train.node, 'stimulus', `${train.commandId}#${index}`);
+  train.delivered = index;
+  if (index < train.count) {
+    run.agenda.push({ tick: addTicks(batch.tick, train.cycle), phase: STIMULUS, order: train.order, train, index: index + 1 });
+  } else {
+    train.active = false;
+    batch.trains.push({ train, cancelled: false });
+  }
+}
+
+function arrive(run, batch, transit) {
+  const link = transit.link;
+  if (!link.active.has(transit.ordinal)) return;
+  removeTransit(batch, transit);
+  const event = emit(run, batch, 'conduction_arrived', {
+    nodeId: transit.to.id,
+    linkId: link.id,
+    transitId: transit.event.transitId,
+  });
+  addCause(batch, transit.to, event, 'conduction');
+}
+
+// §C. A driven capture earlier than the cycle grows suppression; a spontaneous firing decays it.
+function updateSuppression(run, node, spontaneous, interval, tick) {
+  const auto = node.auto;
+  const { gain, max, warmup } = auto.overdrive;
+  if (spontaneous) {
+    auto.suppression = Math.round(warmup * auto.suppression);
+    return;
+  }
+  if (interval === null) return;
+  const cycle = effectiveCycle(run, node, tick);
+  if (interval < cycle) auto.suppression = Math.min(max, auto.suppression + Math.round(gain * (cycle - interval)));
+}
+
+function determineOutcomes(run, batch) {
+  const captures = [];
+  for (const node of [...batch.causes.keys()].sort(byId)) {
+    const causes = batch.causes.get(node);
+    const common = {
+      nodeId: node.id,
+      source: causes.sources.size === 1 ? causes.sources.values().next().value : 'mixed',
+      causeIds: Object.freeze(causes.ids),
+      incomingLinkIds: Object.freeze([...causes.links].sort()),
+    };
+    // §D entrance block: only the focus's own automatic attempt can capture it.
+    if (node.auto.protected && !causes.automatic) {
+      const refractory = node.until !== null && batch.tick < node.until;
+      emit(run, batch, 'activation_blocked', {
+        ...common,
+        cause: 'protected',
+        remainingErpMs: refractory ? toMs(node.until - batch.tick) : 0,
+        refractoryUntilMs: toMs(node.until),
+      });
+      continue;
+    }
+    if (node.until !== null && batch.tick < node.until) {
+      emit(run, batch, 'activation_blocked', {
+        ...common,
+        cause: 'refractory',
+        remainingErpMs: toMs(node.until - batch.tick),
+        refractoryUntilMs: toMs(node.until),
+      });
+      continue;
+    }
+    const priorUntil = node.until;
+    const previous = node.last;
+    const recoveryBefore = recoveryAt(node, batch.tick);
+    const interval = previous === null ? null : batch.tick - previous;
+    // §A uses the pre-capture state: DI is measured from the previous refractory end.
+    const diastolicInterval = priorUntil === null ? null : batch.tick - priorUntil;
+    const erp = node.restitution === null ? restedErp(node) : agentErp(node, restitutionErp(node.restitution, diastolicInterval));
+    if (node.auto.overdrive !== null && node.auto.cycle !== null) {
+      updateSuppression(run, node, causes.automatic, interval, batch.tick);
+    }
+    node.last = batch.tick;
+    node.until = addTicks(batch.tick, erp);
+    batch.nodes.add(node);
+    const payload = {
+      ...common,
+      priorActivationMs: toMs(previous),
+      intervalMs: interval === null ? null : toMs(interval),
+      erpMs: toMs(erp),
+      refractoryUntilMs: toMs(node.until),
+      recoveryBefore,
+    };
+    if (run.v11) payload.diastolicIntervalMs = toMs(diastolicInterval);
+    const activation = emit(run, batch, 'activation', payload);
+    captures.push({ node, activation, priorUntil, incoming: causes.links, interval });
+  }
+  return captures;
+}
+
+function transitDuration(settings, tick, priorUntil) {
+  const { decrement, delay } = settings;
+  if (decrement === null || priorUntil === null) return delay;
+  const recoveryInterval = Math.max(0, tick - priorUntil);
+  return addTicks(delay, Math.round(decrement.maxExtra * Math.exp(-recoveryInterval / decrement.tau)));
+}
+
+function nodalFactor(run, node, tick) {
+  if (node.tissue !== 'nodal') return 1;
+  let factor = 1;
+  if (run.tone !== 0) factor *= 1 - TONE_DECREMENT * run.tone;
+  if (run.autonomic?.nodal) factor *= breathFactor(run.autonomic, tick);
+  return factor;
+}
+
+// Contract 1.1.0 travel time: link delay (with lesion), Slow, source decrement, then §B entry
+// slowing from the destination state after every outcome of this batch.
+function delayParts(run, capture, link, direction, to, departure) {
+  const settings = link[direction];
+  const base = settings.delay;
+  const linkDelay = link.lesion === null ? base : lesionDelay(base, link.lesion.progress);
+  const agent = run.slowLevel > 0 && !link.nodal ? slowExtra(linkDelay, run.slowLevel, capture.interval) : 0;
+  let source = 0;
+  if (settings.decrement !== null && capture.priorUntil !== null) {
+    source = decrementExtra(settings.decrement, Math.max(0, departure - capture.priorUntil), nodalFactor(run, capture.node, departure));
+  }
+  const nominal = addTicks(departure, linkDelay + agent + source);
+  const entry = settings.entry !== null && to.until !== null && nominal >= to.until ? entryExtra(settings.entry, nominal - to.until) : 0;
+  return { base, lesion: linkDelay - base, agent, source, entry };
+}
+
+function launch(run, batch, capture, link, direction) {
+  const ordinal = ++run.transitSeq;
+  const departure = batch.tick;
+  const to = run.nodes.get(direction === 'ab' ? link.b : link.a);
+  let parts = null;
+  let duration;
+  if (run.v11) {
+    parts = delayParts(run, capture, link, direction, to, departure);
+    duration = parts.base + parts.lesion + parts.agent + parts.source + parts.entry;
+  } else {
+    duration = transitDuration(link[direction], departure, capture.priorUntil);
+  }
+  const arrival = addTicks(departure, duration);
+  const payload = {
+    transitId: `t${ordinal}`,
+    activationId: capture.activation.eventId,
+    linkId: link.id,
+    linkGeneration: link.generation,
+    fromNodeId: capture.node.id,
+    toNodeId: to.id,
+    departureMs: toMs(departure),
+    arrivalMs: toMs(arrival),
+  };
+  if (parts !== null) {
+    payload.delayParts = Object.freeze({
+      baseMs: toMs(parts.base), sourceMs: toMs(parts.source), entryMs: toMs(parts.entry),
+      lesionMs: toMs(parts.lesion), agentMs: toMs(parts.agent),
+    });
+  }
+  const event = emit(run, batch, 'conduction_launched', payload);
+  const transit = { ordinal, event, direction, departure, arrival, link, to };
+  for (const existing of link.active.values()) considerCollision(run, batch, link, existing, transit);
+  link.active.set(ordinal, transit);
+  batch.transits.set(event.transitId, event);
+  run.agenda.push({ tick: arrival, phase: ARRIVAL, order: ordinal, transit });
+}
+
+function drain(run, batch, phase, process) {
+  while (run.agenda.peek()?.tick === batch.tick && run.agenda.peek().phase === phase) {
+    charge(batch);
+    process(run.agenda.pop());
+  }
+}
+
+// §D. Each accepted activation of a coupling source shifts the target's next attempt.
+// Inputs outside the target's current cycle (phase < 0 or >= 1) leave it unchanged.
+function modulate(run, batch, captures, planned) {
+  for (const capture of captures) {
+    for (const coupling of run.couplingsFrom.get(capture.node) ?? []) {
+      charge(batch);
+      const target = coupling.target;
+      const auto = target.auto;
+      if (coupling.amplitude === 0 || auto.cycle === null) continue;
+      const pending = planned.has(target) ? planned.get(target) : (auto.token === null ? null : auto.next);
+      if (pending === null) continue;
+      const cycle = effectiveCycle(run, target, batch.tick);
+      const phase = (batch.tick - auto.origin) / cycle;
+      if (phase < 0 || phase >= 1) continue;
+      const shift = phaseShift(cycle, coupling.amplitude, phase);
+      const next = Math.max(addTicks(batch.tick, 1), addTicks(pending, shift));
+      planned.set(target, next);
+      emit(run, batch, 'phase_modulated', {
+        nodeId: target.id,
+        couplingId: coupling.id,
+        sourceActivationId: capture.activation.eventId,
+        phase,
+        shiftMs: toMs(shift),
+        nextAttemptMs: toMs(next),
+      });
+    }
+  }
+}
+
+function processBatch(run, tick, budget) {
+  const batch = {
+    tick, budget, events: [], nodes: new Set(), links: new Set(), transits: new Map(), causes: new Map(), trains: [],
+  };
+  drain(run, batch, EDIT, edit => applyEdit(run, batch, edit));
+  drain(run, batch, COLLISION, collision => applyCollision(run, batch, collision));
+  drain(run, batch, STIMULUS, item => {
+    if (item.train !== undefined) pulse(run, batch, item);
+    else attempt(run, batch, item.target, 'stimulus', item.commandId);
+  });
+  const dueAutomatic = [];
+  drain(run, batch, AUTOMATIC, ({ node, token }) => {
+    if (node.auto.token !== token) return;
+    dueAutomatic.push(node);
+    attempt(run, batch, node, 'automaticity', `auto${++run.autoSeq}`);
+  });
+  drain(run, batch, ARRIVAL, item => arrive(run, batch, item.transit));
+  const captures = determineOutcomes(run, batch);
+  const resetAutomatic = new Set();
+  for (const capture of captures) {
+    for (const { link, direction } of capture.node.incident) {
+      charge(batch);
+      if (link.enabled && link[direction].enabled && !capture.incoming.has(link.id)) {
+        launch(run, batch, capture, link, direction);
+      }
+    }
+    if (capture.node.auto.cycle !== null && capture.node.auto.resetOnCapture) resetAutomatic.add(capture.node);
+  }
+  // A just-launched wave can meet another wave within half a tick of departure.
+  // Finish that collision in this batch after its causal launch.
+  drain(run, batch, COLLISION, collision => applyCollision(run, batch, collision));
+  for (const node of dueAutomatic) resetAutomatic.add(node);
+  // Reset first, then modulate (§D), then commit the schedules.
+  const planned = new Map();
+  for (const node of resetAutomatic) planned.set(node, planNextAutomatic(run, node, tick));
+  if (run.couplingsFrom.size > 0) modulate(run, batch, captures, planned);
+  for (const [node, next] of planned) scheduleAutomatic(run, node, next);
+  // Trains close in the order they closed: cancellations (edit phase), then completions (stimulus phase).
+  for (const { train, cancelled } of batch.trains) {
+    emit(run, batch, 'train_completed', {
+      commandId: train.commandId, trainId: train.commandId, delivered: train.delivered, count: train.count, cancelled,
+    });
+  }
+  return batch;
+}
+
+function requireLimit(value, label) {
+  if (!Number.isSafeInteger(value) || value <= 0) throw new RangeError(`${label} must be a positive safe integer`);
+  return value;
+}
+
+class Engine {
+  #run = null;
+  #options;
+
+  constructor({
+    processingBudget = 10_000, historyBatches = 4096, maxNodes = 4096, maxLinks = 8192, maxConcurrentTrains = TRAIN_CONCURRENCY_MAX,
+  } = {}) {
+    this.#options = {
+      processingBudget: requireLimit(processingBudget, 'Processing budget'),
+      historyBatches: requireLimit(historyBatches, 'History batch limit'),
+      maxNodes: requireLimit(maxNodes, 'Maximum nodes'),
+      maxLinks: requireLimit(maxLinks, 'Maximum links'),
+      maxConcurrentTrains: requireLimit(maxConcurrentTrains, 'Maximum concurrent trains'),
+    };
+  }
+
+  reset(world, freshRunId) {
+    requireId(freshRunId, 'runId');
+    const { worldId, nodes, links, v11, coupling, autonomic, maxConcurrentTrains } = readWorld(world, this.#options);
+    nodes.sort(byId);
+    links.sort(byId);
+    const run = {
+      id: freshRunId,
+      worldId,
+      nodes: new Map(nodes.map(node => [node.id, node])),
+      links: new Map(links.map(link => [link.id, link])),
+      committed: null,
+      commandIds: new Set(),
+      agenda: new Agenda(),
+      eventSeq: 0,
+      transitSeq: 0,
+      autoSeq: 0,
+      fault: null,
+      v11,
+      autonomic,
+      autonomicGeneration: 0,
+      maxConcurrentTrains,
+      lineClosures: new Map(),
+      tone: 0,
+      toneGeneration: 0,
+      couplings: new Map(coupling.map(entry => [entry.id, entry])),
+      couplingsFrom: new Map(),
+      trains: new Map(),
+      stillness: [],
+      slowRamp: null,
+      slowLevel: 0,
+    };
+    for (const link of links) {
+      run.nodes.get(link.a).incident.push({ link, direction: 'ab' });
+      run.nodes.get(link.b).incident.push({ link, direction: 'ba' });
+    }
+    for (const entry of [...coupling].sort(byId)) {
+      const from = run.nodes.get(entry.from);
+      entry.target = run.nodes.get(entry.to);
+      if (!run.couplingsFrom.has(from)) run.couplingsFrom.set(from, []);
+      run.couplingsFrom.get(from).push(entry);
+    }
+    for (const [order, node] of nodes.entries()) {
+      node.order = order;
+      if (node.auto.firstAttempt !== null) {
+        // Before its first attempt a focus is treated as having fired one cycle earlier.
+        node.auto.origin = node.auto.firstAttempt - node.auto.cycle;
+        scheduleAutomatic(run, node, node.auto.firstAttempt);
+      }
+    }
+    run.history = new History(run, this.#options.historyBatches);
+    const initial = run.history.snapshot(run, 0);
+    this.#run = run;
+    return initial;
+  }
+
+  #requireRun() {
+    if (this.#run === null) throw new Error('Reset the engine with a world to start a run');
+    return this.#run;
+  }
+
+  #running() {
+    const run = this.#requireRun();
+    if (run.fault !== null) throw new Error('Run is faulted. Reset the engine to continue.', { cause: run.fault });
+    return run;
+  }
+
+  // Train admission depends only on earlier commands, never on the horizon, so a
+  // command log is accepted identically live and on replay.
+  #admitTrain(run, { value: { start, last } }) {
+    let overlapping = 0;
+    for (const train of run.trains.values()) {
+      const end = Math.min(train.last, train.cancelTick - 1);
+      if (end >= train.start && train.start <= last && start <= end) overlapping++;
+    }
+    if (overlapping >= run.maxConcurrentTrains) {
+      throw new RangeError(`At most ${run.maxConcurrentTrains} trains may overlap in time`);
+    }
+  }
+
+  // §F. The first complete ablate of a link (by time, then submission) closes it at start +
+  // duration for the rest of the run. Judged from earlier commands only, like train admission.
+  #admitLinkEdit(run, accepted) {
+    const closure = run.lineClosures.get(accepted.target);
+    if (accepted.type === 'setLinkEnabled' && accepted.value && closure !== undefined && closure.end <= accepted.tick) {
+      throw new RangeError(`Link ${accepted.target.id} is closed by the complete lesion ${closure.commandId}; reset the run to reopen it`);
+    }
+  }
+
+  #noteClosure(run, { type, target, tick, value, commandId }) {
+    if (type !== 'ablate' || value.completeness !== 1) return;
+    const closure = run.lineClosures.get(target);
+    if (closure === undefined || tick < closure.start) {
+      run.lineClosures.set(target, { start: tick, end: addTicks(tick, value.duration), commandId });
+    }
+  }
+
+  enqueue(command) {
+    const run = this.#running();
+    const accepted = readCommand(command, run);
+    if (accepted.type === 'stimulateTrain') this.#admitTrain(run, accepted);
+    if (accepted.type === 'setLinkEnabled' && run.v11) this.#admitLinkEdit(run, accepted);
+    const order = run.commandIds.size;
+    run.commandIds.add(accepted.commandId);
+    this.#noteClosure(run, accepted);
+    if (accepted.type === 'stimulateTrain') {
+      const { start, cycle, count, last } = accepted.value;
+      const train = {
+        commandId: accepted.commandId, node: accepted.target, start, cycle, count, last, order, active: true, cancelTick: Infinity, delivered: 0,
+      };
+      run.trains.set(train.commandId, train);
+      run.agenda.push({ tick: start, phase: STIMULUS, order, train, index: 1 });
+      return;
+    }
+    if (accepted.type === 'cancelTrain') accepted.target.cancelTick = Math.min(accepted.target.cancelTick, accepted.tick);
+    run.agenda.push({ ...accepted, order, phase: accepted.type === 'stimulate' ? STIMULUS : EDIT });
+  }
+
+  advanceTo(tMs) {
+    const run = this.#running();
+    const horizon = toTick(tMs, 'Horizon');
+    if (run.committed !== null && horizon < run.committed) throw new RangeError('Horizon cannot move backward');
+    if (horizon === run.committed) return EMPTY_EVENTS;
+    const events = [];
+    const budget = { remaining: this.#options.processingBudget };
+    while (run.agenda.peek()?.tick <= horizon) {
+      const tick = run.agenda.peek().tick;
+      try {
+        const batch = processBatch(run, tick, budget);
+        run.history.record(tick, batch);
+        for (const event of batch.events) events.push(event);
+        run.committed = tick;
+      } catch (error) {
+        run.fault = new SimulationFault(error, tick, run.committed, events);
+        throw run.fault;
+      }
+    }
+    run.committed = horizon;
+    return Object.freeze(events);
+  }
+
+  committedThroughMs() {
+    return toMs(this.#run?.committed ?? null);
+  }
+
+  readAt(tMs) {
+    const run = this.#requireRun();
+    const tick = toTick(tMs, 'Read time');
+    if (run.committed === null || tick > run.committed) throw new RangeError('Read time is beyond the committed horizon');
+    return run.history.snapshot(run, tick);
+  }
+
+  diagnostics() {
+    const run = this.#requireRun();
+    const fault = run.fault;
+    return Object.freeze({
+      runId: run.id,
+      committedThroughMs: toMs(run.committed),
+      retainedFromMs: toMs(run.history.earliestTick),
+      retainedBatches: run.history.size,
+      pendingItems: fault === null ? run.agenda.size : null,
+      fault: fault === null ? null : Object.freeze({ code: fault.code, tMs: fault.tMs, message: fault.message }),
+    });
+  }
+}
+
+function createEngine(options) {
+  return new Engine(options);
+}
+
+return {SimulationFault,Engine,createEngine};
+})();
+__modules["src/worlds/circulation.js"] = (()=>{
+const nodeErps = [180, 300, 220, 220, 220, 220, 220, 200];
+const direction = Object.freeze({ enabled: true, delayMs: 60, decrement: null });
+
+const circulationWorld = Object.freeze({
+  worldId: 'circulation',
+  nodes: Object.freeze(nodeErps.map((erpMs, index) => Object.freeze({
+    id: `R${index}`,
+    erpMs,
+    recoveryTailMs: 120,
+    automaticity: null,
+  }))),
+  links: Object.freeze(nodeErps.map((_, index) => Object.freeze({
+    id: `L${index}`,
+    a: `R${index}`,
+    b: `R${(index + 1) % nodeErps.length}`,
+    enabled: true,
+    ab: direction,
+    ba: direction,
+  }))),
+});
+
+function createCirculationWorld() {
+  return {
+    worldId: circulationWorld.worldId,
+    nodes: circulationWorld.nodes.map(node => ({ ...node })),
+    links: circulationWorld.links.map(link => ({ ...link, ab: { ...link.ab }, ba: { ...link.ba } })),
+  };
+}
+
+return {circulationWorld,createCirculationWorld};
+})();
+__modules["src/prototypes/weave/model.js"] = (()=>{
+const { createEngine } = __modules["src/engine/index.js"];
+const { createCirculationWorld } = __modules["src/worlds/circulation.js"];
+
+const HORIZON = 3600;
+function createWeaveTrace(coupling = 240) {
+  const world = createCirculationWorld();
+  world.nodes.forEach((node, i) => { node.erpMs = i >= 1 && i <= 3 ? 300 : 200; });
+  const engine = createEngine();
+  const runId = 'weave';
+  engine.reset(world, runId);
+  engine.enqueue({ commandId: 's1', runId, type: 'stimulate', nodeId: 'R0', tMs: 0 });
+  if (coupling !== null) engine.enqueue({ commandId: 's2', runId, type: 'stimulate', nodeId: 'R0', tMs: coupling });
+  const events = engine.advanceTo(HORIZON);
+  return { engine, events, world };
+}
+
+// Geometry follows ERP, not the engine's separate post-ERP recovery tail.
+function openingAt(node, time) {
+  if (node.excitable || node.lastActivationMs === null) return 0;
+  return Math.pow(Math.max(0, Math.min(1, (node.refractoryUntilMs - time) / node.erpMs)), 0.55);
+}
+
+return {HORIZON,createWeaveTrace,openingAt};
+})();
+__modules["src/music/mapping.js"] = (()=>{
+const worldAssignments = {
+  circulation: {
+    R0: [62, "felt", 0],
+    R1: [65, "pluck", 0.25],
+    R2: [69, "felt", 0.40],
+    R3: [72, "glass", 0.25],
+    R4: [74, "glass", 0],
+    R5: [69, "pluck", -0.25],
+    R6: [67, "felt", -0.40],
+    R7: [65, "bow", -0.25],
+  },
+  conduction: {
+    S: [62, "felt", 0],
+    A: [69, "pluck", -0.15],
+    N: [65, "glass", 0.12],
+    H: [72, "pluck", 0],
+    V1: [50, "bow", -0.22],
+    V2: [57, "felt", 0.22],
+  },
+  duality: {
+    A: [62, "felt", -0.23],
+    A1: [65, "pluck", -0.28],
+    A2: [69, "glass", -0.18],
+    B: [50, "bow", 0.23],
+    B1: [55, "felt", 0.28],
+    B2: [60, "glass", 0.18],
+  },
+};
+
+const voicingPitches = {
+  balanced: {},
+  open: { R2: 67, R3: 69, R5: 57, R6: 60 },
+  suspended: { R1: 67, R2: 72, R3: 76, R4: 69, R7: 65 },
+};
+
+const CHAMBER_VOICINGS = Object.freeze(Object.keys(voicingPitches));
+
+const voiceSettings = {
+  felt: { gain: 0.23, attackSec: 0.007, releaseSec: 0.85, brightness: 0.68, reverbSend: 0.18 },
+  pluck: { gain: 0.22, attackSec: 0.004, releaseSec: 0.58, brightness: 0.76, reverbSend: 0.14 },
+  bow: { gain: 0.24, attackSec: 0.066, releaseSec: 1.0, brightness: 0.51, reverbSend: 0.21 },
+  glass: { gain: 0.19, attackSec: 0.018, releaseSec: 0.93, brightness: 0.63, reverbSend: 0.23 },
+};
+
+const paletteSettings = {
+  chamber: { gain: 1, attack: 1, release: 1, brightness: 1, reverb: 1 },
+  atmosphere: { gain: 0.8, attack: 2.5, release: 1.65, brightness: 0.70, reverb: 1.7 },
+  minimalism: { gain: 0.96, attack: 0.6, release: 0.58, brightness: 1.16, reverb: 0.28 },
+};
+
+const PALETTES = Object.freeze(Object.keys(paletteSettings));
+
+const isV11World = (world) => world?.contractVersion === "1.1.0";
+
+// Music table for a world. v1.0 worlds return null: the mapper keeps its
+// built-in per-world assignments, so v0.1 notes are unchanged. v1.1 worlds use
+// the study presentation's table ([midi, voice, pan] per site); every site the
+// world marks audible:false maps to null whatever the table says, so silent
+// tissue (nodal, sinus) never sounds.
+function musicTableFor(world, presentation = null) {
+  if (!isV11World(world)) return null;
+  const declared = presentation?.music ?? {};
+  const table = {};
+  for (const node of world.nodes) {
+    if (node.audible === false) {
+      table[node.id] = null;
+      continue;
+    }
+    const assignment = Object.hasOwn(declared, node.id) ? declared[node.id] : undefined;
+    if (!Array.isArray(assignment)) throw new RangeError(`Missing music assignment for ${world.worldId}/${node.id}`);
+    table[node.id] = Object.freeze([...assignment]);
+  }
+  return Object.freeze(table);
+}
+
+function describeNodeMusic(worldId, nodeId, { voicing = "balanced", nodes } = {}) {
+  const pitches = Object.hasOwn(voicingPitches, voicing) && voicingPitches[voicing];
+  if (!pitches) throw new RangeError("Unknown musical voicing");
+
+  const assignments = nodes || (Object.hasOwn(worldAssignments, worldId) && worldAssignments[worldId]);
+  const assignment = assignments ? (Object.hasOwn(assignments, nodeId) ? assignments[nodeId] : undefined) : undefined;
+  if (assignment === null) return null;
+  if (!assignment) throw new RangeError(`Missing music assignment for ${worldId}/${nodeId}`);
+
+  const [midi, voice, pan] = assignment;
+  if (!Object.hasOwn(voiceSettings, voice) || !Number.isFinite(midi) || !Number.isFinite(pan) || Math.abs(pan) > 1) {
+    throw new RangeError(`Invalid music assignment for ${nodeId}`);
+  }
+  const pitchMidi = !nodes && worldId === "circulation" ? pitches[nodeId] ?? midi : midi;
+  return Object.freeze({ pitchMidi, pitchHz: 440 * 2 ** ((pitchMidi - 69) / 12), voice, pan });
+}
+
+function mapActivation(event, { voicing = "balanced", palette = "chamber", nodes } = {}) {
+  if (event.type !== "activation") return null;
+  const scale = Object.hasOwn(paletteSettings, palette) && paletteSettings[palette];
+  if (!scale) throw new RangeError("Unknown musical palette");
+
+  const identity = describeNodeMusic(event.worldId, event.nodeId, { voicing, nodes });
+  if (!identity) return null;
+  const { pitchHz, voice, pan } = identity;
+  const settings = voiceSettings[voice];
+  const recovery = Math.min(1, Math.max(0, event.recoveryBefore));
+  const smoothRecovery = recovery * recovery * (3 - 2 * recovery);
+
+  return Object.freeze({
+    runId: event.runId,
+    eventId: event.eventId,
+    tMs: event.tMs,
+    pitchHz,
+    voice,
+    gain: settings.gain * scale.gain * (0.55 + 0.45 * recovery),
+    attackSec: settings.attackSec * scale.attack,
+    releaseSec: settings.releaseSec * scale.release * (0.65 + 0.35 * recovery),
+    brightness: settings.brightness * scale.brightness * (0.55 + 0.45 * smoothRecovery),
+    pan,
+    reverbSend: settings.reverbSend * scale.reverb,
+  });
+}
+
+return {CHAMBER_VOICINGS,PALETTES,musicTableFor,describeNodeMusic,mapActivation};
+})();
+__modules["src/music/synthesis.js"] = (()=>{
+const voices = {
+  felt: {
+    // Ratio, level, exponential decay. Mildly stretched upper strings.
+    partials: [[1, 0.76, 3.8], [2.002, 0.14, 7], [3.011, 0.065, 13], [4.027, 0.026, 19]],
+    noise: 0.045, noiseDecay: 120, noiseHz: 1900, body: 1,
+  },
+  pluck: {
+    partials: [[1, 0.62, 4.2], [2, 0.20, 5.8], [3, 0.10, 9], [4, 0.042, 12], [5, 0.024, 16]],
+    noise: 0.035, noiseDecay: 140, noiseHz: 2600, body: 1,
+  },
+  bow: {
+    partials: [[1, 0.66, 2.4], [2, 0.20, 3.1], [3, 0.085, 4.8], [4, 0.037, 7]],
+    noise: 0, noiseDecay: 1, noiseHz: 1, body: 1.15, vibrato: 0.035,
+  },
+  glass: {
+    partials: [[1, 0.80, 3.4], [2.005, 0.095, 5.4], [2.73, 0.044, 8], [3.99, 0.029, 14]],
+    noise: 0, noiseDecay: 1, noiseHz: 1, body: 0.86,
+  },
+};
+
+const ROOM_SEC = 1.8;
+const ROOM_TAPS = 160;
+
+function smoothstep(value) {
+  const x = Math.max(0, Math.min(1, value));
+  return x * x * (3 - 2 * x);
+}
+
+function seededNoise(seed) {
+  return () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 2147483648 - 1;
+  };
+}
+
+// A voice is one buffer source. The waveform contains its own time-varying
+// spectrum and release, so resource use does not depend on the partial count.
+function renderVoiceSamples(note, sampleRate) {
+  const profile = voices[note.voice];
+  const seconds = note.attackSec + note.releaseSec;
+  const samples = new Float32Array(Math.ceil(seconds * sampleRate));
+  const radiansPerSample = 2 * Math.PI / sampleRate;
+  const partials = profile.partials
+    .filter(([ratio]) => note.pitchHz * ratio < sampleRate * 0.45)
+    .map(([ratio, level, decay], i) => ({
+      advance: note.pitchHz * ratio * radiansPerSample,
+      ratio,
+      level: i === 0 ? level : level * note.brightness,
+      decay: Math.exp(-decay / (note.releaseSec * sampleRate)),
+    }));
+
+  const jitter = seededNoise(624137);
+  const noiseFilter = 1 - Math.exp(-profile.noiseHz * radiansPerSample);
+  const noiseDecay = Math.exp(-profile.noiseDecay / sampleRate);
+  let noiseLevel = profile.noise * note.brightness;
+  let filteredNoise = 0;
+  for (let i = 1; i < samples.length - 1; i++) {
+    const time = i / sampleRate;
+    const envelope = smoothstep(time / note.attackSec) * smoothstep((seconds - time) / (0.30 * note.releaseSec));
+    const vibrato = profile.vibrato
+      ? profile.vibrato * smoothstep(time / 0.18) * Math.sin(2 * Math.PI * 4.6 * time)
+      : 0;
+    let signal = 0;
+    if (noiseLevel > 0.00001) {
+      filteredNoise += (jitter() - filteredNoise) * noiseFilter;
+      signal += filteredNoise * noiseLevel;
+      noiseLevel *= noiseDecay;
+    }
+    for (const partial of partials) {
+      signal += partial.level * Math.sin(i * partial.advance + partial.ratio * vibrato);
+      partial.level *= partial.decay;
+    }
+    samples[i] = signal * envelope * profile.body;
+  }
+  return samples;
+}
+
+// The shared impulse is locally generated and decorrelated between channels.
+// Its low reflection gains preserve the distinction between an attack and its room.
+function roomTaps(sampleRate, channel) {
+  const noise = seededNoise(200719 + channel * 839);
+  const predelay = 0.017;
+  return Array.from({ length: ROOM_TAPS }, (_, i) => {
+    const fraction = (i + (noise() + 1) / 2) / ROOM_TAPS;
+    const time = predelay + fraction * (ROOM_SEC - predelay);
+    const decay = (1 - fraction) ** 1.7 * Math.exp(-2.8 * fraction);
+    return [Math.floor(time * sampleRate), noise() * decay * 0.095];
+  });
+}
+
+function protectPeak(sample) {
+  const magnitude = Math.min(1, Math.abs(sample));
+  return magnitude <= 0.76
+    ? sample
+    : Math.sign(sample) * (0.76 + 0.17 * Math.tanh((magnitude - 0.76) / 0.17));
+}
+
+return {ROOM_SEC,ROOM_TAPS,renderVoiceSamples,roomTaps,protectPeak};
+})();
+__modules["src/music/mixer.js"] = (()=>{
+const { protectPeak, renderVoiceSamples, roomTaps, ROOM_SEC } = __modules["src/music/synthesis.js"];
+
+const CONTROL_RAMP_SEC = 0.035;
+const FENCE_RAMP_SEC = 0.012;
+const STOLEN_RAMP_SEC = 0.008;
+const CACHE_LIMIT = 48;
+const JOURNAL_LIMIT = 128;
+const RETIRING_LIMIT = 8;
+
+function clampVolume(value) {
+  if (!Number.isFinite(value)) throw new RangeError("Volume must be finite");
+  return Math.max(0, Math.min(1, value));
+}
+
+function roomBuffer(context) {
+  const buffer = context.createBuffer(2, Math.ceil(context.sampleRate * ROOM_SEC), context.sampleRate);
+  for (let channel = 0; channel < 2; channel++) {
+    const samples = buffer.getChannelData(channel);
+    for (const [index, level] of roomTaps(context.sampleRate, channel)) samples[index] += level;
+  }
+  return buffer;
+}
+
+function createAudioMixer(context, { volume = 0.30, maxVoices = 32 } = {}) {
+  if (!Number.isInteger(maxVoices) || maxVoices < 1 || maxVoices > 64) {
+    throw new RangeError("Voice limit must be an integer from 1 to 64");
+  }
+  let volumeLevel = clampVolume(volume);
+  let muted = false;
+  let run = null;
+  let lastRunId = null;
+  let lastRunOrdinal = 0;
+  let disposed = false;
+  let lastGain = { from: volumeLevel, to: volumeLevel, start: 0, end: 0 };
+  const buffers = new Map();
+  const journal = [];
+  const retiringRuns = new Set();
+  const counts = { scheduled: 0, duplicates: 0, stale: 0, silent: 0, late: 0, stolen: 0, hardCuts: 0, peakVoices: 0, peakSources: 0 };
+  const impulse = roomBuffer(context);
+  const master = context.createGain();
+  master.gain.value = volumeLevel;
+
+  const compressor = context.createDynamicsCompressor();
+  compressor.threshold.value = -8;
+  compressor.knee.value = 8;
+  compressor.ratio.value = 4;
+  compressor.attack.value = 0.006;
+  compressor.release.value = 0.16;
+  const ceiling = context.createWaveShaper();
+  ceiling.curve = Float32Array.from({ length: 2049 }, (_, i) => protectPeak(i / 1024 - 1));
+  master.connect(compressor).connect(ceiling).connect(context.destination);
+
+  function masterGainAt(now) {
+    const progress = now >= lastGain.end ? 1 : Math.max(0, (now - lastGain.start) / (lastGain.end - lastGain.start));
+    return lastGain.from + (lastGain.to - lastGain.from) * progress;
+  }
+
+  function smoothMasterGain() {
+    const now = context.currentTime;
+    const held = masterGainAt(now);
+    const target = muted ? 0 : volumeLevel;
+    master.gain.cancelScheduledValues(now);
+    master.gain.setValueAtTime(held, now);
+    master.gain.linearRampToValueAtTime(target, now + CONTROL_RAMP_SEC);
+    lastGain = { from: held, to: target, start: now, end: now + CONTROL_RAMP_SEC };
+  }
+
+  function sampleBuffer(intent) {
+    const key = [intent.voice, intent.pitchHz, intent.attackSec, intent.releaseSec, intent.brightness].join("/");
+    if (buffers.has(key)) {
+      const cached = buffers.get(key);
+      buffers.delete(key);
+      buffers.set(key, cached);
+      return cached;
+    }
+    const samples = renderVoiceSamples(intent, context.sampleRate);
+    const buffer = context.createBuffer(1, samples.length, context.sampleRate);
+    buffer.copyToChannel(samples, 0);
+    if (buffers.size >= CACHE_LIMIT) buffers.delete(buffers.keys().next().value);
+    buffers.set(key, buffer);
+    return buffer;
+  }
+
+  function disconnectVoice(owner, voice) {
+    if (!owner.sources.delete(voice)) return;
+    owner.active.delete(voice);
+    voice.source.onended = null;
+    voice.source.disconnect();
+    voice.level.disconnect();
+    voice.pan.disconnect();
+    voice.send.disconnect();
+  }
+
+  function stopVoice(owner, voice, stop, fadeSec) {
+    owner.active.delete(voice);
+    const now = context.currentTime;
+    if (voice.start >= stop) {
+      voice.source.stop(now);
+      disconnectVoice(owner, voice);
+      return;
+    }
+    if (voice.end <= stop) return;
+    const fadeStart = Math.max(now, voice.start, stop - fadeSec);
+    voice.level.gain.cancelScheduledValues(fadeStart);
+    voice.level.gain.setValueAtTime(voice.gain, fadeStart);
+    voice.level.gain.linearRampToValueAtTime(0, stop);
+    voice.end = stop;
+    voice.source.stop(stop);
+  }
+
+  function disconnectRun(owner) {
+    retiringRuns.delete(owner);
+    for (const voice of owner.sources) disconnectVoice(owner, voice);
+    owner.gate.disconnect();
+    owner.room.disconnect();
+    if (owner.timer) {
+      owner.timer.onended = null;
+      owner.timer.disconnect();
+    }
+  }
+
+  function fence({ immediate = false, preserveBoundary = false } = {}) {
+    if (!run) return;
+    const old = run;
+    run = null;
+    const now = context.currentTime;
+    const end = now + FENCE_RAMP_SEC;
+    for (const voice of old.sources) {
+      const pending = preserveBoundary ? voice.start > now : voice.start >= now;
+      if (pending || immediate) {
+        voice.source.stop(now);
+        disconnectVoice(old, voice);
+      } else if (voice.end > end) {
+        voice.source.stop(end);
+      }
+    }
+    if (immediate || disposed) {
+      disconnectRun(old);
+      return;
+    }
+    old.gate.gain.setValueAtTime(1, now);
+    old.gate.gain.linearRampToValueAtTime(0, end);
+    const timer = context.createConstantSource();
+    old.timer = timer;
+    timer.onended = () => disconnectRun(old);
+    timer.start(now);
+    timer.stop(end);
+    retiringRuns.add(old);
+    // A rapid reset loop cannot accumulate convolution graphs while the context is frozen.
+    if (retiringRuns.size > 2) disconnectRun(retiringRuns.values().next().value);
+  }
+
+  function beginRun(runId) {
+    if (disposed) throw new Error("Mixer disposed");
+    if (typeof runId !== "string" || !runId) throw new TypeError("A run ID is required");
+    if (run?.id === runId) return;
+    fence();
+    const gate = context.createGain();
+    const room = context.createConvolver();
+    room.normalize = false;
+    room.buffer = impulse;
+    room.connect(gate).connect(master);
+    if (runId !== lastRunId) {
+      lastRunId = runId;
+      lastRunOrdinal = 0;
+    }
+    run = { id: runId, gate, room, active: new Set(), sources: new Set(), lastTime: 0 };
+  }
+
+  // Call in presentation order. Sim timestamps stay in the intent, and the
+  // supplied audio timestamp is the runtime's already converted clock time.
+  function schedule(intent, audioSec) {
+    if (!intent) return false;
+    const owner = run;
+    if (!owner || intent.runId !== owner.id) {
+      counts.stale++;
+      return false;
+    }
+    const ordinal = /^e[1-9][0-9]*$/.test(intent.eventId) ? Number(intent.eventId.slice(1)) : NaN;
+    if (!Number.isSafeInteger(ordinal)) throw new RangeError("Expected a canonical activation event ID");
+    if (ordinal <= lastRunOrdinal) {
+      counts.duplicates++;
+      return false;
+    }
+    if (!Number.isFinite(audioSec) || audioSec < owner.lastTime) {
+      throw new RangeError("Expected audio time in presentation order");
+    }
+    lastRunOrdinal = ordinal;
+    owner.lastTime = audioSec;
+    if (intent.gain <= 0) {
+      counts.silent++;
+      return false;
+    }
+
+    const buffer = sampleBuffer(intent);
+    const now = context.currentTime;
+    const start = Math.max(now, audioSec);
+    if (start > audioSec) counts.late++;
+    for (const voice of owner.active) {
+      if (voice.end <= start) owner.active.delete(voice);
+    }
+
+    if (owner.active.size >= maxVoices) {
+      const oldest = owner.active.values().next().value;
+      // The event gets its original slot. If that slot is imminent, the displaced
+      // voice fades over the following few ms instead of jumping to zero.
+      stopVoice(owner, oldest, oldest.start === start ? start : Math.max(start, now + STOLEN_RAMP_SEC), STOLEN_RAMP_SEC);
+      counts.stolen++;
+    }
+    if (owner.sources.size >= maxVoices + RETIRING_LIMIT && typeof context.startRendering !== "function") {
+      for (const voice of owner.sources) {
+        if (!owner.active.has(voice)) {
+          voice.source.stop(now);
+          disconnectVoice(owner, voice);
+          counts.hardCuts++;
+          break;
+        }
+      }
+    }
+
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    const level = context.createGain();
+    level.gain.value = intent.gain;
+    const pan = context.createStereoPanner();
+    pan.pan.value = intent.pan;
+    const send = context.createGain();
+    send.gain.value = intent.reverbSend;
+    source.connect(level).connect(pan).connect(owner.gate);
+    pan.connect(send).connect(owner.room);
+
+    const voice = { source, level, pan, send, start, end: start + buffer.duration, gain: intent.gain };
+    source.onended = () => disconnectVoice(owner, voice);
+    owner.sources.add(voice);
+    owner.active.add(voice);
+    source.start(start);
+    counts.scheduled++;
+    counts.peakVoices = Math.max(counts.peakVoices, owner.active.size);
+    counts.peakSources = Math.max(counts.peakSources, owner.sources.size);
+    journal.push({ runId: intent.runId, eventId: intent.eventId, tMs: intent.tMs, requestedAudioSec: audioSec, audioSec: start });
+    if (journal.length > JOURNAL_LIMIT) journal.shift();
+    return true;
+  }
+
+  return {
+    beginRun,
+    fence,
+    schedule,
+    setVolume(value) {
+      volumeLevel = clampVolume(value);
+      smoothMasterGain();
+    },
+    setMuted(value) {
+      muted = Boolean(value);
+      smoothMasterGain();
+    },
+    diagnostics() {
+      const now = context.currentTime;
+      let activeVoices = 0;
+      for (const voice of run?.sources ?? []) {
+        if (voice.start <= now && now < voice.end) activeVoices++;
+      }
+      return {
+        ...counts, runId: run?.id ?? null, activeVoices, liveSources: run?.sources.size ?? 0,
+        cacheBuffers: buffers.size, volume: volumeLevel, muted, masterGain: masterGainAt(now),
+        recent: journal.map((entry) => ({ ...entry })),
+      };
+    },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      fence({ immediate: true });
+      for (const old of retiringRuns) disconnectRun(old);
+      master.disconnect();
+      compressor.disconnect();
+      ceiling.disconnect();
+      buffers.clear();
+    },
+  };
+}
+
+return {createAudioMixer};
+})();
+__modules["src/music/index.js"] = (()=>{
+const { mapActivation, describeNodeMusic, musicTableFor, CHAMBER_VOICINGS, PALETTES } = __modules["src/music/mapping.js"];
+const { createAudioMixer } = __modules["src/music/mixer.js"];
+
+
+
+return {mapActivation,describeNodeMusic,musicTableFor,CHAMBER_VOICINGS,PALETTES,createAudioMixer};
+})();
+__modules["src/prototypes/weave/app.js"] = (()=>{
+const { createWeaveTrace, openingAt, HORIZON } = __modules["src/prototypes/weave/model.js"];
+const { createAudioMixer, mapActivation } = __modules["src/music/index.js"];
+const $ = id => document.getElementById(id);
+const canvas = $('ring'), ctx = canvas.getContext('2d');
+let trace = createWeaveTrace(), mode = 'reentry', time = 0, playing = false, dilation = 4;
+let anchor = 0, origin = 0, context, mixer, sound = false, generation = 0, audioRun, cursor = 0;
+let width, height, radius, cx, cy;
+const tau = Math.PI * 2;
+const clock = () => context ? context.currentTime * 1000 : performance.now();
+const color = i => i > 0 && i < 4 ? [123,174,213] : i > 4 ? [210,171,110] : [187,196,204];
+const rgba = (c,a) => `rgba(${c.join(',')},${a})`;
+function position(a, offset = 0) { return [cx + Math.sin(a)*(radius+offset), cy-Math.cos(a)*(radius+offset)]; }
+function resize() {
+  width = canvas.clientWidth; height = canvas.clientHeight;
+  const dpr = Math.min(2,devicePixelRatio || 1);
+  canvas.width = Math.round(width*dpr); canvas.height = Math.round(height*dpr); ctx.setTransform(dpr,0,0,dpr,0,0);
+  cx=width/2;cy=height*(width<520?.45:.49);radius=Math.min(width*.36,height*.39);
+  draw();
+}
+function stop() { playing=false; mixer?.fence(); $('play').textContent='Play'; }
+function start() {
+  if(time>=HORIZON)time=0;
+  origin=time; anchor=clock()+65;playing=true;
+  audioRun=`play-${++generation}`;mixer?.beginRun(audioRun);
+  cursor=trace.events.findIndex(e=>e.tMs>=time);if(cursor<0)cursor=trace.events.length;
+  $('play').textContent='Pause';
+}
+function describe() {
+  let title='The first impulse', body='A wave travels in both directions.';
+  if(mode==='reentry' && time>=240) {
+    if(time<300){title='A second impulse';body='Gold has gathered. Blue is still recovering.';}
+    else if(time<420){title='One path holds';body='The blue entrance cannot conduct yet.';}
+    else if(time<720){title='The long way around';body='The wave approaches blue from the other side.';}
+    else{title='A rhythm returns';body='Each site recovers before the wave returns.';}
+  } else if(mode==='late' && time>=340 && time<650){title='Both paths are ready';body='The later impulse travels both ways.';}
+  else if(time>=(mode==='late'?650:480)){title='The ring settles';body='The opposing waves have met. No wave remains.';}
+  if(time===0&&!playing){title='Ready to begin';body='Two paths. Different recovery.';}
+  $('phase').textContent=title;$('explanation').textContent=body;
+}
+function draw() {
+  if(!width)return;
+  ctx.clearRect(0,0,width,height);
+  const state=trace.engine.readAt(Math.round(time));
+  // Local overlapping tapered footprints; no jitter and no radial loose ends.
+  for(let strand=0;strand<3;strand++) {
+    for(let i=0;i<8;i++) {
+      const c=color(i), node=state.nodes[`R${i}`], opening=openingAt(node,time);
+      const center=i*tau/8, half=tau/16;
+      ctx.beginPath();
+      for(let k=0;k<=70;k++) {
+        const u=k/70, a=center-half+u*half*2;
+        const taper=Math.pow(Math.sin(Math.PI*u),1.25);
+        const bend=Math.sin(u*Math.PI*(strand===1?1.6:1.15)+i*.47+strand*2.2);
+        const separation=(strand-1)*(.35+opening*11*taper)+opening*3*taper*bend;
+        const p=position(a,separation);
+        k===0?ctx.moveTo(...p):ctx.lineTo(...p);
+      }
+      ctx.strokeStyle=rgba(c,strand===1?.68:.43);ctx.lineWidth=strand===1?1.05:.75;
+      ctx.shadowColor=rgba(c,.25);ctx.shadowBlur=5;ctx.stroke();ctx.shadowBlur=0;
+    }
+  }
+  for(const transit of state.activeTransits) {
+    const from=Number(transit.fromNodeId.slice(1)),to=Number(transit.toNodeId.slice(1));
+    const direction=(to-from+8)%8===1?1:-1;
+    const progress=(time-transit.departureMs)/(transit.arrivalMs-transit.departureMs);
+    const angle=(from+direction*progress)*tau/8;
+    for(let j=17;j>=0;j--) {
+      const p=position(angle-direction*j*.0045);
+      ctx.beginPath();ctx.arc(...p,j===0?2.3:1.35,0,tau);
+      ctx.fillStyle=rgba([235,231,213],(1-j/18)*.9);ctx.shadowColor='#d9e9ff';ctx.shadowBlur=j===0?12:0;ctx.fill();
+    }
+    ctx.shadowBlur=0;
+  }
+  // A failed arrival dissipates locally; it never launches a replacement wave.
+  for(const e of trace.events) {
+    const age=time-e.tMs;
+    if(e.type!=='activation_blocked'||age<0||age>65)continue;
+    const a=Number(e.nodeId.slice(1))*tau/8;
+    for(let s=-1;s<=1;s+=2){const p=position(a-.015-age*.00015,s*(2+age*.08));ctx.beginPath();ctx.arc(...p,1.6,0,tau);ctx.fillStyle=rgba([171,204,231],.8*(1-age/65));ctx.fill();}
+  }
+  $('timeline').value=Math.round(time);describe();
+}
+function frame() {
+  if(playing) {
+    const now=clock();time=Math.max(origin,Math.min(HORIZON,origin+(now-anchor)/dilation));
+    if(sound&&mixer) {
+      while(cursor<trace.events.length) {
+        const event=trace.events[cursor], due=anchor+(event.tMs-origin)*dilation;
+        if(due>now+120)break;
+        cursor++;
+        if(due>=now && event.type==='activation')mixer.schedule(mapActivation({...event,runId:audioRun}),due/1000);
+      }
+    }
+    if(time>=HORIZON)stop();
+    draw();
+  }
+  requestAnimationFrame(frame);
+}
+$('play').onclick=()=>{playing?stop():start();draw();};
+$('restart').onclick=()=>{stop();time=0;start();draw();};
+$('timeline').oninput=()=>{stop();time=Number($('timeline').value);draw();};
+$('speed').onchange=()=>{const resume=playing;stop();dilation=Number($('speed').value);if(resume)start();};
+$('sound').onclick=async()=>{
+  const resume=playing;stop();
+  if(!context){context=new AudioContext();mixer=createAudioMixer(context,{volume:.25});}
+  await context.resume();sound=!sound;
+  $('sound').textContent=sound?'Sound on':'Sound off';$('sound').setAttribute('aria-pressed',String(sound));
+  if(resume)start();
+};
+document.querySelectorAll('[data-mode]').forEach(button=>{
+  button.setAttribute('aria-pressed',String(button.dataset.mode===mode));
+  button.onclick=()=>{stop();mode=button.dataset.mode;trace=createWeaveTrace(mode==='single'?null:mode==='late'?340:240);time=0;
+    document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+    start();draw();};
+});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});
+new ResizeObserver(resize).observe(canvas);resize();requestAnimationFrame(frame);
+
+return {};
+})();
+</script></body></html>

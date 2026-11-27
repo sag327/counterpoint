@@ -64,10 +64,11 @@ async function bundle(entry) {
 }
 
 const escapeScript = text => text.replace(/<\/script/gi, '<\\/script');
-const app = await bundle('src/ui/app.js');
-const worker = await bundle('src/lab/worker.js');
-const html = await readFile(path.join(root, 'src/index.html'), 'utf8');
-const css = (await Promise.all(['src/ui/styles.css', 'src/ui/inspector.css', 'src/lab/lab.css', 'src/ui/study.css']
+const weave = process.argv.includes('--weave');
+const app = await bundle(weave ? 'src/prototypes/weave/app.js' : 'src/ui/app.js');
+const worker = weave ? '' : await bundle('src/lab/worker.js');
+const html = await readFile(path.join(root, weave ? 'src/prototypes/weave/index.html' : 'src/index.html'), 'utf8');
+const css = (await Promise.all((weave ? ['src/prototypes/weave/styles.css'] : ['src/ui/styles.css', 'src/ui/inspector.css', 'src/lab/lab.css', 'src/ui/study.css'])
   .map(file => readFile(path.join(root, file), 'utf8')))).join('\n');
 const out = html
   .replace('/* INLINE_STYLES */', () => css)
@@ -76,7 +77,7 @@ const out = html
 if (/(?:src|href)\s*=\s*["']https?:/i.test(out)) throw new Error('Build output references a network resource');
 // `--out <file>` writes elsewhere (the integration test builds into a temporary directory).
 const outIndex = process.argv.indexOf('--out');
-const target = outIndex > 0 ? path.resolve(process.argv[outIndex + 1]) : path.join(root, 'dist/counterpoint.html');
+const target = outIndex > 0 ? path.resolve(process.argv[outIndex + 1]) : path.join(root, weave ? 'dist/circulation-weave.html' : 'dist/counterpoint.html');
 await mkdir(path.dirname(target), { recursive: true });
 await writeFile(target, out);
 console.log(`Built ${path.relative(root, target)} (self-contained, ${(out.length / 1024).toFixed(0)} KB)`);
