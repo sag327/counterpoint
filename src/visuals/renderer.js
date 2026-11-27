@@ -1,4 +1,5 @@
 import { createNetworkMarks } from './marks.js';
+import { createWeaveHistory, pathPassages, openingAt, threadShape, junctionTaper } from './weave.js';
 
 const GROUND = '#080C13';
 const BRASS = '#C8A878';
@@ -11,13 +12,6 @@ const SAMPLES = 64;
 const GLYPH_LIFETIME = 74;
 const HIT_RADIUS = 22;
 const CROSSING_EPSILON = 1e-7;
-const ECHOES = [
-  { offset: -1.02, twist: 0.5, width: 0.44, alpha: 0.36 },
-  { offset: -0.46, twist: -0.78, width: 0.51, alpha: 0.31 },
-  { offset: 0.40, twist: 0.57, width: 0.51, alpha: 0.42 },
-  { offset: 1.12, twist: -0.62, width: 0.44, alpha: 0.34 },
-];
-
 const clamp = (value) => Math.max(0, Math.min(1, value));
 const mix = (a, b, t) => a + (b - a) * t;
 const ease = (value) => value * value * (3 - 2 * value);
@@ -201,7 +195,7 @@ function makeGeometry(world, width, height, layout = null) {
   const cx = width / 2;
   const cy = height / 2;
   const radius = Math.min(width, height) * 0.33;
-  const filamentSpread = Math.max(4, Math.min(12, radius * 0.056));
+  const weaveScale = Math.max(.7, Math.min(1.4, radius / 127));
   const isRing = world.nodes.length === 8 && world.nodes.every(({ id }) => /^R[0-7]$/.test(id));
   const sculpture = layout ? sculptureFromLayout(world, layout)
     : Object.hasOwn(SCULPTURES, world.worldId) ? SCULPTURES[world.worldId] : null;
@@ -216,7 +210,7 @@ function makeGeometry(world, width, height, layout = null) {
     return [id, { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius,
       angle, color: Math.cos(angle) > 0.08 ? ICE : BRASS }];
   }));
-  const links = new Map(world.links.map(({ id, a, b, enabled }) => {
+  const links = new Map(world.links.map(({ id, a, b, enabled }, linkIndex) => {
     const start = nodes.get(a);
     const end = nodes.get(b);
     const sweep = Math.atan2(Math.sin(end.angle - start.angle), Math.cos(end.angle - start.angle));
@@ -237,14 +231,19 @@ function makeGeometry(world, width, height, layout = null) {
       return { x: mix(start.x, end.x, u) - dy * offset / length,
         y: mix(start.y, end.y, u) + dx * offset / length };
     };
-    return [id, { a, b, enabled, color, curve: makeCurve(positionAt),
-      echoes: ECHOES.map((thread, i) => ({
-        ...thread,
-        color: i === 1 || i === 3 ? (color === BRASS ? ICE : BRASS) : color,
-        curve: makeCurve((u) => positionAt(u, filamentSpread * Math.sin(Math.PI * u)
-          * (thread.offset + thread.twist * Math.sin(TURN * u + start.angle + i * 0.43)))),
-      })),
-    }];
+    const curve = makeCurve(positionAt);
+    const phase = start.angle + (isRing ? Math.PI / 2 : (linkIndex + 1) * 1.37);
+    const samples = curve.points.map((point, index) => {
+      const u = index / SAMPLES;
+      const normal = positionAt(u, 1);
+      const taper = isRing ? 1 : junctionTaper(Math.min(point.distance, curve.length - point.distance));
+      return {
+        x: point.x, y: point.y, nx: normal.x - point.x, ny: normal.y - point.y,
+        fraction: point.distance / curve.length, taper,
+        offsets: [0, 1, 2].map(strand => weaveScale * threadShape(phase + (isRing ? sweep : .61) * u, strand)),
+      };
+    });
+    return [id, { a, b, enabled, color, curve, samples }];
   }));
   return { nodes, links, cx, cy, radius };
 }
@@ -288,7 +287,7 @@ function halo(ctx, x, y, radius, color, intensity) {
   ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
 }
 
-function drawBackdrop(ctx, geometry, links, width, height) {
+function drawBackdrop(ctx, geometry, width, height) {
   ctx.fillStyle = GROUND;
   ctx.fillRect(0, 0, width, height);
   const { cx, cy, radius } = geometry;
@@ -301,26 +300,65 @@ function drawBackdrop(ctx, geometry, links, width, height) {
   ctx.fillStyle = ambient;
   ctx.fillRect(0, 0, width, height);
 
-  ctx.lineCap = 'round';
-  for (const [id, link] of geometry.links) {
-    const enabled = links[id]?.enabled ?? link.enabled;
-    const gap = Math.min(0.31, 8 / link.curve.length);
-    const spans = enabled ? [[0, 1]] : [[0, 0.5 - gap], [0.5 + gap, 1]];
-    const dim = enabled ? 1 : 0.53;
-    for (const [start, end] of spans) {
-      for (const thread of link.echoes) {
-        strokeCurve(ctx, thread.curve, start, end, cssColor(thread.color, thread.alpha * dim), thread.width);
+}
+
+function strandPoint(sample, strand, opening) {
+  const offset = sample.taper * ((strand - 1) * .33 + opening * sample.offsets[strand]);
+  return { x: sample.x + sample.nx * offset, y: sample.y + sample.ny * offset };
+}
+
+function drawWeave(ctx, link, openings, enabled) {
+  for (let strand = 0; strand < 3; strand++) {
+    ctx.beginPath();
+    let drawing = false;
+    for (let i = 0; i < link.samples.length; i++) {
+      const sample = link.samples[i];
+      if (!enabled && Math.abs(sample.fraction - .5) * link.curve.length < Math.min(8, link.curve.length * .31)) {
+        drawing = false;
+        continue;
       }
-      strokeCurve(ctx, link.curve, start, end, cssColor(link.color, 0.09 * dim), 3.5);
-      strokeCurve(ctx, link.curve, start, end, cssColor(link.color, 0.68 * dim), 0.89);
+      const { x, y } = strandPoint(sample, strand, openings[i]);
+      if (drawing) ctx.lineTo(x, y);
+      else ctx.moveTo(x, y);
+      drawing = true;
     }
-    if (!enabled) {
-      for (const fraction of [0.5 - gap, 0.5 + gap]) {
-        const point = atFraction(link.curve, fraction);
-        dot(ctx, point.x, point.y, 1.07, cssColor(link.color, 0.72));
+    ctx.strokeStyle = cssColor(link.color, (strand === 1 ? .68 : .47) * (enabled ? 1 : .53));
+    ctx.lineWidth = strand === 1 ? 1.08 : .8;
+    ctx.stroke();
+  }
+}
+
+function drawDissipation(ctx, geometry, fields, event, age) {
+  const collision = event.type === 'conduction_collision';
+  const linkIds = collision ? [event.linkId] : event.incomingLinkIds;
+  const spread = 16 + 6 * clamp(age / 35);
+  const envelope = (.6 + .4 * clamp(age / 5)) * (1 - age / GLYPH_LIFETIME) ** 1.8;
+  for (const id of linkIds) {
+    const link = geometry.links.get(id);
+    const field = fields.get(id);
+    if (!link || !field?.enabled) continue;
+    const center = collision ? event.position : (event.nodeId === link.a ? 0 : 1);
+    for (let i = 1; i < link.samples.length; i++) {
+      const a = link.samples[i - 1];
+      const b = link.samples[i];
+      const distance = Math.abs((a.fraction + b.fraction) / 2 - center) * link.curve.length;
+      if (distance >= spread) continue;
+      const opacity = envelope * Math.cos(distance / spread * Math.PI / 2) ** 2;
+      for (let strand = 0; strand < 3; strand++) {
+        const start = strandPoint(a, strand, field.openings[i - 1]);
+        const end = strandPoint(b, strand, field.openings[i]);
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.strokeStyle = cssColor(COOL_FLASH, opacity * (strand === 1 ? .85 : .7));
+        ctx.lineWidth = 1.25;
+        ctx.shadowColor = cssColor(ICE, opacity * .7);
+        ctx.shadowBlur = 7;
+        ctx.stroke();
       }
     }
   }
+  ctx.shadowBlur = 0;
 }
 
 function drawTransit(ctx, link, transit, tMs, reducedMotion) {
@@ -368,9 +406,17 @@ function drawNode(ctx, node, state) {
   if (recovery > 0) dot(ctx, x - 0.42, y - 0.51, 0.72, cssColor(core, recovery * 0.91));
 }
 
-function drawEvent(ctx, geometry, event, tMs, reducedMotion) {
+function drawEvent(ctx, geometry, event, tMs, reducedMotion, fields) {
   const age = tMs - event.tMs;
   const node = geometry.nodes.get(event.nodeId);
+  const collision = event.type === 'conduction_collision';
+  const meeting = event.type === 'activation' && (event.incomingLinkIds?.length ?? 0) > 1;
+  const refractoryBlock = event.type === 'activation_blocked' && event.cause === 'refractory'
+    && event.incomingLinkIds.length > 0;
+  if (!reducedMotion && (collision || meeting || refractoryBlock)) {
+    drawDissipation(ctx, geometry, fields, event, age);
+    if (!meeting) return;
+  }
   if (event.type === 'activation' && age < 54 && node) {
     const t = age / 54;
     const flash = (1 - t) ** 2.7;
@@ -429,7 +475,8 @@ export function createRenderer(canvas, world, { reducedMotion = false, layout = 
   let width = 1;
   let height = 1;
   let ratio = 1;
-  let backdropKey;
+  let backdropDirty = true;
+  const weaveHistory = createWeaveHistory();
   let network;
   let overlay = null;
   let modified = { nodes: new Set(), links: new Set() };
@@ -462,20 +509,35 @@ export function createRenderer(canvas, world, { reducedMotion = false, layout = 
     backdropCanvas.height = canvas.height = Math.round(height * ratio);
     geometry = makeGeometry(world, width, height, layout);
     network = createNetworkMarks({ world, geometry: adapter, reducedMotion });
-    backdropKey = null;
+    backdropDirty = true;
   }
 
   function render(snapshot, events = [], tMs = snapshot.tMs) {
-    const enabledKey = [...geometry.links].map(([id, link]) => (snapshot.links[id]?.enabled ?? link.enabled) ? '1' : '0').join('');
-    if (backdropKey !== enabledKey) {
+    if (backdropDirty) {
       backdrop.setTransform(ratio, 0, 0, ratio, 0, 0);
-      drawBackdrop(backdrop, geometry, snapshot.links, width + 1, height + 1);
-      backdropKey = enabledKey;
+      drawBackdrop(backdrop, geometry, width + 1, height + 1);
+      backdropDirty = false;
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(backdropCanvas, 0, 0);
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     ctx.lineCap = 'round';
+
+    const history = !reducedMotion && weaveHistory(events, snapshot.runId);
+    const fields = new Map();
+    for (const [id, link] of geometry.links) {
+      const state = snapshot.links[id];
+      const enabled = state?.enabled ?? link.enabled;
+      const erpA = snapshot.nodes[link.a]?.erpMs ?? 0;
+      const erpB = snapshot.nodes[link.b]?.erpMs ?? 0;
+      const passages = history ? pathPassages(history, snapshot.activeTransits, id, tMs,
+        Math.max(erpA, erpB), state?.generation).filter(({ launch }) =>
+          !network.isConcealedTransit(events, launch.transitId)) : [];
+      const openings = link.samples.map(({ fraction }) =>
+        openingAt(passages, link.a, fraction, tMs, mix(erpA, erpB, fraction)));
+      fields.set(id, { enabled, openings });
+      drawWeave(ctx, link, openings, enabled);
+    }
 
     for (const [id, node] of geometry.nodes) drawNode(ctx, node, snapshot.nodes[id]);
     // The selected site (last touched or inspected) wears a quiet gold halo.
@@ -505,7 +567,7 @@ export function createRenderer(canvas, world, { reducedMotion = false, layout = 
       if (event.tMs > tMs || event.runId !== snapshot.runId) continue;
       if (event.tMs <= tMs - GLYPH_LIFETIME) break;
       if (!(event.type === 'activation_blocked' && network.isConcealedBlock(events, event.eventId))) {
-        drawEvent(ctx, geometry, event, tMs, reducedMotion);
+        drawEvent(ctx, geometry, event, tMs, reducedMotion, fields);
       }
       if (event.type === 'stimulus_attempted') gestures.delete(event.triggerId);
     }
