@@ -60,3 +60,7 @@ Lead decisions on the G1 review's open questions and findings (docs/runs/g1-revi
 | L7: `limits.maxConcurrentTrains` (1–16, default 4) is a world field. The engine option (default 16) is only a host cap, and reset refuses a 1.1.0 world whose limit exceeds it instead of silently admitting fewer trains. | Replays are self-describing. A refusal is louder than a divergent replay. Revisit if a host needs a lower cap for default worlds. |
 | `lintStudyWorld(world)` (src/engine/input.js) reports every site without explicit tissue. Default tissue stays atrial. | Review recommendation 5; study tests 12a and 13a–13g assert an empty result. |
 | Spec §C numbers: the overdrive accelerando is 1250, 1070, 962 and 897.2 ms exactly. | Review L1. 0.6³ × 450 = 97.2 ms. |
+
+## 2026-11-27 · creator revisions for an EP audience
+
+The creator found the music analogy too strong for electrophysiologists. The sound stays. Musical subtitles, chips, glossary cards and pitch names are hidden behind `SHOW_MUSIC_LABELS`, and the Staves view is hidden. Both remain in source for a possible return. Duality is withdrawn from the menu, but its world and fixtures stay. Playback runs at 1/4 to 1/12 of real time and is labelled as a fraction and a percentage. Readouts are EP-relative: intervals and time remaining, never the run clock. Conduction and Circulation remain the introductory pair, and Network stays the default view. Next: live curves built while pacing and high-level tunable parameters. Primary users are EP fellows and attendings.

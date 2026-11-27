@@ -5,8 +5,8 @@ import { createRenderer } from '../visuals/renderer.js';
 import { mapActivation, createAudioMixer, describeNodeMusic, musicTableFor, PALETTES, CHAMBER_VOICINGS } from '../music/index.js';
 import { createInspector } from './inspector.js';
 import { createInspectorCard } from '../lab/inspector-card.js';
-import { readPreferences, savePreferences } from './preferences.js';
-import { SCENES, VIEWS, carryCommands, formatFragment, glossaryFor, parseFragment, worldFromState } from './studies.js';
+import { DILATIONS, dilationLabel, readPreferences, savePreferences } from './preferences.js';
+import { SCENES, SHOW_MUSIC_LABELS, VIEWS, carryCommands, formatFragment, glossaryFor, parseFragment, worldFromState } from './studies.js';
 import { createViews } from './views.js';
 import { createStudyLab, protocolWorkerUrl } from './lab-panel.js';
 import { isDraft, renderNotes } from './notes.js';
@@ -173,7 +173,7 @@ function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs
     commands.push(...guidedCommands(kind));
     status = kind === 'find-echo'
       ? 'Eight steady beats, then one early touch. Each try comes a little earlier.'
-      : 'Eight steady beats, then two early touches. Each try comes a little earlier.';
+      : 'Eight steady beats, then two early beats. Each try comes a little earlier.';
   }
   if (kind !== 'find-echo' && kind !== 'find-chord') guidedLast = null;
   // The player's model edits carry into the new run as logged commands at t = 0.
@@ -682,7 +682,7 @@ function updateInspection(frame, now) {
     selectedNodeId,
     selectedLinkId,
     couplingMs,
-    nodeMusic: describeNodeMusic(worldId, selectedNodeId, musicOptions()),
+    nodeMusic: SHOW_MUSIC_LABELS ? describeNodeMusic(worldId, selectedNodeId, musicOptions()) : undefined,
   });
 }
 
@@ -738,6 +738,12 @@ $('notes-close').onclick = () => $('notes-sheet').close?.() ?? $('notes-sheet').
 $('notes-sheet').addEventListener('click', event => { if (event.target === $('notes-sheet')) $('notes-sheet').close(); });
 for (const button of $('worlds').children) button.onclick = () => chooseWorld(button.dataset.world);
 for (const button of $('views').querySelectorAll('button')) button.onclick = () => setView(button.dataset.view);
+$('dilation').replaceChildren(...DILATIONS.map(value => {
+  const option = document.createElement('option');
+  option.value = String(value);
+  option.textContent = dilationLabel(value);
+  return option;
+}));
 $('dilation').value = String(preferences.dilation);
 $('palette').value = preferences.palette;
 $('voicing').value = preferences.voicing;

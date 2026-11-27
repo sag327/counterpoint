@@ -54,7 +54,7 @@ const document = {
 const select = (id) => document.getElementById(id);
 select("canvas").ownerDocument = document;
 select("lab").hidden = true;
-for (const world of ["conduction", "circulation", "duality"]) {
+for (const world of ["conduction", "circulation"]) {
   const button = new Element();
   button.dataset.world = world;
   select("worlds").append(button);
@@ -227,15 +227,8 @@ assert.equal(cp.transport.runId, runBeforePalette);
 assert.equal(cp.events.map(e => e.eventId).join(), eventIdsBeforePalette);
 assert.equal(JSON.parse(sandbox.localStorage.value).palette, "atmosphere");
 
-const scheduledBeforeDuality = cp.mixer.diagnostics().scheduled;
-chooseWorld("duality");
-runFor(1300);
-assert.equal(activations().map(e => e.nodeId).join(), "A,A1,A2,B,B1,B2");
-assert.ok(cp.events.every(event => event.runId === cp.transport.runId));
-const dualityNotes = cp.mixer.diagnostics().recent.filter(note => note.runId === cp.transport.runId);
-assert.equal(dualityNotes.map(note => note.eventId).join(), activations().map(event => event.eventId).join());
-assert.equal(cp.mixer.diagnostics().scheduled - scheduledBeforeDuality, 6);
-
+// Duality left the menu (creator decision 2026-11-27). The switch to Circulation
+// below covers the world change, and its ring checks match notes to captures.
 select("pause").click();
 runFor(100);
 chooseWorld("circulation");

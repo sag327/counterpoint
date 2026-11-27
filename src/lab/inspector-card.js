@@ -397,11 +397,18 @@ export function createInspectorCard(container, {
     const snap = frame.snapshot;
     if (target.kind === 'node') {
       const live = snap?.nodes?.[target.id];
-      const last = activationsAt(frame.events, target.id).at(-1) ?? null;
+      const captures = activationsAt(frame.events, target.id);
+      const last = captures.at(-1) ?? null;
       const until = live?.refractoryUntilMs ?? null;
       const di = until !== null && frame.tMs !== null && frame.tMs >= until ? frame.tMs - until : null;
-      rows.push(['Last activation', ms(live?.lastActivationMs ?? null)]);
-      rows.push(['Refractory until', ms(until)]);
+      // EP-relative readouts (creator decision 2026-11-27): intervals, never the run clock.
+      const lastAt = live?.lastActivationMs ?? null;
+      const since = lastAt !== null && frame.tMs !== null && frame.tMs >= lastAt ? Math.round(frame.tMs - lastAt) : null;
+      const cycle = captures.length >= 2 ? Math.round(captures.at(-1).tMs - captures.at(-2).tMs) : null;
+      const remaining = until !== null && frame.tMs !== null && frame.tMs < until ? Math.ceil(until - frame.tMs) : null;
+      rows.push(['Since last activation', ms(since)]);
+      rows.push(['Last cycle length', ms(cycle)]);
+      rows.push(['Refractory remaining', remaining === null ? (until === null ? '—' : 'excitable') : ms(remaining)]);
       rows.push(['Recovery', live ? `${Math.round(live.recovery * 100)}%` : '—']);
       rows.push(['Current DI', until !== null && di === null ? 'refractory' : ms(di)]);
       rows.push(['ERP of last capture', ms(last?.erpMs ?? null)]);

@@ -45,24 +45,25 @@ def advance_phone_clock(page, phone, ms):
 
 def check_guided_run(page, *, phone):
     find_echo = page.locator("#find-echo")
-    page.locator("#dilation").select_option("1")
+    # The fastest playback offered is 1/4 of real time (creator decision 2026-11-27).
+    page.locator("#dilation").select_option("4")
     activate(find_echo, phone=phone)
     times = [200, 800, 1400, 2000, 2600, 3200, 3800, 4400, 4800]
-    advance_phone_clock(page, phone, 4900)
+    advance_phone_clock(page, phone, 4900 * 4)
     page.wait_for_function(
         """times => JSON.stringify(counterpoint.events
             .filter(e => e.type === 'stimulus_attempted' && e.nodeId === 'CSp')
             .map(e => e.tMs)) === JSON.stringify(times)""",
         arg=times,
+        timeout=60_000,
     )
     run_id = page.evaluate("counterpoint.transport.runId")
     activate(find_echo, phone=phone)
     assert page.evaluate("counterpoint.transport.runId") != run_id
     assert page.evaluate("""counterpoint.transport.commandLog()
         .find(command => command.commandId === 'S2')?.tMs""") == 4790
-    advance_phone_clock(page, phone, 1500)
-    page.wait_for_function("counterpoint.events.some(e => e.type === 'activation' && e.tMs >= 1400)")
-    page.locator("#dilation").select_option("4")
+    advance_phone_clock(page, phone, 1500 * 4)
+    page.wait_for_function("counterpoint.events.some(e => e.type === 'activation' && e.tMs >= 1400)", timeout=30_000)
 
 
 def select_view(page, view, *, phone):
@@ -204,14 +205,15 @@ def smoke(browser, output, *, phone):
         page.wait_for_function("counterpoint.transport.status === 'paused'")
         page.evaluate("window.scrollTo(0, 0)")
 
-        for view in ["network", "ladder", "staves"]:
+        # Creator decisions 2026-11-27: Staves and musical labels are hidden; Duality
+        # is withdrawn; playback speed reads as a fraction of real time.
+        assert page.locator("[data-view=staves]").count() == 0
+        assert page.locator("[data-world=duality]").count() == 0
+        assert page.locator("#study-subtitle").inner_text() == "Two routes through the junction"
+        assert page.locator("#dilation option").all_inner_texts()[0] == "1/4 speed · 25%"
+        for view in ["network", "ladder"]:
             select_view(page, view, phone=phone)
-            if view == "staves":
-                end = place_calipers(page, cdp)
             capture(view)
-        pointer(page, cdp, "down", end)
-        pointer(page, cdp, "up", end)
-        page.wait_for_function("counterpoint.views.calipers() === null")
 
         select_view(page, "network", phone=phone)
         activate(page.get_by_role("button", name="Resume", exact=True), phone=phone)
@@ -225,7 +227,7 @@ def smoke(browser, output, *, phone):
         check_worker(page, phone=phone, output=output, capture=capture)
         assert not errors, errors
         check_network(requests, ARTIFACT.as_uri())
-        print(f"PASS Echo {width}x{height} Chromium file:// offline, guided run, three views, calipers, "
+        print(f"PASS Echo {width}x{height} Chromium file:// offline, guided run, two views, "
               "inspector by hold and keyboard, Stillness, S1–S2 Web Worker and CSV, liner notes", flush=True)
     except Exception:
         diagnostics = page.evaluate("""window.counterpoint && ({

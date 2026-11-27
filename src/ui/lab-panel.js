@@ -313,6 +313,7 @@ export function createStudyLab(container, { onDownload, onNotes, workerUrl = nul
       buildFields();
     },
     setGlossary(entries, studyId) {
+      control.glossary.closest('section').hidden = entries.length === 0;
       control.glossary.replaceChildren(...entries.map(entry => {
         const card = el('article', { className: `study-lab-word layer-${entry.layer}` });
         card.append(el('h4', {}, entry.term));

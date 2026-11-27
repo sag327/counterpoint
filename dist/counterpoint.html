@@ -35,6 +35,11 @@ button.primary:hover{background:#e1c695;color:#11171a}
   #lab{padding:15px}
 }
 
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
 .counterpoint-inspector {
   --inspector-line: #3b464c;
   --raster-accepted: #83d2ba;
@@ -386,7 +391,6 @@ dialog#notes-sheet::backdrop{background:#04070acc}
     <nav id="worlds" aria-label="Worlds">
       <button type="button" data-world="conduction" aria-pressed="true">Conduction</button>
       <button type="button" data-world="circulation" aria-pressed="false">Circulation</button>
-      <button type="button" data-world="duality" aria-pressed="false">Duality</button>
       <button type="button" data-world="echo" aria-pressed="false" class="study-button">Echo</button>
     </nav>
     <div id="study-line" hidden>
@@ -394,7 +398,7 @@ dialog#notes-sheet::backdrop{background:#04070acc}
       <p class="study-subtitle"><span id="study-subtitle"></span><button type="button" id="study-chip" class="chip" hidden></button><span aria-hidden="true"> · </span><button type="button" id="notes-link" class="text-link" aria-label="Notes: open the liner notes for this study">Notes</button></p>
     </div>
     <nav id="views" aria-label="View">
-      <button type="button" data-view="network" aria-pressed="true">Network</button><span aria-hidden="true">·</span><button type="button" data-view="ladder" aria-pressed="false">Ladder</button><span aria-hidden="true">·</span><button type="button" data-view="staves" aria-pressed="false">Staves</button>
+      <button type="button" data-view="network" aria-pressed="true">Network</button><span aria-hidden="true">·</span><button type="button" data-view="ladder" aria-pressed="false">Ladder</button>
     </nav>
     <div id="stage">
       <canvas id="canvas" role="img"></canvas>
@@ -415,13 +419,13 @@ dialog#notes-sheet::backdrop{background:#04070acc}
         <button id="guide" disabled hidden>Find a rhythm</button>
         <button id="premature" disabled hidden>Premature impulse</button>
         <button id="find-echo" disabled hidden aria-label="Find the echo: eight steady atrial beats, then one early beat, a little earlier each time (S1–S2 extrastimulus).">Find the echo</button>
-        <button id="find-chord" disabled hidden aria-label="Find the chord: eight steady atrial beats, then two early beats, a little earlier each time (S1–S2–S3 extrastimuli).">Find the chord</button>
+        <button id="find-chord" disabled hidden aria-label="Find the circuit: eight steady atrial beats, then two early beats, a little earlier each time (S1–S2–S3 extrastimuli).">Find the circuit</button>
         <button id="stillness" disabled hidden aria-label="Stillness: briefly quiet the junction, like an adenosine-like AV-nodal block. Shortcut S.">Stillness</button>
         <button id="reset" disabled>Reset</button>
       </div>
       <p id="protocol-hint" class="hint" aria-live="off"></p>
       <div class="settings">
-        <label>Time dilation <select id="dilation"><option value="1">1×</option><option value="2">2×</option><option value="3">3×</option><option value="4" selected>4×</option><option value="5">5×</option><option value="6">6×</option><option value="7">7×</option><option value="8">8×</option></select></label>
+        <label>Playback speed <select id="dilation" aria-describedby="dilation-hint"></select></label><span id="dilation-hint" class="visually-hidden">Fraction of real time. Slower playback spreads the rhythm out.</span>
         <label>Palette <select id="palette"><option value="chamber">Chamber</option><option value="atmosphere">Atmosphere</option><option value="minimalism">Minimalism</option></select></label>
         <label id="voicing-control" hidden>Chamber voicing <select id="voicing"><option value="balanced">Balanced</option><option value="open">Open</option><option value="suspended">Suspended</option></select></label>
         <button id="mute" aria-pressed="false">Mute</button>
@@ -4854,6 +4858,8 @@ return {SimulationFault,Engine,createEngine};
 })();
 __modules["src/runtime/transport.js"] = (()=>{
 const DEFAULT_DILATION = 4;
+// Creator decision (2026-11-27): playback runs at 1/4 to 1/12 of real time.
+const MAX_DILATION = 12;
 const WAKE_WALL_MS = 25;
 const LOOKAHEAD_WALL_MS = 60;
 const INPUT_MARGIN_WALL_MS = 5;
@@ -4878,8 +4884,8 @@ function createTransport({
   onFault = () => {},
   onStateChange = () => {},
 }) {
-  if (!Number.isFinite(dilation) || dilation < 1 || dilation > 8) {
-    throw new RangeError('Dilation must be between 1 and 8');
+  if (!Number.isFinite(dilation) || dilation < 1 || dilation > MAX_DILATION) {
+    throw new RangeError(`Dilation must be between 1 and ${MAX_DILATION}`);
   }
 
   const usedRunIds = new Set();
@@ -5094,8 +5100,8 @@ function createTransport({
   }
 
   function setDilation(value) {
-    if (!Number.isFinite(value) || value < 1 || value > 8) {
-      throw new RangeError('Dilation must be between 1 and 8');
+    if (!Number.isFinite(value) || value < 1 || value > MAX_DILATION) {
+      throw new RangeError(`Dilation must be between 1 and ${MAX_DILATION}`);
     }
     if (isPlaying()) refresh(nowSec());
     if (value === (pendingDilation() ?? dilation)) return false;
@@ -5210,7 +5216,7 @@ function createTransport({
   };
 }
 
-return {DEFAULT_DILATION,WAKE_WALL_MS,LOOKAHEAD_WALL_MS,INPUT_MARGIN_WALL_MS,COMMAND_LOG_LIMIT,createTransport};
+return {DEFAULT_DILATION,MAX_DILATION,WAKE_WALL_MS,LOOKAHEAD_WALL_MS,INPUT_MARGIN_WALL_MS,COMMAND_LOG_LIMIT,createTransport};
 })();
 __modules["src/visuals/common.js"] = (()=>{
 // Shared helpers for the Study No. 2 view modules (Ladder, Staves, Map, Network marks).
@@ -7024,7 +7030,7 @@ function createInspector(container, callbacks = {}) {
         <label class="inspector-field">Site <select data-control="node"></select></label>
         <dl>
           <dt>ERP</dt><dd data-read="erp"></dd>
-          <dt>Last activation</dt><dd data-read="last-activation"></dd>
+          <dt>Since last activation</dt><dd data-read="last-activation"></dd>
           <dt>Refractory status</dt><dd data-read="refractory"></dd>
           <dt>Recovery before last beat</dt><dd data-read="recovery-before"></dd>
           <dt>Last cycle length</dt><dd data-read="cycle-length"></dd>
@@ -7233,7 +7239,7 @@ function createInspector(container, callbacks = {}) {
       ? context.captureTotal - (context.events?.filter(event => event.type === 'activation' && event.tMs > snapshot.tMs).length ?? 0)
       : events.filter(event => event.type === 'activation').length;
 
-    metrics.textContent = `${ms(frame.presentedMs)} simulated · ${captures} captures · ${snapshot.activeTransits.length} traveling waves`;
+    metrics.textContent = `${captures} captures · ${snapshot.activeTransits.length} traveling waves`;
     read('world', context.worldName ?? snapshot.worldId);
     read('topology', context.topology ?? `${Object.keys(snapshot.nodes).length} sites · ${Object.keys(snapshot.links).length} links`);
     read('run', frame.runId);
@@ -7246,14 +7252,19 @@ function createInspector(container, callbacks = {}) {
     read('late', audio?.late);
     read('fps', Number.isFinite(context.fps) ? `${Math.round(context.fps)} fps` : MISSING);
     read('erp', ms(node?.erpMs));
-    read('last-activation', node?.lastActivationMs == null ? 'None' : ms(node.lastActivationMs));
-    read('refractory', node ? (node.excitable ? 'Excitable' : `Refractory until ${ms(node.refractoryUntilMs)}`) : MISSING);
+    // EP-relative readouts (creator decision 2026-11-27): intervals, not the run clock.
+    read('last-activation', node?.lastActivationMs == null ? 'None' : ms(Math.round(frame.presentedMs - node.lastActivationMs)));
+    read('refractory', node ? (node.excitable ? 'Excitable' : `Refractory for ${ms(Math.ceil(node.refractoryUntilMs - frame.presentedMs))} more`) : MISSING);
     read('recovery-before', percent(last?.recoveryBefore));
     read('cycle-length', ms(last?.intervalMs));
     const automatic = automaticCycles.has(selectedNodeId) ? automaticCycles.get(selectedNodeId)
       : context.world?.nodes.find(({ id }) => id === selectedNodeId)?.automaticity?.cycleMs;
     read('automatic-cycle', automatic == null ? 'Off' : ms(automatic));
     read('note', note);
+    const noteRow = readings.get('note');
+    const hideNote = context.nodeMusic === undefined;
+    noteRow.hidden = hideNote;
+    if (noteRow.previousElementSibling) noteRow.previousElementSibling.hidden = hideNote;
     read('protocol-site', selectedNodeId);
     read('link-state', link ? (link.enabled ? 'Enabled' : 'Cut') : MISSING);
     read('ab-label', link ? `${link.a} → ${link.b}` : 'Forward');
@@ -8988,11 +8999,18 @@ function createInspectorCard(container, {
     const snap = frame.snapshot;
     if (target.kind === 'node') {
       const live = snap?.nodes?.[target.id];
-      const last = activationsAt(frame.events, target.id).at(-1) ?? null;
+      const captures = activationsAt(frame.events, target.id);
+      const last = captures.at(-1) ?? null;
       const until = live?.refractoryUntilMs ?? null;
       const di = until !== null && frame.tMs !== null && frame.tMs >= until ? frame.tMs - until : null;
-      rows.push(['Last activation', ms(live?.lastActivationMs ?? null)]);
-      rows.push(['Refractory until', ms(until)]);
+      // EP-relative readouts (creator decision 2026-11-27): intervals, never the run clock.
+      const lastAt = live?.lastActivationMs ?? null;
+      const since = lastAt !== null && frame.tMs !== null && frame.tMs >= lastAt ? Math.round(frame.tMs - lastAt) : null;
+      const cycle = captures.length >= 2 ? Math.round(captures.at(-1).tMs - captures.at(-2).tMs) : null;
+      const remaining = until !== null && frame.tMs !== null && frame.tMs < until ? Math.ceil(until - frame.tMs) : null;
+      rows.push(['Since last activation', ms(since)]);
+      rows.push(['Last cycle length', ms(cycle)]);
+      rows.push(['Refractory remaining', remaining === null ? (until === null ? '—' : 'excitable') : ms(remaining)]);
       rows.push(['Recovery', live ? `${Math.round(live.recovery * 100)}%` : '—']);
       rows.push(['Current DI', until !== null && di === null ? 'refractory' : ms(di)]);
       rows.push(['ERP of last capture', ms(last?.erpMs ?? null)]);
@@ -9188,6 +9206,8 @@ return {createParameterState,applyParameterEvents,editCommand,applyCommand,defau
 })();
 __modules["src/ui/preferences.js"] = (()=>{
 const PREFERENCES_KEY = 'counterpoint.preferences.v1';
+// Playback speeds offered in the UI: 1/4 to 1/12 of real time (creator decision 2026-11-27).
+const DILATIONS = Object.freeze([4, 5, 6, 8, 10, 12]);
 const DEFAULTS = { dilation: 4, palette: 'chamber', voicing: 'balanced', volume: 0.3, muted: false };
 
 function readPreferences(palettes, voicings) {
@@ -9196,7 +9216,7 @@ function readPreferences(palettes, voicings) {
   catch { return { ...DEFAULTS }; }
   if (!stored || typeof stored !== 'object') return { ...DEFAULTS };
   return {
-    dilation: Number.isInteger(stored.dilation) && stored.dilation >= 1 && stored.dilation <= 8 ? stored.dilation : DEFAULTS.dilation,
+    dilation: DILATIONS.includes(stored.dilation) ? stored.dilation : DEFAULTS.dilation,
     palette: palettes.includes(stored.palette) ? stored.palette : DEFAULTS.palette,
     voicing: voicings.includes(stored.voicing) ? stored.voicing : DEFAULTS.voicing,
     volume: Number.isFinite(stored.volume) && stored.volume >= 0 && stored.volume <= 0.7 ? stored.volume : DEFAULTS.volume,
@@ -9209,7 +9229,14 @@ function savePreferences(preferences) {
   catch { /* Storage may be unavailable when a browser opens the local HTML. */ }
 }
 
-return {readPreferences,savePreferences};
+// A dilation as the creator asked to see it: a fraction of real time and a percentage.
+function dilationLabel(dilation) {
+  const percent = 100 / dilation;
+  const text = Number.isInteger(percent) ? String(percent) : percent.toFixed(1).replace(/\.0$/, '');
+  return `1/${dilation} speed · ${text}%`;
+}
+
+return {DILATIONS,readPreferences,savePreferences,dilationLabel};
 })();
 __modules["src/worlds/circulation.js"] = (()=>{
 const nodeErps = [180, 300, 220, 220, 220, 220, 220, 200];
@@ -10039,7 +10066,17 @@ const { createParameterState, defaultCommands, modifiedElements } = __modules["s
 const STUDY_COPY = __modules["src/content/studies.json"].default;
 const GLOSSARY = __modules["src/content/glossary.json"].default;
 
-const VIEWS = Object.freeze(['network', 'ladder', 'staves']);
+// Creator decisions (2026-11-27): the music analogy stays in the sound, not in the
+// labels. Musical subtitles, chips, pitch names and the Staves view are hidden but
+// kept in the source so they can return. Duality is withdrawn from the menu.
+const SHOW_MUSIC_LABELS = false;
+const ALL_VIEWS = Object.freeze(['network', 'ladder', 'staves']);
+const VIEWS = Object.freeze(['network', 'ladder']);
+
+// Plain, non-musical subtitles shown while SHOW_MUSIC_LABELS is false.
+const PLAIN_SUBTITLES = Object.freeze({
+  echo: 'Two routes through the junction',
+});
 
 // Plain labels for the main canvas, EP labels for the Lab (spec, audience rule).
 const ECHO_LABELS = Object.freeze({
@@ -10066,13 +10103,6 @@ const SCENE_LIST = {
     hint: 'Swipe across a connection to cut it. Find a rhythm resets the ring and sends two impulses.',
     status: 'The ring rests until a site is stimulated.',
   },
-  duality: {
-    create: createDualityWorld,
-    name: 'Duality',
-    topology: 'Two disconnected pathways, each with its own automatic focus.',
-    hint: 'Tap a site to stimulate it. Swipe across a connection to cut it.',
-    status: 'Two independent rhythms share the space.',
-  },
   ...Object.fromEntries(STUDIES.map(study => {
     const copy = STUDY_COPY.find(entry => entry.id === study.id);
     if (!copy) throw new Error(`No study copy for ${study.id}`);
@@ -10083,18 +10113,22 @@ const SCENE_LIST = {
       study: true,
       numeral: copy.numeral,
       name: copy.title,
-      subtitle: copy.subtitle,
-      layer2Term: copy.layer2Term,
-      glossaryIds: copy.glossaryIds,
+      subtitle: SHOW_MUSIC_LABELS ? copy.subtitle : (PLAIN_SUBTITLES[study.id] ?? ''),
+      musicalSubtitle: copy.subtitle,
+      layer2Term: SHOW_MUSIC_LABELS ? copy.layer2Term : null,
+      glossaryIds: SHOW_MUSIC_LABELS ? copy.glossaryIds : [],
       mechanism: copy.epMechanism,
       tryThis: copy.tryThis,
       labels: study.id === 'echo' ? ECHO_LABELS : null,
       topology: 'Two routes through the junction between upper and lower chambers. Silent sites are open rings.',
       hint: 'Tap a site to touch it. Press and hold a site or connection to inspect it. Press and hold the open centre, or press S, for Stillness.',
-      status: 'A steady rhythm: upper voice, then lower.',
+      status: 'Steady rhythm: atrium, then ventricle.',
     }];
   })),
 };
+
+// The v0.1 Duality world stays in src/worlds for its frozen fixtures and tests.
+const WITHDRAWN = Object.freeze({ duality: Object.freeze({ id: 'duality', create: createDualityWorld, name: 'Duality' }) });
 
 const SCENES = Object.freeze(Object.fromEntries(Object.entries(SCENE_LIST).map(([id, scene]) => [id, Object.freeze({ id, ...scene })])));
 
@@ -10123,7 +10157,7 @@ function staveSpecs(scene, world, { lab = false } = {}) {
   return ids.map(id => {
     const node = world.nodes.find(entry => entry.id === id);
     const music = scene.presentation?.music?.[id];
-    return { nodeId: id, label: labels[id] ?? id, tissue: node?.tissue ?? 'atrial', pitch: lab && music ? noteName(music[0]) : undefined };
+    return { nodeId: id, label: labels[id] ?? id, tissue: node?.tissue ?? 'atrial', pitch: SHOW_MUSIC_LABELS && lab && music ? noteName(music[0]) : undefined };
   });
 }
 
@@ -10188,7 +10222,7 @@ function carryCommands(preset, state) {
   return bodies;
 }
 
-return {VIEWS,SCENES,glossaryFor,ladderTiers,noteName,staveSpecs,parseFragment,formatFragment,worldFromState,carryCommands};
+return {SHOW_MUSIC_LABELS,ALL_VIEWS,VIEWS,WITHDRAWN,SCENES,glossaryFor,ladderTiers,noteName,staveSpecs,parseFragment,formatFragment,worldFromState,carryCommands};
 })();
 __modules["src/visuals/ladder.js"] = (()=>{
 // Ladder view (Lewis diagram as graphic score). Study No. 2 spec, "Ladder".
@@ -11821,6 +11855,7 @@ function createStudyLab(container, { onDownload, onNotes, workerUrl = null, docu
       buildFields();
     },
     setGlossary(entries, studyId) {
+      control.glossary.closest('section').hidden = entries.length === 0;
       control.glossary.replaceChildren(...entries.map(entry => {
         const card = el('article', { className: `study-lab-word layer-${entry.layer}` });
         card.append(el('h4', {}, entry.term));
@@ -11911,8 +11946,8 @@ const { createRenderer } = __modules["src/visuals/renderer.js"];
 const { mapActivation, createAudioMixer, describeNodeMusic, musicTableFor, PALETTES, CHAMBER_VOICINGS } = __modules["src/music/index.js"];
 const { createInspector } = __modules["src/ui/inspector.js"];
 const { createInspectorCard } = __modules["src/lab/inspector-card.js"];
-const { readPreferences, savePreferences } = __modules["src/ui/preferences.js"];
-const { SCENES, VIEWS, carryCommands, formatFragment, glossaryFor, parseFragment, worldFromState } = __modules["src/ui/studies.js"];
+const { DILATIONS, dilationLabel, readPreferences, savePreferences } = __modules["src/ui/preferences.js"];
+const { SCENES, SHOW_MUSIC_LABELS, VIEWS, carryCommands, formatFragment, glossaryFor, parseFragment, worldFromState } = __modules["src/ui/studies.js"];
 const { createViews } = __modules["src/ui/views.js"];
 const { createStudyLab, protocolWorkerUrl } = __modules["src/ui/lab-panel.js"];
 const { isDraft, renderNotes } = __modules["src/ui/notes.js"];
@@ -12079,7 +12114,7 @@ function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs
     commands.push(...guidedCommands(kind));
     status = kind === 'find-echo'
       ? 'Eight steady beats, then one early touch. Each try comes a little earlier.'
-      : 'Eight steady beats, then two early touches. Each try comes a little earlier.';
+      : 'Eight steady beats, then two early beats. Each try comes a little earlier.';
   }
   if (kind !== 'find-echo' && kind !== 'find-chord') guidedLast = null;
   // The player's model edits carry into the new run as logged commands at t = 0.
@@ -12588,7 +12623,7 @@ function updateInspection(frame, now) {
     selectedNodeId,
     selectedLinkId,
     couplingMs,
-    nodeMusic: describeNodeMusic(worldId, selectedNodeId, musicOptions()),
+    nodeMusic: SHOW_MUSIC_LABELS ? describeNodeMusic(worldId, selectedNodeId, musicOptions()) : undefined,
   });
 }
 
@@ -12644,6 +12679,12 @@ $('notes-close').onclick = () => $('notes-sheet').close?.() ?? $('notes-sheet').
 $('notes-sheet').addEventListener('click', event => { if (event.target === $('notes-sheet')) $('notes-sheet').close(); });
 for (const button of $('worlds').children) button.onclick = () => chooseWorld(button.dataset.world);
 for (const button of $('views').querySelectorAll('button')) button.onclick = () => setView(button.dataset.view);
+$('dilation').replaceChildren(...DILATIONS.map(value => {
+  const option = document.createElement('option');
+  option.value = String(value);
+  option.textContent = dilationLabel(value);
+  return option;
+}));
 $('dilation').value = String(preferences.dilation);
 $('palette').value = preferences.palette;
 $('voicing').value = preferences.voicing;

@@ -82,7 +82,7 @@ test('Laboratory renders actual state at the presentation boundary and routes va
   assert.equal(rasterMarks('blocked').length, 1);
   const blocked = log().find(row => row.children[2].textContent === 'activation_blocked');
   assert.deepEqual(blocked.children.map(cell => cell.textContent).slice(0, 6), ['300 ms', 'R1', 'activation_blocked', 'conduction', 'refractory', '240 ms']);
-  assert.equal(reading('refractory'), 'Refractory until 360 ms');
+  assert.equal(reading('refractory'), 'Refractory for 60 ms more', 'EP-relative: time left, not the run clock');
   assert.equal(reading('presented'), '300 ms');
   assert.equal(reading('committed'), '1,250 ms');
   assert.equal(reading('fps'), '61 fps');

@@ -27,3 +27,8 @@ button.primary:hover{background:#e1c695;color:#11171a}
   .controls{margin-bottom:24px}
   #lab{padding:15px}
 }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}

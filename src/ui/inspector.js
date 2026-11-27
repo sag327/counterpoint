@@ -175,7 +175,7 @@ export function createInspector(container, callbacks = {}) {
         <label class="inspector-field">Site <select data-control="node"></select></label>
         <dl>
           <dt>ERP</dt><dd data-read="erp"></dd>
-          <dt>Last activation</dt><dd data-read="last-activation"></dd>
+          <dt>Since last activation</dt><dd data-read="last-activation"></dd>
           <dt>Refractory status</dt><dd data-read="refractory"></dd>
           <dt>Recovery before last beat</dt><dd data-read="recovery-before"></dd>
           <dt>Last cycle length</dt><dd data-read="cycle-length"></dd>
@@ -384,7 +384,7 @@ export function createInspector(container, callbacks = {}) {
       ? context.captureTotal - (context.events?.filter(event => event.type === 'activation' && event.tMs > snapshot.tMs).length ?? 0)
       : events.filter(event => event.type === 'activation').length;
 
-    metrics.textContent = `${ms(frame.presentedMs)} simulated · ${captures} captures · ${snapshot.activeTransits.length} traveling waves`;
+    metrics.textContent = `${captures} captures · ${snapshot.activeTransits.length} traveling waves`;
     read('world', context.worldName ?? snapshot.worldId);
     read('topology', context.topology ?? `${Object.keys(snapshot.nodes).length} sites · ${Object.keys(snapshot.links).length} links`);
     read('run', frame.runId);
@@ -397,14 +397,19 @@ export function createInspector(container, callbacks = {}) {
     read('late', audio?.late);
     read('fps', Number.isFinite(context.fps) ? `${Math.round(context.fps)} fps` : MISSING);
     read('erp', ms(node?.erpMs));
-    read('last-activation', node?.lastActivationMs == null ? 'None' : ms(node.lastActivationMs));
-    read('refractory', node ? (node.excitable ? 'Excitable' : `Refractory until ${ms(node.refractoryUntilMs)}`) : MISSING);
+    // EP-relative readouts (creator decision 2026-11-27): intervals, not the run clock.
+    read('last-activation', node?.lastActivationMs == null ? 'None' : ms(Math.round(frame.presentedMs - node.lastActivationMs)));
+    read('refractory', node ? (node.excitable ? 'Excitable' : `Refractory for ${ms(Math.ceil(node.refractoryUntilMs - frame.presentedMs))} more`) : MISSING);
     read('recovery-before', percent(last?.recoveryBefore));
     read('cycle-length', ms(last?.intervalMs));
     const automatic = automaticCycles.has(selectedNodeId) ? automaticCycles.get(selectedNodeId)
       : context.world?.nodes.find(({ id }) => id === selectedNodeId)?.automaticity?.cycleMs;
     read('automatic-cycle', automatic == null ? 'Off' : ms(automatic));
     read('note', note);
+    const noteRow = readings.get('note');
+    const hideNote = context.nodeMusic === undefined;
+    noteRow.hidden = hideNote;
+    if (noteRow.previousElementSibling) noteRow.previousElementSibling.hidden = hideNote;
     read('protocol-site', selectedNodeId);
     read('link-state', link ? (link.enabled ? 'Enabled' : 'Cut') : MISSING);
     read('ab-label', link ? `${link.a} → ${link.b}` : 'Forward');

@@ -9,7 +9,17 @@ import { createParameterState, defaultCommands, modifiedElements } from '../lab/
 import STUDY_COPY from '../content/studies.json' with { type: 'json' };
 import GLOSSARY from '../content/glossary.json' with { type: 'json' };
 
-export const VIEWS = Object.freeze(['network', 'ladder', 'staves']);
+// Creator decisions (2026-11-27): the music analogy stays in the sound, not in the
+// labels. Musical subtitles, chips, pitch names and the Staves view are hidden but
+// kept in the source so they can return. Duality is withdrawn from the menu.
+export const SHOW_MUSIC_LABELS = false;
+export const ALL_VIEWS = Object.freeze(['network', 'ladder', 'staves']);
+export const VIEWS = Object.freeze(['network', 'ladder']);
+
+// Plain, non-musical subtitles shown while SHOW_MUSIC_LABELS is false.
+const PLAIN_SUBTITLES = Object.freeze({
+  echo: 'Two routes through the junction',
+});
 
 // Plain labels for the main canvas, EP labels for the Lab (spec, audience rule).
 const ECHO_LABELS = Object.freeze({
@@ -36,13 +46,6 @@ const SCENE_LIST = {
     hint: 'Swipe across a connection to cut it. Find a rhythm resets the ring and sends two impulses.',
     status: 'The ring rests until a site is stimulated.',
   },
-  duality: {
-    create: createDualityWorld,
-    name: 'Duality',
-    topology: 'Two disconnected pathways, each with its own automatic focus.',
-    hint: 'Tap a site to stimulate it. Swipe across a connection to cut it.',
-    status: 'Two independent rhythms share the space.',
-  },
   ...Object.fromEntries(STUDIES.map(study => {
     const copy = STUDY_COPY.find(entry => entry.id === study.id);
     if (!copy) throw new Error(`No study copy for ${study.id}`);
@@ -53,18 +56,22 @@ const SCENE_LIST = {
       study: true,
       numeral: copy.numeral,
       name: copy.title,
-      subtitle: copy.subtitle,
-      layer2Term: copy.layer2Term,
-      glossaryIds: copy.glossaryIds,
+      subtitle: SHOW_MUSIC_LABELS ? copy.subtitle : (PLAIN_SUBTITLES[study.id] ?? ''),
+      musicalSubtitle: copy.subtitle,
+      layer2Term: SHOW_MUSIC_LABELS ? copy.layer2Term : null,
+      glossaryIds: SHOW_MUSIC_LABELS ? copy.glossaryIds : [],
       mechanism: copy.epMechanism,
       tryThis: copy.tryThis,
       labels: study.id === 'echo' ? ECHO_LABELS : null,
       topology: 'Two routes through the junction between upper and lower chambers. Silent sites are open rings.',
       hint: 'Tap a site to touch it. Press and hold a site or connection to inspect it. Press and hold the open centre, or press S, for Stillness.',
-      status: 'A steady rhythm: upper voice, then lower.',
+      status: 'Steady rhythm: atrium, then ventricle.',
     }];
   })),
 };
+
+// The v0.1 Duality world stays in src/worlds for its frozen fixtures and tests.
+export const WITHDRAWN = Object.freeze({ duality: Object.freeze({ id: 'duality', create: createDualityWorld, name: 'Duality' }) });
 
 export const SCENES = Object.freeze(Object.fromEntries(Object.entries(SCENE_LIST).map(([id, scene]) => [id, Object.freeze({ id, ...scene })])));
 
@@ -93,7 +100,7 @@ export function staveSpecs(scene, world, { lab = false } = {}) {
   return ids.map(id => {
     const node = world.nodes.find(entry => entry.id === id);
     const music = scene.presentation?.music?.[id];
-    return { nodeId: id, label: labels[id] ?? id, tissue: node?.tissue ?? 'atrial', pitch: lab && music ? noteName(music[0]) : undefined };
+    return { nodeId: id, label: labels[id] ?? id, tissue: node?.tissue ?? 'atrial', pitch: SHOW_MUSIC_LABELS && lab && music ? noteName(music[0]) : undefined };
   });
 }
 

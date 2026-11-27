@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import { Engine } from '../src/engine/index.js';
 import { applyCommand, createParameterState, editCommand, modifiedElements } from '../src/lab/inspector-card.js';
-import { SCENES, carryCommands, formatFragment, glossaryFor, ladderTiers, parseFragment, staveSpecs, worldFromState } from '../src/ui/studies.js';
+import { SCENES, SHOW_MUSIC_LABELS, VIEWS, WITHDRAWN, carryCommands, formatFragment, glossaryFor, ladderTiers, parseFragment, staveSpecs, worldFromState } from '../src/ui/studies.js';
 import { renderNotes, isDraft } from '../src/ui/notes.js';
 import { buildProtocol, plotsForResult } from '../src/ui/lab-panel.js';
 import { runProtocolSync } from '../src/lab/protocols.js';
@@ -18,16 +18,20 @@ import { echoPresentation, echoWorld } from '../src/worlds/echo.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-test('Scenes: the v0.1 worlds plus Echo with its musical title, plain subtitle and no layer 2 chip', () => {
-  assert.deepEqual(Object.keys(SCENES), ['conduction', 'circulation', 'duality', 'echo']);
-  for (const id of ['conduction', 'circulation', 'duality']) assert.equal(SCENES[id].study, undefined);
+test('Scenes: Conduction, Circulation and Echo; Duality withdrawn; musical labels hidden', () => {
+  // Creator decisions 2026-11-27: Duality leaves the menu, music stays in the sound only.
+  assert.deepEqual(Object.keys(SCENES), ['conduction', 'circulation', 'echo']);
+  assert.equal(SHOW_MUSIC_LABELS, false);
+  assert.equal(typeof WITHDRAWN.duality.create, 'function', 'the Duality world stays available to its fixtures');
+  for (const id of ['conduction', 'circulation']) assert.equal(SCENES[id].study, undefined);
   const echo = SCENES.echo;
   assert.equal(echo.name, 'Echo');
   assert.equal(echo.numeral, 'II');
-  assert.equal(echo.subtitle, 'An arpeggio folds into a chord');
+  assert.equal(echo.subtitle, 'Two routes through the junction');
+  assert.equal(echo.musicalSubtitle, 'An arpeggio folds into a chord', 'the musical copy is kept for its return');
   assert.equal(echo.layer2Term, null);
-  assert.deepEqual(glossaryFor(echo).map(entry => entry.id), ['arpeggio', 'chord', 'echo', 'rhythm']);
-  assert.ok(glossaryFor(echo).every(entry => entry.layer === 1));
+  assert.deepEqual(glossaryFor(echo), []);
+  for (const text of [echo.subtitle, echo.status]) assert.doesNotMatch(text, /arpeggio|chord|voice|melody/i, text);
   assert.deepEqual(echo.create(), structuredClone(echoWorld));
   // Plain words on the main canvas: no EP abbreviations, no digits.
   for (const text of [echo.subtitle, echo.status, echo.hint, ...Object.values(echo.labels.plain), ...echo.labels.tiers.plain]) {
@@ -37,11 +41,12 @@ test('Scenes: the v0.1 worlds plus Echo with its musical title, plain subtitle a
 
 test('Fragments remember study and view; unknown values are ignored', () => {
   assert.deepEqual(parseFragment('#study=echo&view=ladder'), { study: 'echo', view: 'ladder' });
-  assert.deepEqual(parseFragment('#view=staves'), { study: null, view: 'staves' });
+  assert.deepEqual(parseFragment('#view=staves'), { study: null, view: null }, 'Staves is hidden');
+  assert.deepEqual(VIEWS, ['network', 'ladder']);
   assert.deepEqual(parseFragment('#view=map&study=nope'), { study: null, view: null });
   assert.equal(formatFragment({ study: 'echo', view: 'network' }), '#study=echo');
   assert.equal(formatFragment({ study: null, view: 'ladder' }), '#view=ladder');
-  assert.deepEqual(parseFragment(formatFragment({ study: 'echo', view: 'staves' })), { study: 'echo', view: 'staves' });
+  assert.deepEqual(parseFragment(formatFragment({ study: 'echo', view: 'ladder' })), { study: 'echo', view: 'ladder' });
 });
 
 test('Ladder tiers cover each Echo site once; Staves are the audible sites in channel order', () => {
@@ -53,7 +58,7 @@ test('Ladder tiers cover each Echo site once; Staves are the audible sites in ch
     for (const tier of tiers) for (const site of tier.sites) assert.equal(site.audible, echoWorld.nodes.find(node => node.id === site.id).audible);
     const staves = staveSpecs(echo, echoWorld, { lab });
     assert.deepEqual(staves.map(stave => stave.nodeId), ['HRA', 'H', 'CSp', 'V']);
-    assert.equal(staves.every(stave => stave.pitch !== undefined), lab, 'pitch names only in the Lab');
+    assert.ok(staves.every(stave => stave.pitch === undefined), 'pitch names hidden with the music labels');
   }
   // v1.0 worlds fall back to one tier and one stave per site.
   const world = SCENES.circulation.create();
@@ -166,4 +171,15 @@ test('Single-file build: no network references, Echo bundled, embedded worker ru
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('Playback speeds run from 1/4 to 1/12 of real time and read as fractions and percentages', async () => {
+  const { DILATIONS, dilationLabel } = await import('../src/ui/preferences.js');
+  const { MAX_DILATION, createTransport } = await import('../src/runtime/transport.js');
+  assert.deepEqual(DILATIONS, [4, 5, 6, 8, 10, 12]);
+  assert.equal(MAX_DILATION, 12);
+  assert.equal(dilationLabel(4), '1/4 speed · 25%');
+  assert.equal(dilationLabel(8), '1/8 speed · 12.5%');
+  assert.equal(dilationLabel(12), '1/12 speed · 8.3%');
+  assert.equal(typeof createTransport, 'function');
 });
