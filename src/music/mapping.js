@@ -59,6 +59,9 @@ const isV11World = (world) => world?.contractVersion === "1.1.0";
 // tissue (nodal, sinus) never sounds.
 export function musicTableFor(world, presentation = null) {
   if (!isV11World(world)) return null;
+  // Circulation uses its built-in instrumentation and selectable chamber voicings.
+  if (world.worldId === "circulation" && !presentation?.music
+    && world.nodes.every(node => node.audible !== false && Object.hasOwn(worldAssignments.circulation, node.id))) return null;
   const declared = presentation?.music ?? {};
   const table = {};
   for (const node of world.nodes) {

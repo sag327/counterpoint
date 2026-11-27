@@ -1,3 +1,4 @@
+import { CIRCULATION_S2_MS } from '../worlds/circulation.js';
 import { Engine } from '../engine/index.js';
 import { createTransport, LOOKAHEAD_WALL_MS } from '../runtime/transport.js';
 import { createRenderer } from '../visuals/renderer.js';
@@ -24,7 +25,7 @@ if (EDITION.sound) Object.assign(preferences, EDITION.sound);
 const engine = new Engine();
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
 const EVENT_LIMIT = 4096;
-const GUIDE_COUPLING_MS = 240;
+
 // A pointer that travels this far is a drag, not a tap or a hold: it does nothing.
 const DRAG_THRESHOLD = 10;
 const HOLD_SITE_MS = 500;
@@ -52,7 +53,7 @@ let captureTotal = 0;
 let visualFloorMs = -1;
 let selectedNodeId;
 let selectedLinkId;
-let couplingMs = GUIDE_COUPLING_MS;
+let couplingMs = CIRCULATION_S2_MS;
 let gesture;
 let lastFpsTime = 0;
 let fpsFrames = 0;
@@ -655,7 +656,7 @@ $('pause').onclick = async () => {
   }
 };
 $('single').onclick = () => startRun('single', 'R0');
-$('guide').onclick = () => startRun('guide', 'R0', GUIDE_COUPLING_MS);
+$('guide').onclick = () => startRun('guide', 'R0', CIRCULATION_S2_MS);
 $('premature').onclick = () => startRun('premature');
 $('find-echo').onclick = () => startRun('find-echo');
 $('find-arrhythmia').onclick = () => startRun('find-arrhythmia');
