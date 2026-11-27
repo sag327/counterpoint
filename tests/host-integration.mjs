@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 
 const artifact = readFileSync(new URL("../dist/counterpoint.html", import.meta.url), "utf8");
+assert.doesNotMatch(artifact, /id="(?:palette|voicing)(?:-control)?"/);
 const script = artifact.match(/<script>([\s\S]*)<\/script>/)[1];
 const errors = [];
 const timers = new Map();
@@ -148,7 +149,7 @@ const sandbox = {
   history: { replaceState() {} },
   matchMedia: () => ({ matches: false, addEventListener: noOp }),
   localStorage: {
-    value: null,
+    value: JSON.stringify({ palette: "atmosphere", voicing: "open" }),
     getItem() { return this.value; },
     setItem(_key, value) { this.value = value; },
   },
@@ -165,6 +166,9 @@ const sandbox = {
 sandbox.window = sandbox;
 runInNewContext(script, sandbox, { filename: "counterpoint.html" });
 const cp = sandbox.counterpoint;
+assert.equal(select("dilation").children.map(option => option.textContent).join(), "1/4,1/5,1/6,1/8,1/10,1/12");
+select("dilation").onchange();
+assert.deepEqual(JSON.parse(sandbox.localStorage.value), { dilation: 4, volume: 0.3, muted: false });
 const activations = () => cp.events.filter((event) => event.type === "activation");
 
 function runFor(duration, framePeriod = 16) {
@@ -220,13 +224,6 @@ assert.equal(cp.mixer.diagnostics().scheduled, 6);
 select("premature").click();
 runFor(2200);
 assert.ok(cp.events.some(e => e.type === "activation" && e.nodeId === "H" && e.tMs === 465));
-const runBeforePalette = cp.transport.runId;
-const eventIdsBeforePalette = cp.events.map(e => e.eventId).join();
-select("palette").value = "atmosphere";
-select("palette").onchange();
-assert.equal(cp.transport.runId, runBeforePalette);
-assert.equal(cp.events.map(e => e.eventId).join(), eventIdsBeforePalette);
-assert.equal(JSON.parse(sandbox.localStorage.value).palette, "atmosphere");
 
 // Duality left the menu (creator decision 2026-11-27). The switch to Circulation
 // below covers the world change, and its ring checks match notes to captures.

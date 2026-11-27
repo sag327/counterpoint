@@ -23,7 +23,8 @@ test('the circulation build fixes its world, view and sound, and keeps its own p
   assert.match(html, /<title>Counterpoint · Circulation<\/title>/);
   assert.match(html, /const EDITION_ID = "circulation";/);
   assert.doesNotMatch(html, /const EDITION_ID = 'full';/);
-  assert.match(html, /worlds: \['circulation'\],\s*views: \['network'\],\s*sound: \{ palette: 'chamber', voicing: 'balanced' \}/);
+  assert.doesNotMatch(html, /id="(?:palette|voicing)(?:-control)?"/);
+  assert.match(html, /worlds: \['circulation'\],\s*views: \['network'\]/);
 });
 
 test('an unknown edition fails the build', () => {

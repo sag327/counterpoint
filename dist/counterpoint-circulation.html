@@ -438,8 +438,6 @@ dialog#notes-sheet::backdrop{background:#04070acc}
       </div>
       <div class="settings">
         <label>Playback speed <select id="dilation" aria-describedby="dilation-hint"></select></label><span id="dilation-hint" class="visually-hidden">Fraction of real time. Slower playback spreads the rhythm out.</span>
-        <label id="palette-control">Palette <select id="palette"><option value="chamber">Chamber</option><option value="atmosphere">Atmosphere</option><option value="minimalism">Minimalism</option></select></label>
-        <label id="voicing-control" hidden>Chamber voicing <select id="voicing"><option value="balanced">Balanced</option><option value="open">Open</option><option value="suspended">Suspended</option></select></label>
       </div>
     </section>
     <div id="card-layer" aria-live="off"></div>
@@ -9800,12 +9798,12 @@ __modules["src/ui/preferences.js"] = (()=>{
 const PREFERENCES_KEY = 'counterpoint.preferences.v1';
 // Playback speeds offered in the UI: 1/4 to 1/12 of real time (creator decision 2026-11-27).
 const DILATIONS = Object.freeze([4, 5, 6, 8, 10, 12]);
-const DEFAULTS = { dilation: 4, palette: 'chamber', voicing: 'balanced', volume: 0.3, muted: false };
+const DEFAULTS = { dilation: 4, volume: 0.3, muted: false };
 
 // Each edition keeps its own preferences (suffix), so a preview never changes the full site's.
 let storageKey = PREFERENCES_KEY;
 
-function readPreferences(palettes, voicings, suffix = '') {
+function readPreferences(suffix = '') {
   storageKey = PREFERENCES_KEY + suffix;
   let stored;
   try { stored = JSON.parse(window.localStorage.getItem(storageKey)); }
@@ -9813,8 +9811,6 @@ function readPreferences(palettes, voicings, suffix = '') {
   if (!stored || typeof stored !== 'object') return { ...DEFAULTS };
   return {
     dilation: DILATIONS.includes(stored.dilation) ? stored.dilation : DEFAULTS.dilation,
-    palette: palettes.includes(stored.palette) ? stored.palette : DEFAULTS.palette,
-    voicing: voicings.includes(stored.voicing) ? stored.voicing : DEFAULTS.voicing,
     volume: Number.isFinite(stored.volume) && stored.volume >= 0 && stored.volume <= 0.7 ? stored.volume : DEFAULTS.volume,
     muted: typeof stored.muted === 'boolean' ? stored.muted : DEFAULTS.muted,
   };
@@ -9827,26 +9823,24 @@ function savePreferences(preferences) {
 
 // A dilation as the creator asked to see it: a fraction of real time (2026-11-27).
 function dilationLabel(dilation) {
-  return `1/${dilation} speed`;
+  return `1/${dilation}`;
 }
 
 return {DILATIONS,readPreferences,savePreferences,dilationLabel};
 })();
 __modules["src/ui/edition.js"] = (()=>{
 // Build editions. `node scripts/build.mjs --edition <id>` replaces EDITION_ID below.
-//   full         every world, both views, palette and voicing menus (dist/counterpoint.html)
+//   full         every world, both views (dist/counterpoint.html)
 //   circulation  a shareable preview with Circulation alone (creator request 2026-11-27):
-//                no other worlds or links to them, Network view only, and the sound
-//                fixed to Chamber with the balanced voicing (dist/counterpoint-circulation.html)
+//                no other worlds or links to them, Network view only (dist/counterpoint-circulation.html)
 const EDITION_ID = "circulation";
 
 const EDITIONS = {
-  full: { id: 'full', worlds: null, views: null, sound: null, title: null, storageSuffix: '' },
+  full: { id: 'full', worlds: null, views: null, title: null, storageSuffix: '' },
   circulation: {
     id: 'circulation',
     worlds: ['circulation'],
     views: ['network'],
-    sound: { palette: 'chamber', voicing: 'balanced' },
     title: 'Counterpoint · Circulation',
     storageSuffix: '.circulation',
   },
@@ -12737,7 +12731,7 @@ const { CIRCULATION_S2_MS } = __modules["src/worlds/circulation.js"];
 const { Engine } = __modules["src/engine/index.js"];
 const { createTransport, LOOKAHEAD_WALL_MS } = __modules["src/runtime/transport.js"];
 const { createRenderer } = __modules["src/visuals/renderer.js"];
-const { mapActivation, createAudioMixer, describeNodeMusic, musicTableFor, PALETTES, CHAMBER_VOICINGS } = __modules["src/music/index.js"];
+const { mapActivation, createAudioMixer, describeNodeMusic, musicTableFor } = __modules["src/music/index.js"];
 const { createInspector } = __modules["src/ui/inspector.js"];
 const { createInspectorCard } = __modules["src/lab/inspector-card.js"];
 const { DILATIONS, dilationLabel, readPreferences, savePreferences } = __modules["src/ui/preferences.js"];
@@ -12754,9 +12748,8 @@ const $ = id => document.getElementById(id);
 const WORLDS = SCENES;
 const NOTES = { echo: ECHO_NOTES };
 
-const preferences = readPreferences(PALETTES, CHAMBER_VOICINGS, EDITION.storageSuffix);
-// An edition can fix the sound (the Circulation edition: Chamber, balanced voicing).
-if (EDITION.sound) Object.assign(preferences, EDITION.sound);
+const preferences = readPreferences(EDITION.storageSuffix);
+const sound = Object.freeze({ palette: 'chamber', voicing: 'balanced' });
 const engine = new Engine();
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
 const EVENT_LIMIT = 4096;
@@ -12814,7 +12807,7 @@ function retainEvents(events) {
 }
 
 function musicOptions() {
-  return musicTable ? { ...preferences, nodes: musicTable } : preferences;
+  return musicTable ? { ...sound, nodes: musicTable } : sound;
 }
 
 const transport = createTransport({
@@ -12975,7 +12968,6 @@ function chooseWorld(id) {
   $('single').hidden = $('guide').hidden = id !== 'circulation';
   $('premature').hidden = id !== 'conduction';
   $('find-echo').hidden = $('find-arrhythmia').hidden = id !== 'echo';
-  updatePaletteControls();
   $('protocol-hint').textContent = settings.hint;
   setupCard();
   views.configure(settings, world, { lab: labOpen() });
@@ -13086,11 +13078,6 @@ function updateButtons() {
   for (const id of ['single', 'guide', 'premature', 'find-echo', 'find-arrhythmia', 'reset']) $(id).disabled = !started;
   $('pause').textContent = transport.status === 'pausing' ? 'Pausing…' : running ? 'Pause' : 'Resume';
   $('pause').disabled = !started || ['pausing', 'faulted'].includes(transport.status);
-}
-
-function updatePaletteControls() {
-  $('palette-control').hidden = Boolean(EDITION.sound);
-  $('voicing-control').hidden = Boolean(EDITION.sound) || worldId !== 'circulation' || preferences.palette !== 'chamber';
 }
 
 async function begin(silent) {
@@ -13313,8 +13300,7 @@ function updateInspection(frame, now) {
     lookaheadMs: LOOKAHEAD_WALL_MS,
     audioState: context?.state ?? (started ? 'silent' : 'awaiting Begin'),
     audioDiagnostics: mixer?.diagnostics(),
-    palette: preferences.palette,
-    voicing: preferences.voicing,
+    ...sound,
     volume: preferences.volume,
     muted: preferences.muted,
     fps,
@@ -13388,20 +13374,9 @@ $('dilation').replaceChildren(...DILATIONS.map(value => {
   return option;
 }));
 $('dilation').value = String(preferences.dilation);
-$('palette').value = preferences.palette;
-$('voicing').value = preferences.voicing;
 $('dilation').onchange = () => {
   preferences.dilation = Number($('dilation').value);
   transport.setDilation(preferences.dilation);
-  savePreferences(preferences);
-};
-$('palette').onchange = () => {
-  preferences.palette = $('palette').value;
-  updatePaletteControls();
-  savePreferences(preferences);
-};
-$('voicing').onchange = () => {
-  preferences.voicing = $('voicing').value;
   savePreferences(preferences);
 };
 $('lab-toggle').hidden = !SHOW_LABORATORY;

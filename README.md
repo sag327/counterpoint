@@ -14,7 +14,7 @@ Open `dist/counterpoint.html` in a modern browser and choose **Begin · enable s
 
 Tap a site or focus it with Tab and press Enter or Space. Swipe across a connection to cut it. The button list under **Connections** also works with touch and keyboard. **Restore all connections** permits future conduction, and **Reset** starts a fresh run.
 
-Use **Pause**, **Time dilation**, **Palette**, **Mute** and **Volume** to shape the experience. Settings persist where local browser storage is available. In Circulation, Chamber also offers the Balanced, Open and Suspended voicings. The **Laboratory** reports model and audio state, displays a rolling activation raster and filtered event log, and runs reference protocols. Its Circulation coupling field uses simulated milliseconds. An export includes the world definition and the run’s retained events and commands.
+Use **Pause**, **Playback speed**, **Mute** and **Volume** to shape the experience. Settings persist where local browser storage is available. All models use Chamber with the Balanced voicing. The **Laboratory** reports model and audio state, displays a rolling activation raster and filtered event log, and runs reference protocols. Its Circulation coupling field uses simulated milliseconds. An export includes the world definition and the run’s retained events and commands.
 
 ## Verify
 
