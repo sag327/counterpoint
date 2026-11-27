@@ -817,8 +817,11 @@ try {
   worldId = null;
   chooseWorld(startWorld);
   setView(view);
-  if (typeof ResizeObserver === 'function') new ResizeObserver(resize).observe(stage);
-  else window.addEventListener('resize', resize);
+  if (typeof ResizeObserver === 'function') {
+    const stageObserver = new ResizeObserver(resize);
+    stageObserver.observe(stage);
+    stageObserver.observe($('view-canvas'));
+  } else window.addEventListener('resize', resize);
 } catch (error) {
   console.warn(error);
   $('status').textContent = 'The artwork could not start. A browser with Canvas 2D is required.';

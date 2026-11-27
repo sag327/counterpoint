@@ -1,6 +1,8 @@
 # Counterpoint progress
 
-**Restart here.** 2026-11-26 v0.1 candidate. The single-file build opens in Conduction and includes Circulation, Duality, swipe-to-cut, accessible connection controls, three palettes, preferences and the Laboratory. Contract v1.0.0.
+**Restart here for Echo.** The v0.2 integration candidate is in review. See the [browser review and remaining release checks](docs/runs/integrate-02.md).
+
+**v0.1 candidate · 2026-11-26.** The single-file build opens in Conduction and includes Circulation, Duality, swipe-to-cut, accessible connection controls, three palettes, preferences and the Laboratory. Contract v1.0.0.
 
 | Ticket | State | Evidence / next action |
 |---|---|---|
@@ -17,6 +19,6 @@
 | 10 | REVIEW | Final source and candidate artifact available. Device/browser review and human audition remain open. See [gate coverage](docs/COVERAGE.md). |
 | 11a–11d | REVIEW | [Contract 1.1.0 receipt](docs/runs/contract-v11-01.md); [independent G1 review: PASS](docs/runs/g1-review-01.md). Lead decisions applied in 11e. |
 | 11e | REVIEW | [Contract 1.1.0 amendments receipt](docs/runs/contract-v11-02.md): tone sign, train_completed on cancel, setAutonomic, permanent complete lesions, L2–L7, lintStudyWorld. v1 invariance passes. Next: lead review, then freeze 1.1.0. |
-| v0.2 integration | IN PROGRESS | [Integration 01 handoff](docs/runs/integrate-01.md): Echo selectable with guided protocols, mapper v1.1, Network · Ladder · Staves, inspector card, Lab runner in a Worker, Stillness, notes. 172 tests pass. Next: Echo browser smoke script with desktop/phone screenshots, phone layout fixes, build:site. |
+| v0.2 integration | REVIEW | [Echo browser review](docs/runs/integrate-02.md): desktop and phone-emulated Echo smoke pass, including Worker and CSV download. Layout corrections, site build, and 173 Node tests pass. Live Chromium timing, physical phone review, and creator listening at 4× remain open. |
 
 On a browser-enabled host, run `python3 tests/browser_smoke.py --soak-minutes 10`. Keep the comparative listening verdict separate from browser and signal checks.

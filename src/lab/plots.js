@@ -240,9 +240,19 @@ const LAYER = {
     ctx.stroke();
     ctx.restore();
     if (layer.label) {
-      // Drawn after the clip is lifted, so a right-aligned label may run past the frame.
-      const y = layer.labelY === undefined ? box.top + 12 : layout.py(layer.labelY);
-      layout.deferred.push(() => label(ctx, layer.label, x + (layer.align === 'right' ? -4 : 4), y, { size: 12.5, align: layer.align ?? 'left', alpha: 0.85 }));
+      const y = layer.labelOffset < 0 ? box.top + box.height + layer.labelOffset
+        : layer.labelY === undefined ? box.top + (layer.labelOffset ?? 12) : layout.py(layer.labelY);
+      layout.deferred.push(() => {
+        const size = 12.5;
+        font(ctx, size, { italic: true, serif: true });
+        const width = ctx.measureText(layer.label).width;
+        const right = box.left + box.width;
+        const rightOfLine = x + 4;
+        const leftOfLine = x - 4 - width;
+        const start = rightOfLine + width > right && leftOfLine >= box.left
+          ? leftOfLine : Math.max(box.left, Math.min(rightOfLine, right - width));
+        label(ctx, layer.label, start, y, { size, alpha: 0.85 });
+      });
     }
   },
   hline(ctx, layer, layout) {
@@ -563,7 +573,7 @@ export function s1s2ConductionModel(result, { atriumLabel = 'septal atrium', out
   return {
     kind: 's1s2Conduction',
     title: 'S1鈥揝2 路 the jump',
-    subtitle: `Engine runs 路 S2 coupling against ${atriumLabel}-to-${outputLabel} interval, drive ${result.protocol.driveCycleMs} ms`,
+    subtitle: `${atriumLabel} to ${outputLabel} 路 Drive ${result.protocol.driveCycleMs} ms`,
     xLabel: `A1鈥揂2 (ms)`,
     yLabel: `A2鈥揌2 (ms)`,
     xDomain: extent(points.map(p => p[0]), 0.03),
@@ -592,8 +602,9 @@ export function s1s2OutputModel(result, { output = 'h1h2Ms', outputLabel = 'H1鈥
   const erps = Object.entries(result.summary.erps).filter(([id]) => erpSites === null || erpSites.includes(id));
   const sorted = erps.sort((a, b) => b[1].erpMs - a[1].erpMs);
   sorted.forEach(([, erp], index) => {
-    const yFrac = [0.94, 0.18, 0.1, 0.26][index % 4];
-    layers.push({ type: 'vline', x: erp.erpMs, label: `${erp.label} ERP`, labelY: yDomain[0] + (yDomain[1] - yDomain[0]) * yFrac, align: index === sorted.length - 1 && sorted.length > 2 ? 'right' : 'left' });
+    // Use fixed row spacing so nearby thresholds stay legible as the plot resizes.
+    const labelOffset = index === 0 ? 12 : -(12 + 16 * (sorted.length - 1 - index));
+    layers.push({ type: 'vline', x: erp.erpMs, label: `${erp.label} ERP`, labelOffset });
   });
   const frp = result.summary.frp;
   const text = [
@@ -603,7 +614,7 @@ export function s1s2OutputModel(result, { output = 'h1h2Ms', outputLabel = 'H1鈥
   return {
     kind: 's1s2Output',
     title: 'S1鈥揝2 路 output against input',
-    subtitle: `Engine runs 路 drive ${result.protocol.driveCycleMs} ms from ${result.protocol.siteId} 路 ERPs marked by rule`,
+    subtitle: `Drive ${result.protocol.driveCycleMs} ms at ${result.protocol.siteId} 路 Dashed ERP thresholds`,
     xLabel: 'A1鈥揂2 (ms)',
     yLabel: `${outputLabel} (ms)`,
     xDomain,

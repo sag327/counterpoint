@@ -232,6 +232,7 @@ def take_metrics(page, cdp):
     stats = page.evaluate("""() => ({
         events: counterpoint.events.length,
         state: counterpoint.transport.status,
+        interruption: counterpoint.transport.lastInterruption,
         run: counterpoint.transport.runId,
         lastMs: counterpoint.events.at(-1)?.tMs ?? null,
         discarded: counterpoint.retention?.discardedEvents ?? null,

@@ -21,6 +21,12 @@
 #card-layer{display:none}
 #card-layer.open{display:block;position:fixed;z-index:20;right:16px;top:76px;max-height:calc(100vh - 92px);overflow:auto;border-radius:10px;box-shadow:0 18px 50px #000a}
 #card-layer .lab-card{width:min(420px,calc(100vw - 32px))}
+@media(min-width:601px){
+  main:has(> #card-layer.open + #lab:not([hidden])){--card-width:clamp(260px,33vw,420px)}
+  #card-layer.open:has(+ #lab:not([hidden])) .lab-card{width:var(--card-width)}
+  #card-layer.open:has(+ #lab:not([hidden])) .lab-card-fields{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  #card-layer.open + #lab:not([hidden]){width:min(900px,calc(100% - var(--card-width) - 48px));margin-inline-end:max(calc(var(--card-width) + 32px),calc((100% - 900px)/2))}
+}
 dialog#notes-sheet{width:min(720px,100vw);max-height:min(88vh,900px);padding:0;border:1px solid #30383e;border-radius:12px;background:#0d1318;color:var(--ink)}
 dialog#notes-sheet::backdrop{background:#04070acc}
 .notes-bar{position:sticky;top:0;display:flex;align-items:center;gap:12px;padding:10px 12px 10px 22px;background:#0d1318;border-bottom:1px solid #20292e;font:12px system-ui;color:var(--muted)}
@@ -33,7 +39,7 @@ dialog#notes-sheet::backdrop{background:#04070acc}
 .notes-body blockquote{margin:12px 0;padding:2px 14px;border-left:2px solid #83A9C8;color:var(--muted);font-size:14px}
 .notes-body ul{padding-left:20px}
 #lab-study{margin-bottom:18px}
-.study-lab{display:grid;gap:14px}
+.study-lab{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
 .study-lab-panel{padding:14px 16px;background:#0D1520;border:1px solid #1B2736;border-radius:10px}
 .study-lab-panel h3{margin:0 0 6px;font:italic 21px Georgia,serif;font-weight:400}
 .study-lab-panel p{margin:4px 0 10px}
@@ -41,9 +47,9 @@ dialog#notes-sheet::backdrop{background:#04070acc}
 .study-lab-model-note,.study-lab-hint{font-size:12px}
 .study-lab-guided{color:#cfe3f3!important;font-size:13px}
 .study-lab-guided:empty{display:none}
-.study-lab-fields,.study-lab-curve-controls{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px 14px;margin:10px 0}
+.study-lab-fields,.study-lab-curve-controls{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,170px),1fr));gap:8px 14px;margin:10px 0}
 .study-lab-field{display:flex;flex-direction:column;gap:4px;color:var(--muted);font-size:12px}
-.study-lab-field input,.study-lab-field select{min-height:38px;padding:6px 8px;color:var(--ink);background:#070B12;border:1px solid #2a3644;border-radius:6px;max-width:none}
+.study-lab-field input,.study-lab-field select{min-width:0;width:100%;min-height:38px;padding:6px 8px;color:var(--ink);background:#070B12;border:1px solid #2a3644;border-radius:6px}
 .study-lab-actions{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
 .study-lab progress{width:100%;height:6px;accent-color:#C8A878}
 .study-lab-status{font-size:13px;color:#d9d4ca!important;min-height:1.2em}
@@ -56,7 +62,7 @@ dialog#notes-sheet::backdrop{background:#04070acc}
 .study-lab-table table{width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums}
 .study-lab-table caption{text-align:left;color:var(--muted);padding:2px 4px}
 .study-lab-table th,.study-lab-table td{padding:2px 6px;text-align:right;border-bottom:1px solid #1B2736}
-.study-lab-glossary{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.study-lab-glossary{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));gap:10px}
 .study-lab-word{padding:10px 12px;border:1px solid #2b3540;border-radius:8px}
 .study-lab-word h4{margin:0 0 4px;font:italic 17px Georgia,serif;color:var(--gold)}
 .study-lab-word.layer-2 h4{color:#83A9C8}
@@ -78,3 +84,8 @@ dialog#notes-sheet::backdrop{background:#04070acc}
 #card-layer summary{text-align:left;min-height:32px;padding:6px 0}
 /* Ladder and Staves keep their lower margin for calipers: status moves to the top. */
 #stage.alt-view #status{top:6px;bottom:auto}
+@media(max-width:600px){
+  #stage.alt-view{display:grid;grid-template-rows:auto minmax(0,1fr)}
+  #stage.alt-view #status{position:static;grid-row:1;padding:6px 12% 0}
+  #stage.alt-view #view-canvas{position:static;grid-row:2;min-height:0}
+}

@@ -31,7 +31,8 @@ li{display:grid;grid-template-columns:3.2rem 7.5rem 1fr;gap:.2rem .8rem;align-it
 .n{text-align:right;color:var(--text2);font-size:.85rem}
 .t{font-size:1.15rem}
 .s{font-style:italic;color:var(--text2)}
-.prep{display:inline-block;margin-left:.6rem;font-family:var(--sans);font-style:normal;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);opacity:.85}
+.prep,.playable{display:inline-block;margin-left:.6rem;font-family:var(--sans);font-style:normal;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);opacity:.85}
+.playable{color:var(--warm);opacity:1}
 .coda{margin:.9rem 0 0 4rem;font-style:italic;color:var(--text2)}
 .actions{display:flex;flex-wrap:wrap;align-items:center;gap:1rem 1.4rem;margin:2.4rem 0 0 4rem;font-family:var(--sans);font-size:.9rem}
 .enter{display:inline-block;padding:.85rem 2.4rem;border:1.5px solid var(--warm);border-radius:999px;color:var(--warm-core);text-decoration:none;font-family:var(--serif);font-size:1.05rem;letter-spacing:.3em}
@@ -52,7 +53,7 @@ main{grid-template-columns:1fr;padding:5vh 7vw;gap:2rem;min-height:0}
 .hd{text-align:left}
 h1{font-size:clamp(1.3rem,6.4vw,2rem);letter-spacing:.3em}
 li{grid-template-columns:2.4rem 1fr}
-.prep{display:block;margin:.1rem 0 0}
+.prep,.playable{display:block;margin:.1rem 0 0}
 .actions>span{display:none}
 body{overflow-x:hidden}
 .s{grid-column:2}
@@ -68,7 +69,7 @@ body{overflow-x:hidden}
 <p class="epi"><span>The heart does not provide a soundtrack.</span><span>It provides the rules by which a composition comes into existence.</span></p>
 <ol aria-label="Program of studies">
 <li><span class="n">I</span><span class="t">Prelude</span><span class="s">A pause, then the rhythm finds its way back<span class="prep">in preparation</span></span></li>
-<li><span class="n">II</span><span class="t">Echo</span><span class="s">An arpeggio folds into a chord<span class="prep">in preparation</span></span></li>
+<li><span class="n">II</span><span class="t">Echo</span><span class="s">An arpeggio folds into a chord<span class="playable">playable</span></span></li>
 <li><span class="n">III</span><span class="t">Meter</span><span class="s">Beats fall into groups<span class="prep">in preparation</span></span></li>
 <li><span class="n">IV</span><span class="t">Ostinato</span><span class="s">A fast figure and its slower shadow<span class="prep">in preparation</span></span></li>
 <li><span class="n">V</span><span class="t">Retrograde</span><span class="s">A melody, then the same melody backwards<span class="prep">in preparation</span></span></li>
@@ -78,11 +79,11 @@ body{overflow-x:hidden}
 </ol>
 <p class="coda">Coda · Unknown</p>
 <div class="actions">
-<a class="enter" href="./play/">Enter</a>
+<a class="enter" href="./play/#study=echo">Enter</a>
 <a href="#notes">Notes</a><span aria-hidden="true">·</span>
 <a href="./play/counterpoint.html" download="counterpoint.html">Download for offline</a>
 </div>
-<p class="note">Enter opens the instrument as it stands today (v0.1). The studies above are being composed.</p>
+<p class="note">Enter opens Echo in the v0.2 instrument.</p>
 </section>
 <div class="ring" aria-hidden="true">
 <svg viewBox="0 0 400 400" focusable="false">

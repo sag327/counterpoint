@@ -161,6 +161,35 @@ test('Handle geometry: pixel positions invert back to the handle values', () => 
   assert.deepEqual(handlePoints(model, rect).map(h => h.id), ['erpMax', 'amplitude', 'tau']);
 });
 
+test('Nearby ERP thresholds have distinct, in-frame labels on a phone-width plot', () => {
+  const model = PLOT_CATALOG.s1s2Output.build({
+    columns: ['s2Ms', 'h1h2Ms'],
+    protocol: { driveCycleMs: 600, siteId: 'CSp' },
+    rows: [{ s2Ms: 400, h1h2Ms: 410 }, { s2Ms: 300, h1h2Ms: 350 }, { s2Ms: 200, h1h2Ms: null }],
+    summary: { erps: {
+      FP: { erpMs: 290, label: 'fast pathway' },
+      SP: { erpMs: 230, label: 'slow pathway' },
+      CSp: { erpMs: 220, label: 'atrial' },
+    } },
+  });
+  const width = 283;
+  const height = 250;
+  const ctx = createCanvas(width, height).getContext('2d');
+  const markers = [];
+  const fillText = ctx.fillText.bind(ctx);
+  ctx.fillText = (text, x, y) => {
+    if (text.endsWith(' ERP')) markers.push({ text, x, y, width: ctx.measureText(text).width });
+    fillText(text, x, y);
+  };
+  const { box } = drawPlot(ctx, model, { x: 0, y: 0, width, height });
+  assert.deepEqual(markers.map(marker => marker.text), ['fast pathway ERP', 'slow pathway ERP', 'atrial ERP']);
+  for (const { x, y, width } of markers) {
+    assert.ok(x >= box.left && x + width <= box.left + box.width);
+    assert.ok(y >= box.top + 6 && y <= box.top + box.height - 6);
+  }
+  assert.ok(markers[2].y - markers[1].y >= 16);
+});
+
 if (process.argv[2]) {
   const sheets = renderSheets(buildModels());
   for (const [name, canvas] of Object.entries(sheets)) {

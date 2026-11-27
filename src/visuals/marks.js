@@ -254,7 +254,11 @@ export function createNetworkMarks({ world, geometry, palette: pal, reducedMotio
             if (!p) break;
             const close = reduced ? 1 : ease(clamp(age / 240));
             const fade = age < ENTRAINMENT_MS - 400 ? 1 : (ENTRAINMENT_MS - age) / 400;
-            strokeArc(ctx, p.x, p.y, 14, -Math.PI / 2, -Math.PI / 2 + TURN * close, palette.gold, 0.9, 0.9 * fade);
+            if (close === 1) {
+              strokeCircle(ctx, p.x, p.y, 14, palette.gold, 0.9, 0.9 * fade);
+            } else {
+              strokeArc(ctx, p.x, p.y, 14, -Math.PI / 2, -Math.PI / 2 + TURN * close, palette.gold, 0.9, 0.9 * fade);
+            }
             ctx.globalAlpha = 1;
             break;
           }

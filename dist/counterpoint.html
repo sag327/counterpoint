@@ -307,6 +307,12 @@ button.primary:hover{background:#e1c695;color:#11171a}
 #card-layer{display:none}
 #card-layer.open{display:block;position:fixed;z-index:20;right:16px;top:76px;max-height:calc(100vh - 92px);overflow:auto;border-radius:10px;box-shadow:0 18px 50px #000a}
 #card-layer .lab-card{width:min(420px,calc(100vw - 32px))}
+@media(min-width:601px){
+  main:has(> #card-layer.open + #lab:not([hidden])){--card-width:clamp(260px,33vw,420px)}
+  #card-layer.open:has(+ #lab:not([hidden])) .lab-card{width:var(--card-width)}
+  #card-layer.open:has(+ #lab:not([hidden])) .lab-card-fields{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  #card-layer.open + #lab:not([hidden]){width:min(900px,calc(100% - var(--card-width) - 48px));margin-inline-end:max(calc(var(--card-width) + 32px),calc((100% - 900px)/2))}
+}
 dialog#notes-sheet{width:min(720px,100vw);max-height:min(88vh,900px);padding:0;border:1px solid #30383e;border-radius:12px;background:#0d1318;color:var(--ink)}
 dialog#notes-sheet::backdrop{background:#04070acc}
 .notes-bar{position:sticky;top:0;display:flex;align-items:center;gap:12px;padding:10px 12px 10px 22px;background:#0d1318;border-bottom:1px solid #20292e;font:12px system-ui;color:var(--muted)}
@@ -319,7 +325,7 @@ dialog#notes-sheet::backdrop{background:#04070acc}
 .notes-body blockquote{margin:12px 0;padding:2px 14px;border-left:2px solid #83A9C8;color:var(--muted);font-size:14px}
 .notes-body ul{padding-left:20px}
 #lab-study{margin-bottom:18px}
-.study-lab{display:grid;gap:14px}
+.study-lab{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
 .study-lab-panel{padding:14px 16px;background:#0D1520;border:1px solid #1B2736;border-radius:10px}
 .study-lab-panel h3{margin:0 0 6px;font:italic 21px Georgia,serif;font-weight:400}
 .study-lab-panel p{margin:4px 0 10px}
@@ -327,9 +333,9 @@ dialog#notes-sheet::backdrop{background:#04070acc}
 .study-lab-model-note,.study-lab-hint{font-size:12px}
 .study-lab-guided{color:#cfe3f3!important;font-size:13px}
 .study-lab-guided:empty{display:none}
-.study-lab-fields,.study-lab-curve-controls{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px 14px;margin:10px 0}
+.study-lab-fields,.study-lab-curve-controls{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,170px),1fr));gap:8px 14px;margin:10px 0}
 .study-lab-field{display:flex;flex-direction:column;gap:4px;color:var(--muted);font-size:12px}
-.study-lab-field input,.study-lab-field select{min-height:38px;padding:6px 8px;color:var(--ink);background:#070B12;border:1px solid #2a3644;border-radius:6px;max-width:none}
+.study-lab-field input,.study-lab-field select{min-width:0;width:100%;min-height:38px;padding:6px 8px;color:var(--ink);background:#070B12;border:1px solid #2a3644;border-radius:6px}
 .study-lab-actions{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
 .study-lab progress{width:100%;height:6px;accent-color:#C8A878}
 .study-lab-status{font-size:13px;color:#d9d4ca!important;min-height:1.2em}
@@ -342,7 +348,7 @@ dialog#notes-sheet::backdrop{background:#04070acc}
 .study-lab-table table{width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums}
 .study-lab-table caption{text-align:left;color:var(--muted);padding:2px 4px}
 .study-lab-table th,.study-lab-table td{padding:2px 6px;text-align:right;border-bottom:1px solid #1B2736}
-.study-lab-glossary{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.study-lab-glossary{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));gap:10px}
 .study-lab-word{padding:10px 12px;border:1px solid #2b3540;border-radius:8px}
 .study-lab-word h4{margin:0 0 4px;font:italic 17px Georgia,serif;color:var(--gold)}
 .study-lab-word.layer-2 h4{color:#83A9C8}
@@ -364,6 +370,11 @@ dialog#notes-sheet::backdrop{background:#04070acc}
 #card-layer summary{text-align:left;min-height:32px;padding:6px 0}
 /* Ladder and Staves keep their lower margin for calipers: status moves to the top. */
 #stage.alt-view #status{top:6px;bottom:auto}
+@media(max-width:600px){
+  #stage.alt-view{display:grid;grid-template-rows:auto minmax(0,1fr)}
+  #stage.alt-view #status{position:static;grid-row:1;padding:6px 12% 0}
+  #stage.alt-view #view-canvas{position:static;grid-row:2;min-height:0}
+}
 </style>
 </head>
 <body>
@@ -5697,7 +5708,11 @@ function createNetworkMarks({ world, geometry, palette: pal, reducedMotion = fal
             if (!p) break;
             const close = reduced ? 1 : ease(clamp(age / 240));
             const fade = age < ENTRAINMENT_MS - 400 ? 1 : (ENTRAINMENT_MS - age) / 400;
-            strokeArc(ctx, p.x, p.y, 14, -Math.PI / 2, -Math.PI / 2 + TURN * close, palette.gold, 0.9, 0.9 * fade);
+            if (close === 1) {
+              strokeCircle(ctx, p.x, p.y, 14, palette.gold, 0.9, 0.9 * fade);
+            } else {
+              strokeArc(ctx, p.x, p.y, 14, -Math.PI / 2, -Math.PI / 2 + TURN * close, palette.gold, 0.9, 0.9 * fade);
+            }
             ctx.globalAlpha = 1;
             break;
           }
@@ -7947,9 +7962,19 @@ const LAYER = {
     ctx.stroke();
     ctx.restore();
     if (layer.label) {
-      // Drawn after the clip is lifted, so a right-aligned label may run past the frame.
-      const y = layer.labelY === undefined ? box.top + 12 : layout.py(layer.labelY);
-      layout.deferred.push(() => label(ctx, layer.label, x + (layer.align === 'right' ? -4 : 4), y, { size: 12.5, align: layer.align ?? 'left', alpha: 0.85 }));
+      const y = layer.labelOffset < 0 ? box.top + box.height + layer.labelOffset
+        : layer.labelY === undefined ? box.top + (layer.labelOffset ?? 12) : layout.py(layer.labelY);
+      layout.deferred.push(() => {
+        const size = 12.5;
+        font(ctx, size, { italic: true, serif: true });
+        const width = ctx.measureText(layer.label).width;
+        const right = box.left + box.width;
+        const rightOfLine = x + 4;
+        const leftOfLine = x - 4 - width;
+        const start = rightOfLine + width > right && leftOfLine >= box.left
+          ? leftOfLine : Math.max(box.left, Math.min(rightOfLine, right - width));
+        label(ctx, layer.label, start, y, { size, alpha: 0.85 });
+      });
     }
   },
   hline(ctx, layer, layout) {
@@ -8270,7 +8295,7 @@ function s1s2ConductionModel(result, { atriumLabel = 'septal atrium', outputLabe
   return {
     kind: 's1s2Conduction',
     title: 'S1–S2 · the jump',
-    subtitle: `Engine runs · S2 coupling against ${atriumLabel}-to-${outputLabel} interval, drive ${result.protocol.driveCycleMs} ms`,
+    subtitle: `${atriumLabel} to ${outputLabel} · Drive ${result.protocol.driveCycleMs} ms`,
     xLabel: `A1–A2 (ms)`,
     yLabel: `A2–H2 (ms)`,
     xDomain: extent(points.map(p => p[0]), 0.03),
@@ -8299,8 +8324,9 @@ function s1s2OutputModel(result, { output = 'h1h2Ms', outputLabel = 'H1–H2', e
   const erps = Object.entries(result.summary.erps).filter(([id]) => erpSites === null || erpSites.includes(id));
   const sorted = erps.sort((a, b) => b[1].erpMs - a[1].erpMs);
   sorted.forEach(([, erp], index) => {
-    const yFrac = [0.94, 0.18, 0.1, 0.26][index % 4];
-    layers.push({ type: 'vline', x: erp.erpMs, label: `${erp.label} ERP`, labelY: yDomain[0] + (yDomain[1] - yDomain[0]) * yFrac, align: index === sorted.length - 1 && sorted.length > 2 ? 'right' : 'left' });
+    // Use fixed row spacing so nearby thresholds stay legible as the plot resizes.
+    const labelOffset = index === 0 ? 12 : -(12 + 16 * (sorted.length - 1 - index));
+    layers.push({ type: 'vline', x: erp.erpMs, label: `${erp.label} ERP`, labelOffset });
   });
   const frp = result.summary.frp;
   const text = [
@@ -8310,7 +8336,7 @@ function s1s2OutputModel(result, { output = 'h1h2Ms', outputLabel = 'H1–H2', e
   return {
     kind: 's1s2Output',
     title: 'S1–S2 · output against input',
-    subtitle: `Engine runs · drive ${result.protocol.driveCycleMs} ms from ${result.protocol.siteId} · ERPs marked by rule`,
+    subtitle: `Drive ${result.protocol.driveCycleMs} ms at ${result.protocol.siteId} · Dashed ERP thresholds`,
     xLabel: 'A1–A2 (ms)',
     yLabel: `${outputLabel} (ms)`,
     xDomain,
@@ -10562,7 +10588,7 @@ function createStaves({ staves, reducedMotion = false } = {}) {
 
   function layout({ width, height, windowMs = DEFAULT_WINDOW_MS, presentedMs = 0, reducedMotion: rm = reduced }) {
     const compact = width < 520;
-    const left = Math.round(clamp(width * 0.15, compact ? 66 : 100, 170));
+    const left = Math.round(clamp(width * 0.15, compact ? 78 : 100, 170));
     const right = compact ? 12 : 24;
     const top = compact ? 18 : 24;
     const bottom = compact ? 40 : 52;
@@ -10635,10 +10661,10 @@ function createStaves({ staves, reducedMotion = false } = {}) {
         ctx.stroke();
         ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillStyle = palette.text2;
         ctx.font = serifItalic(L.compact ? 11 : 14);
-        ctx.fillText(lane.label ?? lane.nodeId, L.left - 10, y0);
+        ctx.fillText(lane.label ?? lane.nodeId, L.left - 10, y0, L.left - 18);
         if (lane.pitch) {
           ctx.font = sans(L.compact ? 8 : 9); ctx.globalAlpha = 0.8;
-          ctx.fillText(lane.pitch, L.left - 10, y0 + (L.compact ? 14 : 18));
+          ctx.fillText(lane.pitch, L.left - 10, y0 + (L.compact ? 14 : 18), L.left - 18);
           ctx.globalAlpha = 1;
         }
 
@@ -11559,8 +11585,8 @@ function createStudyLab(container, { onDownload, onNotes, workerUrl = null, docu
   let world = null;
   let getWorld = () => world;
   let controller = null;
-  let lastResult = null;
-  let lastKind = null;
+  let lastRun = null;
+  let resultFigures = [];
   let live = { events: [], snapshot: null, tMs: 0, state: null };
   let lastLiveDraw = -Infinity;
 
@@ -11672,12 +11698,25 @@ function createStudyLab(container, { onDownload, onNotes, workerUrl = null, docu
   }
 
   function showResult(kind, result) {
-    control.results.replaceChildren();
     read.status.textContent = `${result.text} (${result.rows.length} engine runs, ${runner.mode === 'worker' ? 'Web Worker' : 'main thread'}).`;
-    const figures = plotsForResult(kind, result, scene.labels?.lab ?? {}).map(model => figure(model));
-    for (const item of figures) control.results.append(item.wrap);
-    for (const item of figures) sizeAndDraw(item.canvas, item.model);
+    resultFigures = plotsForResult(kind, result, scene.labels?.lab ?? {}).map(model => figure(model));
+    control.results.replaceChildren(...resultFigures.map(item => item.wrap));
+    drawResults();
     control.csv.disabled = false;
+  }
+
+  function drawResults() {
+    for (const { canvas, model } of resultFigures) sizeAndDraw(canvas, model);
+  }
+
+  if (typeof ResizeObserver === 'function') {
+    // Keep the canvas backing sizes in sync when the inspector card opens or closes.
+    let lastWidth;
+    new ResizeObserver(([entry]) => {
+      const width = entry.contentRect.width;
+      if (width !== lastWidth && width > 0) drawResults();
+      lastWidth = width;
+    }).observe(control.results);
   }
 
   async function run() {
@@ -11702,8 +11741,7 @@ function createStudyLab(container, { onDownload, onNotes, workerUrl = null, docu
         onProgress: ({ done, total }) => { control.progress.value = total ? done / total : 0; },
       });
       control.progress.value = 1;
-      lastResult = result;
-      lastKind = kind;
+      lastRun = { kind, result };
       showResult(kind, result);
     } catch (error) {
       read.status.textContent = error?.name === 'AbortError' ? 'Protocol cancelled.' : `The protocol stopped: ${error?.message ?? error}`;
@@ -11748,20 +11786,22 @@ function createStudyLab(container, { onDownload, onNotes, workerUrl = null, docu
   control.run.onclick = run;
   control.cancel.onclick = () => controller?.abort();
   control.csv.onclick = () => {
-    if (!lastResult) return;
-    onDownload?.(`counterpoint-${scene.id}-${lastKind}.csv`, protocolCsv(lastResult), 'text/csv');
+    if (!lastRun) return;
+    const { kind, result } = lastRun;
+    onDownload?.(`counterpoint-${scene.id}-${kind}.csv`, protocolCsv(result), 'text/csv');
   };
   control.notes.onclick = () => onNotes?.();
   for (const id of ['curve-site', 'curve-link', 'return-site']) control[id].onchange = () => drawLive(true);
 
   return {
     get runnerMode() { return runner.mode; },
-    get lastResult() { return lastResult; },
+    get lastResult() { return lastRun?.result ?? null; },
     setScene(nextScene, nextWorld, { currentWorld } = {}) {
       scene = nextScene;
       world = nextWorld;
       getWorld = currentWorld ?? (() => world);
-      lastResult = null;
+      lastRun = null;
+      resultFigures = [];
       control.results.replaceChildren();
       control.curves.replaceChildren();
       control.csv.disabled = true;
@@ -11796,7 +11836,7 @@ function createStudyLab(container, { onDownload, onNotes, workerUrl = null, docu
     },
     redraw() {
       drawLive(true);
-      if (lastResult) showResult(lastKind, lastResult);
+      drawResults();
     },
     terminate() { runner.terminate(); },
   };
@@ -12683,8 +12723,11 @@ try {
   worldId = null;
   chooseWorld(startWorld);
   setView(view);
-  if (typeof ResizeObserver === 'function') new ResizeObserver(resize).observe(stage);
-  else window.addEventListener('resize', resize);
+  if (typeof ResizeObserver === 'function') {
+    const stageObserver = new ResizeObserver(resize);
+    stageObserver.observe(stage);
+    stageObserver.observe($('view-canvas'));
+  } else window.addEventListener('resize', resize);
 } catch (error) {
   console.warn(error);
   $('status').textContent = 'The artwork could not start. A browser with Canvas 2D is required.';

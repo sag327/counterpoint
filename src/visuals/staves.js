@@ -94,7 +94,7 @@ export function createStaves({ staves, reducedMotion = false } = {}) {
 
   function layout({ width, height, windowMs = DEFAULT_WINDOW_MS, presentedMs = 0, reducedMotion: rm = reduced }) {
     const compact = width < 520;
-    const left = Math.round(clamp(width * 0.15, compact ? 66 : 100, 170));
+    const left = Math.round(clamp(width * 0.15, compact ? 78 : 100, 170));
     const right = compact ? 12 : 24;
     const top = compact ? 18 : 24;
     const bottom = compact ? 40 : 52;
@@ -167,10 +167,10 @@ export function createStaves({ staves, reducedMotion = false } = {}) {
         ctx.stroke();
         ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillStyle = palette.text2;
         ctx.font = serifItalic(L.compact ? 11 : 14);
-        ctx.fillText(lane.label ?? lane.nodeId, L.left - 10, y0);
+        ctx.fillText(lane.label ?? lane.nodeId, L.left - 10, y0, L.left - 18);
         if (lane.pitch) {
           ctx.font = sans(L.compact ? 8 : 9); ctx.globalAlpha = 0.8;
-          ctx.fillText(lane.pitch, L.left - 10, y0 + (L.compact ? 14 : 18));
+          ctx.fillText(lane.pitch, L.left - 10, y0 + (L.compact ? 14 : 18), L.left - 18);
           ctx.globalAlpha = 1;
         }
 

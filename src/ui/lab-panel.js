@@ -77,8 +77,8 @@ export function createStudyLab(container, { onDownload, onNotes, workerUrl = nul
   let world = null;
   let getWorld = () => world;
   let controller = null;
-  let lastResult = null;
-  let lastKind = null;
+  let lastRun = null;
+  let resultFigures = [];
   let live = { events: [], snapshot: null, tMs: 0, state: null };
   let lastLiveDraw = -Infinity;
 
@@ -190,12 +190,25 @@ export function createStudyLab(container, { onDownload, onNotes, workerUrl = nul
   }
 
   function showResult(kind, result) {
-    control.results.replaceChildren();
     read.status.textContent = `${result.text} (${result.rows.length} engine runs, ${runner.mode === 'worker' ? 'Web Worker' : 'main thread'}).`;
-    const figures = plotsForResult(kind, result, scene.labels?.lab ?? {}).map(model => figure(model));
-    for (const item of figures) control.results.append(item.wrap);
-    for (const item of figures) sizeAndDraw(item.canvas, item.model);
+    resultFigures = plotsForResult(kind, result, scene.labels?.lab ?? {}).map(model => figure(model));
+    control.results.replaceChildren(...resultFigures.map(item => item.wrap));
+    drawResults();
     control.csv.disabled = false;
+  }
+
+  function drawResults() {
+    for (const { canvas, model } of resultFigures) sizeAndDraw(canvas, model);
+  }
+
+  if (typeof ResizeObserver === 'function') {
+    // Keep the canvas backing sizes in sync when the inspector card opens or closes.
+    let lastWidth;
+    new ResizeObserver(([entry]) => {
+      const width = entry.contentRect.width;
+      if (width !== lastWidth && width > 0) drawResults();
+      lastWidth = width;
+    }).observe(control.results);
   }
 
   async function run() {
@@ -220,8 +233,7 @@ export function createStudyLab(container, { onDownload, onNotes, workerUrl = nul
         onProgress: ({ done, total }) => { control.progress.value = total ? done / total : 0; },
       });
       control.progress.value = 1;
-      lastResult = result;
-      lastKind = kind;
+      lastRun = { kind, result };
       showResult(kind, result);
     } catch (error) {
       read.status.textContent = error?.name === 'AbortError' ? 'Protocol cancelled.' : `The protocol stopped: ${error?.message ?? error}`;
@@ -266,20 +278,22 @@ export function createStudyLab(container, { onDownload, onNotes, workerUrl = nul
   control.run.onclick = run;
   control.cancel.onclick = () => controller?.abort();
   control.csv.onclick = () => {
-    if (!lastResult) return;
-    onDownload?.(`counterpoint-${scene.id}-${lastKind}.csv`, protocolCsv(lastResult), 'text/csv');
+    if (!lastRun) return;
+    const { kind, result } = lastRun;
+    onDownload?.(`counterpoint-${scene.id}-${kind}.csv`, protocolCsv(result), 'text/csv');
   };
   control.notes.onclick = () => onNotes?.();
   for (const id of ['curve-site', 'curve-link', 'return-site']) control[id].onchange = () => drawLive(true);
 
   return {
     get runnerMode() { return runner.mode; },
-    get lastResult() { return lastResult; },
+    get lastResult() { return lastRun?.result ?? null; },
     setScene(nextScene, nextWorld, { currentWorld } = {}) {
       scene = nextScene;
       world = nextWorld;
       getWorld = currentWorld ?? (() => world);
-      lastResult = null;
+      lastRun = null;
+      resultFigures = [];
       control.results.replaceChildren();
       control.curves.replaceChildren();
       control.csv.disabled = true;
@@ -314,7 +328,7 @@ export function createStudyLab(container, { onDownload, onNotes, workerUrl = nul
     },
     redraw() {
       drawLive(true);
-      if (lastResult) showResult(lastKind, lastResult);
+      drawResults();
     },
     terminate() { runner.terminate(); },
   };
