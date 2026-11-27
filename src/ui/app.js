@@ -245,7 +245,6 @@ function chooseWorld(id) {
   setupCard();
   views.configure(settings, world, { lab: labOpen() });
   buildSiteButtons();
-  buildInspectButtons();
   if (studyLab) setupStudyLab();
   $('lab-study').hidden = !settings.study;
   resize();
@@ -438,30 +437,6 @@ function buildSiteButtons() {
       }
     };
     $('sites').append(button);
-  }
-}
-
-// Keyboard access to the inspector card through the connection list.
-function buildInspectButtons() {
-  $('inspect-sites').replaceChildren();
-  $('inspect-links').replaceChildren();
-  for (const node of world.nodes) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = node.id;
-    button.dataset.inspect = node.id;
-    button.setAttribute('aria-label', `Inspect site ${siteLabel(node.id)}`);
-    button.onclick = () => openCard({ kind: 'node', id: node.id });
-    $('inspect-sites').append(button);
-  }
-  for (const link of world.links) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = `${link.a}–${link.b}`;
-    button.dataset.inspect = link.id;
-    button.setAttribute('aria-label', `Inspect connection ${link.a} to ${link.b}`);
-    button.onclick = () => openCard({ kind: 'link', id: link.id });
-    $('inspect-links').append(button);
   }
 }
 
