@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$comment": "Counterpoint contract 1.1.0 commands: the five 1.0.0 commands plus nine 1.1.0 commands. The 1.1.0 commands require a 1.1.0 world.",
+  "$comment": "Counterpoint contract 1.1.0 commands: the five 1.0.0 commands plus ten 1.1.0 commands. The 1.1.0 commands require a 1.1.0 world.",
   "oneOf": [
     {
       "type": "object",
@@ -611,6 +611,74 @@
         "direction",
         "maxExtraMs",
         "tauMs"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "setAutonomic"
+          ]
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "breathPeriodMs": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "depth": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 0.5
+                },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "sinus",
+                      "nodal"
+                    ]
+                  },
+                  "uniqueItems": true,
+                  "maxItems": 2
+                }
+              },
+              "required": [
+                "breathPeriodMs",
+                "depth",
+                "targets"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "commandId",
+        "runId",
+        "tMs",
+        "type",
+        "value"
       ],
       "additionalProperties": false
     }

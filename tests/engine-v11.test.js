@@ -4,9 +4,10 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { createEngine, SimulationFault } from '../src/engine/index.js';
+import { lintStudyWorld } from '../src/engine/input.js';
 import { circulationWorld, createCirculationWorld } from '../src/worlds/circulation.js';
 import { conductionWorld, createConductionWorld } from '../src/worlds/conduction.js';
 import { dualityWorld } from '../src/worlds/duality.js';
@@ -111,7 +112,7 @@ test('V11-01 readWorld accepts 1.0.0 and 1.1.0 worlds and validates the new fiel
   assert.ok(Object.hasOwn(engine.reset(inferred, 'r').nodes.A, 'suppressionMs'), 'a 1.1.0 field selects 1.1.0');
   assert.ok(!Object.hasOwn(engine.reset(dualityWorld, 'r').nodes.A, 'suppressionMs'), 'a 1.0.0 world stays 1.0.0');
   const rejects = [
-    [{ ...bare, contractVersion: '1.0.0' }, /contractVersion must be 1\.1\.0/],
+    [{ ...bare, contractVersion: '2.0.0' }, /contractVersion must be 1\.1\.0 or 1\.0\.0/],
     [v11World('w', [site('A', 100, { tissue: 'muscle' })]), /tissue must be one of/],
     [v11World('w', [site('A', 100, { restitution: { erpMaxMs: 120, amplitudeMs: 10, tauMs: 60, erpMinMs: 50 } })]), /must equal the node's erpMs/],
     [v11World('w', [site('A', 100, { restitution: { erpMaxMs: 100, amplitudeMs: 10, tauMs: 60, erpMinMs: 150 } })]), /erpMinMs must not exceed/],
@@ -213,6 +214,7 @@ test('V11-A restitution edits: setNodeERP moves erpMax and shifts erpMin; setRes
   assert.deepEqual(ofType(events, 'parameter_changed').map(({ parameter, generation, previous, value, cause }) => [parameter, generation, previous, value, cause]), [
     ['erpMs', 1, 300, 320, 'command'],
     ['restitution', 1, { erpMaxMs: 320, amplitudeMs: 200, tauMs: 60, erpMinMs: 70 }, { erpMaxMs: 260, amplitudeMs: 100, tauMs: 50, erpMinMs: 120 }, 'command'],
+    ['erpMs', 2, 320, 260, 'command'],
   ]);
   const acts = actsAt(events, 'A');
   // p1 captures rested at the original erpMax 300 (the edit is prospective for the ongoing period).
@@ -288,7 +290,7 @@ test('V11-B entry slowing: an S2 scan during reentry gives a monotonic resetting
 
 // ---------------------------------------------------------------- §C overdrive, pauses, tone, breath
 
-test('V11-C overdrive: 30 pulses at 500 ms into an 800 ms focus return after 1250 ms, then 1070, 962 and 897 ms', () => {
+test('V11-C overdrive: 30 pulses at 500 ms into an 800 ms focus return after 1250 ms, then 1070, 962 and 897.2 ms', () => {
   const { events, engine } = play(focusWorld(), 'overdrive', [train('drive', 0, 'S', 500, 500, 30)], [21000]);
   // Hand iteration: each driven beat adds g (T - I) = 0.06 x 300 = 18 ms, capped at 450 ms.
   let suppression = 0;
@@ -372,7 +374,7 @@ test('V11-C setDecrement and setEntry change the laws for later launches only', 
   assert.deepEqual(engine.readAt(800).links.AB.ab.entry, { maxExtraMs: 30, tauMs: 40 });
 });
 
-test('V11-C setTone scales the sinus cycle by 1 + 0.2 v and nodal decrement by 1 + 0.5 v, prospectively', () => {
+test('V11-C setTone (positive = sympathetic) scales the sinus cycle by 1 - 0.2 v and nodal decrement by 1 - 0.5 v, prospectively', () => {
   const world = v11World('tone', [
     site('S', 200, { tissue: 'sinus', automaticity: { cycleMs: 800, firstAttemptMs: 0, resetOnCapture: true } }),
     site('N', 300, { tissue: 'nodal' }),
@@ -382,12 +384,12 @@ test('V11-C setTone scales the sinus cycle by 1 + 0.2 v and nodal decrement by 1
   const [changed] = ofType(events, 'parameter_changed');
   assert.deepEqual({ ...changed, runId: undefined, worldId: undefined, seq: undefined, eventId: undefined },
     { runId: undefined, worldId: undefined, seq: undefined, eventId: undefined, tMs: 100, type: 'parameter_changed', parameter: 'tone', commandId: 'tone', generation: 1, previous: 0, value: 1, cause: 'command' });
-  assert.deepEqual(autoAttempts(events), [0, 800, 1760, 2720, 3680, 4640], 'the attempt pending at 800 keeps its time; later cycles are 960 ms');
+  assert.deepEqual(autoAttempts(events), [0, 800, 1440, 2080, 2720, 3360, 4000, 4640], 'the attempt pending at 800 keeps its time; later cycles are 640 ms');
   const nodal = ofType(events, 'conduction_launched').filter(event => event.linkId === 'NH');
   assert.equal(nodal[0].delayParts.sourceMs, 0, 'rested N');
-  // N recovers 800 - 300 = 500 ms before the 800 beat, then 960 - 300 = 660 ms.
-  assert.equal(nodal[1].delayParts.sourceMs, ms(Math.round(90_000 * 1.5 * Math.exp(-500 / 120))));
-  assert.equal(nodal[2].delayParts.sourceMs, ms(Math.round(90_000 * 1.5 * Math.exp(-660 / 120))));
+  // N recovers 800 - 300 = 500 ms before the 800 beat, then 640 - 300 = 340 ms.
+  assert.equal(nodal[1].delayParts.sourceMs, ms(Math.round(90_000 * 0.5 * Math.exp(-500 / 120))));
+  assert.equal(nodal[2].delayParts.sourceMs, ms(Math.round(90_000 * 0.5 * Math.exp(-340 / 120))));
 });
 
 // ---------------------------------------------------------------- §D coupling
@@ -625,29 +627,30 @@ test('V11-O2 stimulateTrain emits <commandId>#<k> pulses in train-command order 
   ]);
   const at700 = events.filter(event => event.tMs === 700).map(event => event.type);
   assert.deepEqual(at700, ['stimulus_attempted', 'stimulus_attempted', 'activation', 'activation', 'train_completed', 'train_completed']);
-  assert.deepEqual(ofType(events, 'train_completed').map(({ commandId, delivered }) => [commandId, delivered]), [['X', 3], ['Z', 2]]);
+  assert.deepEqual(ofType(events, 'train_completed').map(({ commandId, trainId, delivered, count, cancelled }) => [commandId, trainId, delivered, count, cancelled]),
+    [['X', 'X', 3, 3, false], ['Z', 'Z', 2, 2, false]]);
 });
 
-test('V11-T cancelTrain removes pulses at and after its instant and emits nothing', () => {
+test('V11-T cancelTrain removes pulses at and after its instant and closes the train once with its partial count', () => {
   const world = v11World('cancel', [site('A', 100)]);
   const commands = [train('T', 0, 'A', 100, 200, 10), { commandId: 'stop', tMs: 500, type: 'cancelTrain', trainId: 'T' },
     { commandId: 'again', tMs: 900, type: 'cancelTrain', trainId: 'T' }];
   const { events, engine } = play(world, 'cancel', commands, [3000]);
   assert.deepEqual(ofType(events, 'stimulus_attempted').map(event => event.triggerId), ['T#1', 'T#2']);
-  assert.deepEqual(events.filter(event => event.tMs >= 500), []);
-  assert.equal(ofType(events, 'train_completed').length, 0);
+  assert.deepEqual(events.filter(event => event.tMs >= 500).map(({ tMs, type, commandId, trainId, delivered, count, cancelled }) =>
+    [tMs, type, commandId, trainId, delivered, count, cancelled]), [[500, 'train_completed', 'T', 'T', 2, 10, true]], 'a repeated cancel emits nothing');
   assert.equal(engine.diagnostics().pendingItems, 0);
 });
 
 test('V11-T overlapping trains are capped from the command log alone, so live input and replay agree', () => {
-  const world = v11World('cap', [site('A', 100), site('B', 100)]);
+  const world = v11World('cap', [site('A', 100), site('B', 100)], [], { limits: { maxConcurrentTrains: 2 } });
   const log = [
     train('t1', 0, 'A', 0, 200, 10), train('t2', 0, 'B', 100, 200, 10), train('t3', 0, 'A', 2100, 200, 5),
     { commandId: 'c1', tMs: 500, type: 'cancelTrain', trainId: 't1' },
     train('t4', 600, 'A', 600, 200, 5), train('t5', 600, 'B', 700, 200, 5),
   ];
   const outcome = (live) => {
-    const engine = createEngine({ maxConcurrentTrains: 2 });
+    const engine = createEngine();
     engine.reset(world, 'cap');
     const accepted = [];
     const events = [];
@@ -873,7 +876,7 @@ test('V11-Z v0.1 spec claims hold on the 1.1.0 engine: Conduction paced from A i
 
 test('V11-Z committed 1.1.0 evidence regenerates byte for byte', () => {
   const output = execFileSync(process.execPath, [fileURLToPath(new URL('engine-v11-evidence.js', import.meta.url))], { maxBuffer: 1 << 28 });
-  assert.ok(output.equals(readFileSync(new URL('../evidence/engine-v11-01.json', import.meta.url))));
+  assert.ok(output.equals(readFileSync(new URL('../evidence/engine-v11-02.json', import.meta.url))));
 });
 
 test('V11-Z every new event type and annotation appears in at least one oracle scene', () => {
@@ -887,7 +890,230 @@ test('V11-Z every new event type and annotation appears in at least one oracle s
     { commandId: 'e', tMs: 0, type: 'setEntry', linkId: 'N23', direction: 'ab', maxExtraMs: 50, tauMs: 60 },
     { commandId: 'tone', tMs: 0, type: 'setTone', value: 0.2 }, { commandId: 'ic', tMs: 0, type: 'applyAgent', agent: 'slow', doseScale: 1 },
     { commandId: 'st', tMs: 0, type: 'applyAgent', agent: 'stillness', doseScale: 1 }], [1000]).events);
+  note(play(hemiolaWorld(0.17), 'n6', [{ commandId: 'b', tMs: 10, type: 'setAutonomic', value: { breathPeriodMs: 4000, depth: 0.05, targets: ['sinus'] } },
+    { commandId: 'p', tMs: 20, type: 'setAutomaticity', nodeId: 'B', cycleMs: null }], [100]).events);
   for (const type of ['phase_modulated', 'lesion_changed', 'train_completed', 'link_changed', 'conduction_canceled', 'parameter_changed:delayMs',
     'parameter_changed:coupling', 'parameter_changed:restitution', 'parameter_changed:decrement', 'parameter_changed:entry',
-    'parameter_changed:tone', 'parameter_changed:slowing', 'parameter_changed:erpMs']) assert.ok(seen.has(type), type);
+    'parameter_changed:tone', 'parameter_changed:slowing', 'parameter_changed:erpMs', 'parameter_changed:autonomic',
+    'parameter_changed:protected']) assert.ok(seen.has(type), type);
+});
+
+// ---------------------------------------------------------------- 11e lead decisions before the 1.1.0 freeze
+
+describe('11e', () => {
+  const sinusNodal = () => v11World('tone-11e', [
+    site('S', 200, { tissue: 'sinus', automaticity: { cycleMs: 800, firstAttemptMs: 0, resetOnCapture: true } }),
+    site('N', 300, { tissue: 'nodal' }),
+    site('H', 200, { tissue: 'hisPurkinje' }),
+  ], [join('SN', 'S', 'N', way(20)), join('NH', 'N', 'H', way(60, { decrement: { maxExtraMs: 90, tauMs: 120 } }))]);
+
+  test('11e-1 tone sign: positive is sympathetic (shorter cycle, less nodal decrement), negative is vagal', () => {
+    for (const v of [0.5, -0.5, 1, -1]) {
+      const { events } = play(sinusNodal(), 'tone', [{ commandId: 'tone', tMs: 100, type: 'setTone', value: v }], [6000]);
+      const cycle = Math.round(800_000 * (1 - 0.2 * v));
+      const expected = [0, 800_000];
+      while (expected.at(-1) + cycle <= 6_000_000) expected.push(expected.at(-1) + cycle);
+      assert.deepEqual(autoAttempts(events).map(tick), expected, `tone ${v}`);
+      if (v > 0) assert.ok(cycle < 800_000, 'sympathetic shortens'); else assert.ok(cycle > 800_000, 'vagal lengthens');
+      const [, second, third] = ofType(events, 'conduction_launched').filter(event => event.linkId === 'NH');
+      assert.equal(tick(second.delayParts.sourceMs), Math.round(90_000 * (1 - 0.5 * v) * Math.exp(-500 / 120)));
+      assert.equal(tick(third.delayParts.sourceMs), Math.round(90_000 * (1 - 0.5 * v) * Math.exp(-(cycle - 300_000) / 120_000)));
+    }
+  });
+
+  test('11e-2 cancelTrain emits train_completed { cancelled: true } with the partial count in the cancel batch; completion says cancelled: false', () => {
+    const world = v11World('cancel-11e', [site('A', 100), site('B', 100), site('C', 100)]);
+    const commands = [
+      train('mid', 0, 'A', 100, 200, 10), { commandId: 'stopMid', tMs: 500, type: 'cancelTrain', trainId: 'mid' },
+      train('early', 0, 'B', 1000, 200, 3), { commandId: 'stopEarly', tMs: 600, type: 'cancelTrain', trainId: 'early' },
+      train('last', 0, 'C', 2000, 200, 3), { commandId: 'stopLast', tMs: 2400, type: 'cancelTrain', trainId: 'last' },
+      train('done', 0, 'A', 3000, 200, 2), { commandId: 'late', tMs: 3500, type: 'cancelTrain', trainId: 'done' },
+      { commandId: 'again', tMs: 3600, type: 'cancelTrain', trainId: 'mid' },
+      train('pair', 0, 'B', 4000, 200, 2), train('cut', 0, 'C', 4000, 200, 9), { commandId: 'stopCut', tMs: 4200, type: 'cancelTrain', trainId: 'cut' },
+    ];
+    const { events } = play(world, 'cancel-11e', commands, [6000]);
+    const closed = ofType(events, 'train_completed').map(({ tMs, commandId, trainId, delivered, count, cancelled }) => [tMs, commandId, trainId, delivered, count, cancelled]);
+    assert.deepEqual(closed, [
+      [500, 'mid', 'mid', 2, 10, true],
+      [600, 'early', 'early', 0, 3, true],
+      [2400, 'last', 'last', 2, 3, true], // the cancel at the last pulse's instant suppresses it
+      [3200, 'done', 'done', 2, 2, false], // cancelling a finished train (and cancelling twice) emits nothing
+      [4200, 'cut', 'cut', 1, 9, true], // cancellations close before completions of the same batch
+      [4200, 'pair', 'pair', 2, 2, false],
+    ]);
+    const pulses = id => ofType(events, 'stimulus_attempted').filter(event => event.triggerId.startsWith(`${id}#`)).length;
+    for (const [, id, , delivered] of closed) assert.equal(pulses(id), delivered, `${id} delivered`);
+    const at4200 = events.filter(event => event.tMs === 4200).map(event => event.type);
+    assert.deepEqual(at4200.slice(-2), ['train_completed', 'train_completed'], 'train_completed closes the batch');
+  });
+
+  test('11e-3 setAutonomic toggles Breath live; the breath phase follows absolute sim time, so replay matches', () => {
+    const breath = { breathPeriodMs: 4000, depth: 0.05, targets: ['sinus'] };
+    const world = v11World('breath-11e', [site('S', 200, { tissue: 'sinus', automaticity: { cycleMs: 800, firstAttemptMs: 0, resetOnCapture: true } })]);
+    const commands = [{ commandId: 'on', tMs: 1000, type: 'setAutonomic', value: breath }, { commandId: 'same', tMs: 2000, type: 'setAutonomic', value: { ...breath, targets: ['sinus'] } },
+      { commandId: 'off', tMs: 9000, type: 'setAutonomic', value: null }];
+    const { events } = play(world, 'breath', commands, [14000]);
+    const on = t => t >= 1_000_000 && t < 9_000_000;
+    const expected = [0];
+    while (expected.at(-1) <= 14_000_000) {
+      const t = expected.at(-1);
+      expected.push(t + Math.round(800_000 * (on(t) ? 1 + 0.05 * Math.sin((2 * Math.PI * t) / 4_000_000) : 1)));
+    }
+    assert.deepEqual(autoAttempts(events).map(tick), expected.filter(t => t <= 14_000_000));
+    assert.deepEqual(ofType(events, 'parameter_changed').map(({ tMs, parameter, generation, previous, value, commandId, cause }) => [tMs, parameter, generation, previous, value, commandId, cause]), [
+      [1000, 'autonomic', 1, null, breath, 'on', 'command'],
+      [9000, 'autonomic', 2, breath, null, 'off', 'command'],
+    ], 'an identical value is a no-op');
+    const steps = play(world, 'breath', commands, Array.from({ length: 141 }, (_, k) => k * 100)).events;
+    assert.deepEqual(steps, events);
+    const engine = createEngine();
+    engine.reset(world, 'r');
+    for (const [value, pattern] of [[{ ...breath, depth: 0.6 }, /depth/], [{ ...breath, targets: ['his'] }, /targets/], [{ breathPeriodMs: 4000, depth: 0.1 }, /must have fields/], [true, /must have fields/]]) {
+      assert.throws(() => engine.enqueue({ runId: 'r', commandId: 'x', tMs: 1, type: 'setAutonomic', value }), pattern);
+    }
+    engine.reset(circulationWorld, 'v1');
+    assert.throws(() => engine.enqueue({ runId: 'v1', commandId: 'x', tMs: 1, type: 'setAutonomic', value: null }), /requires a contract 1\.1\.0 world/);
+  });
+
+  test('11e-4 a complete lesion stays closed: setLinkEnabled(true) is rejected once the log shows p = 1; reset reopens', () => {
+    const world = lesionRingWorld();
+    const engine = createEngine();
+    engine.reset(world, 'closed');
+    engine.enqueue({ runId: 'closed', ...ablate('burn', 100, 'L5', 2000, 1) });
+    engine.enqueue({ runId: 'closed', commandId: 'early', tMs: 1000, type: 'setLinkEnabled', linkId: 'L5', enabled: true });
+    for (const tMs of [2100, 5000]) {
+      assert.throws(() => engine.enqueue({ runId: 'closed', commandId: `open${tMs}`, tMs, type: 'setLinkEnabled', linkId: 'L5', enabled: true }),
+        /closed by the complete lesion burn; reset the run/);
+    }
+    engine.enqueue({ runId: 'closed', commandId: 'cutOther', tMs: 5000, type: 'setLinkEnabled', linkId: 'L4', enabled: false });
+    const events = engine.advanceTo(6000);
+    assert.deepEqual(ofType(events, 'link_changed').map(({ tMs, linkId, value, cause }) => [tMs, linkId, value, cause]),
+      [[2100, 'L5', false, 'lesion'], [5000, 'L4', false, 'command']], 'the enable at 1000 was a no-op (already enabled)');
+    assert.deepEqual(engine.readAt(6000).links.L5.lesion, { progress: 1, completeness: 1 });
+    engine.reset(world, 'fresh');
+    engine.enqueue({ runId: 'fresh', commandId: 'open', tMs: 5000, type: 'setLinkEnabled', linkId: 'L5', enabled: true });
+    // An enable enqueued before the ablate that closes the line earlier is a no-op when it applies.
+    const late = play(world, 'late', [{ commandId: 'open', tMs: 5000, type: 'setLinkEnabled', linkId: 'L5', enabled: true },
+      { commandId: 'cut', tMs: 10, type: 'setLinkEnabled', linkId: 'L5', enabled: false }, ablate('burn', 0, 'L5', 2000, 1)], [6000]);
+    assert.deepEqual(ofType(late.events, 'link_changed').map(({ tMs, value, commandId }) => [tMs, value, commandId]), [[10, false, 'cut']]);
+    assert.equal(late.engine.readAt(6000).links.L5.enabled, false);
+  });
+
+  test('11e-4 ablating an already-disabled link records the lesion and emits lesion_changed but no link_changed', () => {
+    const world = v11World('burn-off', [site('A', 100), site('B', 100)], [join('L', 'A', 'B', way(100), way(100))]);
+    const { events, engine } = play(world, 'burn-off', [{ commandId: 'cut', tMs: 0, type: 'setLinkEnabled', linkId: 'L', enabled: false },
+      ablate('burn', 100, 'L', 500, 1)], [1000]);
+    assert.deepEqual(ofType(events, 'lesion_changed').map(({ tMs, progress }) => [tMs, progress]), [[350, 0.5], [600, 1]]);
+    assert.deepEqual(ofType(events, 'parameter_changed').map(({ tMs, direction, value, cause }) => [tMs, direction, value, cause]),
+      [[350, 'ab', ms(Math.round(100_000 * 1.75)), 'lesion'], [350, 'ba', 175, 'lesion'], [600, 'ab', 400, 'lesion'], [600, 'ba', 400, 'lesion']]);
+    assert.deepEqual(ofType(events, 'link_changed').map(event => event.commandId), ['cut']);
+    assert.deepEqual(engine.readAt(1000).links.L.lesion, { progress: 1, completeness: 1 });
+    assert.throws(() => engine.enqueue({ runId: 'burn-off', commandId: 'open', tMs: 1001, type: 'setLinkEnabled', linkId: 'L', enabled: true }), /closed/);
+    // An incomplete lesion of a disabled link may be reopened; it then conducts with the lesioned delay.
+    const gap = play(world, 'gap', [{ commandId: 'cut', tMs: 0, type: 'setLinkEnabled', linkId: 'L', enabled: false }, ablate('burn', 100, 'L', 500, 0.5),
+      { commandId: 'open', tMs: 700, type: 'setLinkEnabled', linkId: 'L', enabled: true }, pulseAt('a', 800, 'A')], [1500]);
+    const [launch] = ofType(gap.events, 'conduction_launched');
+    assert.deepEqual(launch.delayParts, { baseMs: 100, sourceMs: 0, entryMs: 0, lesionMs: 75, agentMs: 0 });
+  });
+
+  test('11e-5 L2: setNodeERP under restitution reverses exactly; the 1 ms floor clamp keeps the offset', () => {
+    const { events, engine } = play(restitutionWorld(), 'l2', [
+      { commandId: 'down', tMs: 10, type: 'setNodeERP', nodeId: 'A', erpMs: 100 },
+      pulseAt('p1', 20, 'A'), pulseAt('p2', 140, 'A'),
+      { commandId: 'up', tMs: 500, type: 'setNodeERP', nodeId: 'A', erpMs: 300 },
+    ], [1000]);
+    assert.deepEqual(engine.readAt(100).nodes.A.restitution, { erpMaxMs: 100, amplitudeMs: 200, tauMs: 60, erpMinMs: 1 });
+    // p2: DI = 20 ms; 100 - 200 e^(-20/60) < 0, so ERP sits on the clamped 1 ms floor.
+    assert.equal(actsAt(events, 'A')[1].erpMs, 1);
+    assert.deepEqual(engine.readAt(1000).nodes.A.restitution, { erpMaxMs: 300, amplitudeMs: 200, tauMs: 60, erpMinMs: 50 });
+  });
+
+  test('11e-5 L3: setRestitution that moves erpMs also emits parameter_changed erpMs; one that keeps it does not', () => {
+    const { events, engine } = play(restitutionWorld(), 'l3', [
+      { commandId: 'shape', tMs: 10, type: 'setRestitution', nodeId: 'A', erpMaxMs: 300, amplitudeMs: 100, tauMs: 60, erpMinMs: 50 },
+      { commandId: 'move', tMs: 20, type: 'setRestitution', nodeId: 'A', erpMaxMs: 280, amplitudeMs: 100, tauMs: 60, erpMinMs: 50 },
+      { commandId: 'same', tMs: 30, type: 'setRestitution', nodeId: 'A', erpMaxMs: 280, amplitudeMs: 100, tauMs: 60, erpMinMs: 50 },
+    ], [100]);
+    assert.deepEqual(ofType(events, 'parameter_changed').map(({ tMs, parameter, generation, commandId, previous, value }) =>
+      [tMs, parameter, generation, commandId, parameter === 'erpMs' ? [previous, value] : value.erpMaxMs]), [
+      [10, 'restitution', 1, 'shape', 300],
+      [20, 'restitution', 2, 'move', 280],
+      [20, 'erpMs', 1, 'move', [300, 280]],
+    ]);
+    assert.equal(engine.readAt(100).nodes.A.erpMs, 280);
+  });
+
+  test('11e-5 L4: a protected focus whose automaticity is set to null becomes unprotected (parameter_changed protected)', () => {
+    const world = v11World('unprotect', [site('P', 200, { tissue: 'atrial', automaticity: { cycleMs: 1000, firstAttemptMs: 100, resetOnCapture: true, protected: true } }),
+      site('Q', 50, { tissue: 'atrial' })], [join('PQ', 'P', 'Q', way(50), way(50))]);
+    const { events } = play(world, 'unprotect', [{ commandId: 'off', tMs: 500, type: 'setAutomaticity', nodeId: 'P', cycleMs: null },
+      pulseAt('q', 1200, 'Q'), { commandId: 'on', tMs: 2000, type: 'setAutomaticity', nodeId: 'P', cycleMs: 1000 }, pulseAt('q2', 2600, 'Q')], [4000]);
+    assert.deepEqual(ofType(events, 'parameter_changed').map(({ tMs, parameter, generation, nodeId, previous, value, commandId, cause }) =>
+      [tMs, parameter, generation, nodeId, previous, value, commandId, cause]), [
+      [500, 'cycleMs', 1, 'P', 1000, null, 'off', 'command'],
+      [500, 'protected', 1, 'P', true, false, 'off', 'command'],
+      [2000, 'cycleMs', 2, 'P', null, 1000, 'on', 'command'],
+    ], 'restoring automaticity does not restore protection');
+    assert.equal(ofType(events, 'activation_blocked').filter(event => event.cause === 'protected').length, 0);
+    assert.deepEqual(actsAt(events, 'P').slice(1).map(event => event.source), ['conduction', 'conduction', 'automaticity'], 'conduction now captures P');
+    assert.deepEqual(timesAt(events, 'P'), [100, 1250, 2650, 3650]);
+  });
+
+  test('11e-5 L6: contractVersion "1.0.0" declares a 1.0.0 world explicitly and may not carry 1.1.0 fields', () => {
+    const commands = fixture('A.commands');
+    const expected = fixture('A.presentation');
+    const { events, initial } = playV1({ ...circulationWorld, contractVersion: '1.0.0' }, commands[0].runId, commands, [expected.throughMs]);
+    assert.equal(JSON.stringify(events), JSON.stringify(engineEvidence.traces.A.events));
+    assert.deepEqual(Object.keys(initial.nodes.R0), ['lastActivationMs', 'refractoryUntilMs', 'erpMs', 'recoveryTailMs', 'recovery', 'excitable']);
+    const engine = createEngine();
+    engine.reset({ ...circulationWorld, contractVersion: '1.0.0' }, 'v1');
+    assert.throws(() => engine.enqueue({ runId: 'v1', commandId: 'x', tMs: 1, type: 'setTone', value: 0.1 }), /requires a contract 1\.1\.0 world/);
+    const tagged = createCirculationWorld();
+    tagged.contractVersion = '1.0.0';
+    tagged.nodes[0].tissue = 'atrial';
+    assert.throws(() => engine.reset(tagged, 'bad'), /must not carry 1\.1\.0 fields/);
+    assert.throws(() => engine.reset({ ...circulationWorld, contractVersion: '1.0.0', limits: {} }, 'bad'), /must not carry 1\.1\.0 fields/);
+  });
+
+  test('11e-5 L7: the concurrent-train limit lives in the world (default 4); the engine option only caps it', () => {
+    const at = (commandId, nodeId) => ({ runId: 'r', ...train(commandId, 0, nodeId, 0, 200, 5) });
+    const admitted = (world, options) => {
+      const engine = createEngine(options);
+      engine.reset(world, 'r');
+      const accepted = [];
+      for (const [k, id] of ['t1', 't2', 't3', 't4', 't5', 't6'].entries()) {
+        try { engine.enqueue(at(id, k % 2 === 0 ? 'A' : 'B')); accepted.push(id); } catch (error) { assert.match(error.message, /trains may overlap/); }
+      }
+      return accepted;
+    };
+    const base = v11World('cap', [site('A', 100), site('B', 100)]);
+    assert.deepEqual(admitted(base), ['t1', 't2', 't3', 't4'], 'default 4');
+    assert.deepEqual(admitted({ ...base, limits: { maxConcurrentTrains: 1 } }), ['t1']);
+    assert.deepEqual(admitted({ ...base, limits: { maxConcurrentTrains: 6 } }), ['t1', 't2', 't3', 't4', 't5', 't6']);
+    assert.deepEqual(admitted({ ...base, limits: { maxConcurrentTrains: 2 } }, { maxConcurrentTrains: 3 }), ['t1', 't2'], 'a higher host cap admits exactly what the world says');
+    assert.throws(() => createEngine({ maxConcurrentTrains: 3 }).reset(base, 'r'), /exceeds this engine's cap of 3/);
+    assert.throws(() => createEngine().reset({ ...base, limits: { maxConcurrentTrains: 17 } }, 'r'), /integer from 1 to 16/);
+    assert.throws(() => createEngine().reset({ ...base, limits: { trains: 2 } }, 'r'), /must have fields/);
+    const inferred = { worldId: 'w', nodes: [site('A', 100)], links: [], limits: {} };
+    assert.ok(Object.hasOwn(createEngine().reset(inferred, 'r').nodes.A, 'suppressionMs'), 'limits marks a 1.1.0 world');
+    assert.doesNotThrow(() => createEngine({ maxConcurrentTrains: 1 }).reset(circulationWorld, 'v1'), 'a 1.0.0 world runs no trains and is not capped');
+  });
+
+  test('11e-6 lintStudyWorld reports every site without an explicit tissue, in world order', () => {
+    assert.deepEqual(lintStudyWorld(chainWorld()), []);
+    assert.deepEqual(lintStudyWorld(hemiolaWorld(0.17)).map(finding => finding.nodeId), hemiolaWorld(0.17).nodes.map(node => node.id));
+    const mixed = v11World('mixed', [site('S', 200, { tissue: 'sinus' }), site('X', 200), site('V', 250, { tissue: 'ventricular' }), site('Y', 200, { tissue: undefined })]);
+    const findings = lintStudyWorld(mixed);
+    assert.deepEqual(findings.map(({ code, nodeId }) => [code, nodeId]), [['MISSING_TISSUE', 'X']], 'a key present with value undefined counts as declared by hasOwn');
+    assert.match(findings[0].message, /Site X does not declare tissue/);
+    assert.ok(Object.isFrozen(findings));
+    assert.deepEqual(lintStudyWorld({}), []);
+  });
+
+  test('11e-7 the overdrive accelerando is 1250, 1070, 962 and 897.2 ms exactly (no tolerance needed)', () => {
+    const { events } = play(focusWorld(), 'od', [train('drive', 0, 'S', 500, 500, 30)], [21000]);
+    const spontaneous = autoAttempts(events).map(tick);
+    assert.deepEqual(diffs([15_000_000, ...spontaneous.slice(1, 5)]), [1_250_000, 1_070_000, 962_000, 897_200]);
+    assert.equal(Math.round(Math.round(Math.round(450_000 * 0.6) * 0.6) * 0.6), 97_200, 'S = 0.6^3 x 450 ms = 97.2 ms, one round per law');
+  });
 });

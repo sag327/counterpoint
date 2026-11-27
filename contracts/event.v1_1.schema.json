@@ -1502,6 +1502,217 @@
             "parameter_changed"
           ]
         },
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "parameter": {
+          "enum": [
+            "autonomic"
+          ]
+        },
+        "previous": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "breathPeriodMs": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "depth": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 0.5
+                },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "sinus",
+                      "nodal"
+                    ]
+                  },
+                  "uniqueItems": true,
+                  "maxItems": 2
+                }
+              },
+              "required": [
+                "breathPeriodMs",
+                "depth",
+                "targets"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "breathPeriodMs": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "depth": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 0.5
+                },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "sinus",
+                      "nodal"
+                    ]
+                  },
+                  "uniqueItems": true,
+                  "maxItems": 2
+                }
+              },
+              "required": [
+                "breathPeriodMs",
+                "depth",
+                "targets"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cause": {
+          "enum": [
+            "command"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "parameter",
+        "commandId",
+        "generation",
+        "previous",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "parameter_changed"
+          ]
+        },
+        "commandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "parameter": {
+          "enum": [
+            "protected"
+          ]
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "previous": {
+          "type": "boolean"
+        },
+        "value": {
+          "type": "boolean"
+        },
+        "cause": {
+          "enum": [
+            "command"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "worldId",
+        "seq",
+        "eventId",
+        "tMs",
+        "type",
+        "parameter",
+        "commandId",
+        "generation",
+        "nodeId",
+        "previous",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "enum": [
+            "parameter_changed"
+          ]
+        },
         "parameter": {
           "enum": [
             "slowing"
@@ -1710,8 +1921,20 @@
         },
         "delivered": {
           "type": "integer",
+          "minimum": 0,
+          "maximum": 64
+        },
+        "trainId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "count": {
+          "type": "integer",
           "minimum": 1,
           "maximum": 64
+        },
+        "cancelled": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -1722,7 +1945,10 @@
         "tMs",
         "type",
         "commandId",
-        "delivered"
+        "delivered",
+        "trainId",
+        "count",
+        "cancelled"
       ],
       "additionalProperties": false
     }
