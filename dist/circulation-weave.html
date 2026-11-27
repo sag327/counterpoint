@@ -3,7 +3,7 @@
 <main><header><span class="eyebrow">COUNTERPOINT / MOTION STUDY</span><h1>Reweaving</h1><p>A passing impulse loosens the weave.<br>As it gathers, the path becomes ready again.</p></header>
 <section class="stage" aria-label="Animated conduction ring"><canvas id="ring" role="img" aria-label="Gold and blue filaments show local recovery. An open weave is refractory, a gathered line is ready."></canvas><div class="center"><span id="phase">Ready to begin</span><p id="explanation">Two paths. Different recovery.</p></div><span class="region gold">GOLD<span>gathers sooner</span></span><span class="region blue">BLUE<span>gathers later</span></span></section>
 <section class="controls" aria-label="Playback controls"><div class="scenarios" role="group" aria-label="Choose an experiment"><button data-mode="single">One impulse</button><button data-mode="reentry" aria-pressed="true">Find a rhythm</button><button data-mode="late">Wait longer</button></div><div class="transport"><button id="play">Play</button><button id="restart" aria-label="Restart experiment">↺</button><input id="timeline" type="range" min="0" max="3600" step="1" value="0" aria-label="Scrub simulation"><button id="sound" aria-pressed="false">Sound off</button></div><div class="foot"><span>Open weave · recovering &nbsp; / &nbsp; Fine line · ready</span><label>Motion <select id="speed" aria-label="Playback speed"><option value="6">Slow</option><option value="4" selected>Gentle</option><option value="2">Flowing</option></select></label></div></section>
-<details><summary>Inside this study</summary><p>Gold tissue has a shorter refractory period than blue tissue. Conduction speed is the same on both paths. “Find a rhythm” delivers a second impulse while the blue entrance is still refractory. Its wave stops there, while the other wave travels around the ring and returns after the blue tissue has recovered.</p><p>The filament spacing represents remaining refractoriness at each simulation site. The curves between sites are an artistic interpolation. Every traveling impulse and block comes from the Counterpoint simulation.</p></details><footer>AN EXPLORATION OF RHYTHM, RECOVERY & RETURN</footer></main><script>const __modules = {};
+<details><summary>Inside this study</summary><p>Gold tissue has a shorter refractory period than blue tissue. Conduction speed is the same on both paths. “Find a rhythm” delivers a second impulse while the blue entrance is still refractory. Its wave stops there, while the other wave travels around the ring and returns after the blue tissue has recovered.</p><p>The impulse opens the filaments as it passes. Their gathering follows an interpolation of the neighboring sites’ refractory periods. Between-site geometry is an artistic representation, not a continuous tissue model. Every traveling impulse and block comes from the Counterpoint simulation.</p></details><footer>AN EXPLORATION OF RHYTHM, RECOVERY & RETURN</footer></main><script>const __modules = {};
 __modules["src/engine/agenda.js"] = (()=>{
 function earlier(a, b) {
   return a.tick - b.tick || a.phase - b.phase || a.order - b.order ||
@@ -1723,7 +1723,61 @@ function openingAt(node, time) {
   return Math.pow(Math.max(0, Math.min(1, (node.refractoryUntilMs - time) / node.erpMs)), 0.55);
 }
 
-return {HORIZON,createWeaveTrace,openingAt};
+const smooth = x => { x = Math.max(0, Math.min(1, x)); return x*x*(3-2*x); };
+
+// Build once per experiment. These are presentation samples, not new engine sites.
+// Each sample can open only after a real transit has physically crossed it.
+function createWeaveSamples(trace, steps = 70) {
+  const launches = trace.events.filter(e => e.type === 'conduction_launched');
+  const collisions = new Map();
+  for (const e of trace.events) if (e.type === 'conduction_collision') {
+    for (const id of e.transitIds) collisions.set(id, e.tMs);
+  }
+  const captures = new Set(trace.events.filter(e => e.type === 'activation').map(e => `${e.nodeId}/${e.tMs}`));
+  return Array.from({length:8}, (_, link) => Array.from({length:steps+1}, (_, k) => {
+    const u=k/steps, angle=(link+u)*Math.PI/4;
+    const erp=trace.world.nodes[link].erpMs*(1-u)+trace.world.nodes[(link+1)%8].erpMs*u;
+    const passages=[];
+    for(const transit of launches) {
+      if(transit.linkId!==`L${link}`)continue;
+      const forward=transit.fromNodeId===`R${link}`;
+      const progress=forward?u:1-u;
+      const arrival=transit.departureMs+progress*(transit.arrivalMs-transit.departureMs);
+      if(arrival>(collisions.get(transit.transitId)??Infinity))continue;
+      const captured=captures.has(`${transit.toNodeId}/${transit.arrivalMs}`);
+      // A failed arrival cannot reopen its refractory destination. Its visual
+      // disturbance fades near that endpoint, preserving the prior recovery.
+      const weight=captured?1:1-smooth((progress-.72)/.28);
+      passages.push({arrival,erp,weight});
+    }
+    return {angle,u,passages};
+  }));
+}
+
+function passageOpening(sample,time) {
+  let opening=0;
+  for(const p of sample.passages) {
+    const age=time-p.arrival;
+    if(age<0||age>=p.erp)continue;
+    // A small trailing shoulder makes the leading tip a continuous zipper.
+    const value=smooth(age/12)*Math.pow(1-age/p.erp,.55)*p.weight;
+    opening=Math.max(opening,value);
+  }
+  return opening;
+}
+
+function filamentOffset(angle,strand,opening) {
+  // Unequal broad folds, a wandering seam and occasional soft crossings.
+  // Periodic around the whole ring, so no repeated segment-shaped pouches.
+  const swell=.76+.22*Math.sin(3*angle+.7)+.13*Math.sin(7*angle-1.1);
+  const drift=2.4*Math.sin(5*angle+.4)+1.2*Math.sin(9*angle+1.3);
+  const shapes=[-9*swell+2.8*Math.sin(4*angle+.3),
+    3.8*Math.sin(3*angle+1.8)+1.5*Math.sin(8*angle),
+    8*swell+3.2*Math.sin(6*angle+2.1)];
+  return (strand-1)*.3+opening*(shapes[strand]+drift);
+}
+
+return {HORIZON,createWeaveTrace,openingAt,createWeaveSamples,passageOpening,filamentOffset};
 })();
 __modules["src/music/mapping.js"] = (()=>{
 const worldAssignments = {
@@ -2240,11 +2294,12 @@ const { createAudioMixer } = __modules["src/music/mixer.js"];
 return {mapActivation,describeNodeMusic,musicTableFor,CHAMBER_VOICINGS,PALETTES,createAudioMixer};
 })();
 __modules["src/prototypes/weave/app.js"] = (()=>{
-const { createWeaveTrace, openingAt, HORIZON } = __modules["src/prototypes/weave/model.js"];
+const { createWeaveTrace, createWeaveSamples, passageOpening, filamentOffset, HORIZON } = __modules["src/prototypes/weave/model.js"];
 const { createAudioMixer, mapActivation } = __modules["src/music/index.js"];
 const $ = id => document.getElementById(id);
 const canvas = $('ring'), ctx = canvas.getContext('2d');
 let trace = createWeaveTrace(), mode = 'reentry', time = 0, playing = false, dilation = 4;
+let samples = createWeaveSamples(trace);
 let anchor = 0, origin = 0, context, mixer, sound = false, generation = 0, audioRun, cursor = 0;
 let width, height, radius, cx, cy;
 const tau = Math.PI * 2;
@@ -2283,20 +2338,17 @@ function draw() {
   if(!width)return;
   ctx.clearRect(0,0,width,height);
   const state=trace.engine.readAt(Math.round(time));
-  // Local overlapping tapered footprints; no jitter and no radial loose ends.
+  // Sample the wave's swept path, leaving the line ahead of it gathered.
+  const openings=samples.map(link=>link.map(point=>passageOpening(point,time)));
   for(let strand=0;strand<3;strand++) {
     for(let i=0;i<8;i++) {
-      const c=color(i), node=state.nodes[`R${i}`], opening=openingAt(node,time);
-      const center=i*tau/8, half=tau/16;
       ctx.beginPath();
-      for(let k=0;k<=70;k++) {
-        const u=k/70, a=center-half+u*half*2;
-        const taper=Math.pow(Math.sin(Math.PI*u),1.25);
-        const bend=Math.sin(u*Math.PI*(strand===1?1.6:1.15)+i*.47+strand*2.2);
-        const separation=(strand-1)*(.35+opening*11*taper)+opening*3*taper*bend;
-        const p=position(a,separation);
+      for(let k=0;k<samples[i].length;k++) {
+        const point=samples[i][k];
+        const p=position(point.angle,filamentOffset(point.angle,strand,openings[i][k]));
         k===0?ctx.moveTo(...p):ctx.lineTo(...p);
       }
+      const c=color(i===0?1:i===4?5:i);
       ctx.strokeStyle=rgba(c,strand===1?.68:.43);ctx.lineWidth=strand===1?1.05:.75;
       ctx.shadowColor=rgba(c,.25);ctx.shadowBlur=5;ctx.stroke();ctx.shadowBlur=0;
     }
@@ -2351,7 +2403,7 @@ $('sound').onclick=async()=>{
 };
 document.querySelectorAll('[data-mode]').forEach(button=>{
   button.setAttribute('aria-pressed',String(button.dataset.mode===mode));
-  button.onclick=()=>{stop();mode=button.dataset.mode;trace=createWeaveTrace(mode==='single'?null:mode==='late'?340:240);time=0;
+  button.onclick=()=>{stop();mode=button.dataset.mode;trace=createWeaveTrace(mode==='single'?null:mode==='late'?340:240);samples=createWeaveSamples(trace);time=0;
     document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
     start();draw();};
 });

@@ -1,8 +1,9 @@
-import { createWeaveTrace, openingAt, HORIZON } from './model.js';
+import { createWeaveTrace, createWeaveSamples, passageOpening, filamentOffset, HORIZON } from './model.js';
 import { createAudioMixer, mapActivation } from '../../music/index.js';
 const $ = id => document.getElementById(id);
 const canvas = $('ring'), ctx = canvas.getContext('2d');
 let trace = createWeaveTrace(), mode = 'reentry', time = 0, playing = false, dilation = 4;
+let samples = createWeaveSamples(trace);
 let anchor = 0, origin = 0, context, mixer, sound = false, generation = 0, audioRun, cursor = 0;
 let width, height, radius, cx, cy;
 const tau = Math.PI * 2;
@@ -41,20 +42,17 @@ function draw() {
   if(!width)return;
   ctx.clearRect(0,0,width,height);
   const state=trace.engine.readAt(Math.round(time));
-  // Local overlapping tapered footprints; no jitter and no radial loose ends.
+  // Sample the wave's swept path, leaving the line ahead of it gathered.
+  const openings=samples.map(link=>link.map(point=>passageOpening(point,time)));
   for(let strand=0;strand<3;strand++) {
     for(let i=0;i<8;i++) {
-      const c=color(i), node=state.nodes[`R${i}`], opening=openingAt(node,time);
-      const center=i*tau/8, half=tau/16;
       ctx.beginPath();
-      for(let k=0;k<=70;k++) {
-        const u=k/70, a=center-half+u*half*2;
-        const taper=Math.pow(Math.sin(Math.PI*u),1.25);
-        const bend=Math.sin(u*Math.PI*(strand===1?1.6:1.15)+i*.47+strand*2.2);
-        const separation=(strand-1)*(.35+opening*11*taper)+opening*3*taper*bend;
-        const p=position(a,separation);
+      for(let k=0;k<samples[i].length;k++) {
+        const point=samples[i][k];
+        const p=position(point.angle,filamentOffset(point.angle,strand,openings[i][k]));
         k===0?ctx.moveTo(...p):ctx.lineTo(...p);
       }
+      const c=color(i===0?1:i===4?5:i);
       ctx.strokeStyle=rgba(c,strand===1?.68:.43);ctx.lineWidth=strand===1?1.05:.75;
       ctx.shadowColor=rgba(c,.25);ctx.shadowBlur=5;ctx.stroke();ctx.shadowBlur=0;
     }
@@ -109,7 +107,7 @@ $('sound').onclick=async()=>{
 };
 document.querySelectorAll('[data-mode]').forEach(button=>{
   button.setAttribute('aria-pressed',String(button.dataset.mode===mode));
-  button.onclick=()=>{stop();mode=button.dataset.mode;trace=createWeaveTrace(mode==='single'?null:mode==='late'?340:240);time=0;
+  button.onclick=()=>{stop();mode=button.dataset.mode;trace=createWeaveTrace(mode==='single'?null:mode==='late'?340:240);samples=createWeaveSamples(trace);time=0;
     document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
     start();draw();};
 });
