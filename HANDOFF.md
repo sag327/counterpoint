@@ -1,5 +1,7 @@
 # Handoff · Study No. 2 simplification pass
 
+**Latest routing pass:** [continuous strand routing](docs/runs/organic-routing.md) on `organic-routing`; implementation and automated checks complete, browser acceptance is recorded separately by the delivery pass.
+
 **Restart here.** This file is the rolling handoff for work that may stop at a usage limit. Each milestone updates it before its commit is pushed.
 
 - **Branch:** `main` (the `study-2-simplify` work merged as PR #2). Earlier base: `main` at `93f1ee5` (PR #1 merged: v0.2 Echo with the M1–M2 revisions). The creator allows merging into `main` when the block is done.
