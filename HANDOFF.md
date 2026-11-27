@@ -13,17 +13,25 @@
 | M1–M3 | Revisions, live curve, model sliders, PR #1 | DONE, merged | [revise-01](docs/runs/revise-01.md), [revise-02](docs/runs/revise-02.md) |
 | M4 | Remove cutting, mute/volume, S key, Echo header; fraction speeds; prominent instructions; selected-site halo | DONE | [simplify-01](docs/runs/simplify-01.md) |
 | M5 | Preconditioned Find the echo / Find the circuit | DONE | [simplify-02](docs/runs/simplify-02.md) |
-| M6 | Tiered inspector card; inspect and tune in every world | NEXT | — |
-| M7 | Gate run, merge into `main`, push | TODO | — |
+| M6 | Tiered inspector card; inspect and tune in every world | DONE | [simplify-03](docs/runs/simplify-03.md) |
+| M7 | Gate run, merge into `main`, push | NEXT | — |
 
 ## M5 · done
 
 `transport.reset(..., { fromMs })` runs the engine silently to `fromMs` (events go to `onPrelude`, not to sound or frames). Echo's guided protocols set `presentFromMs: 4100` (`ECHO_PRESENT_FROM_MS` in `src/worlds/echo.js`). Tests: `tests/precondition.test.js`.
 
-## M6 · inspector tiers and every world (next)
+## M6 · done
 
-- `src/lab/inspector-card.js`: show the key readouts first (state, since last activation, refractory remaining, ERP). Put the restitution curve, parameters and history in `<details>` sections.
-- Remove the `scene.study` gating in `setupCard`, `armHold`, `buildInspectButtons` and the site `onkeydown` in `app.js`. Add `MODEL_CONTROLS` for Conduction and Circulation, and add "Hold a site to inspect it" to their hints.
+The card leads with three key readouts (`KEY_READOUTS` in `inspector-card.js`) and puts the rest in `<details data-section>` sections (more, tune, table) that remember their open state. The card exists in every world: `scene.study` now gates only Echo's Stillness, live curve, runner and Model sliders.
+
+## M7 · next
+
+All gates passed at M6. Open a PR from `study-2-simplify` into `main` and merge it (the creator allows it), then confirm the Pages deploy.
+
+## Possible follow-ups (ask the creator)
+
+- Lab Model sliders for Conduction and Circulation (`MODEL_CONTROLS`). The card already tunes every site and connection.
+- A preconditioned start for Circulation's Find a rhythm. It is short (two stimuli) and does not need one now.
 
 ## Key code (M1–M4)
 

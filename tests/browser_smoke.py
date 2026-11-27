@@ -149,6 +149,15 @@ def desktop_smoke(browser, output):
     page.get_by_role("button", name="Stimulate site R3").focus()
     page.keyboard.press("Space")
     page.wait_for_function("counterpoint.events.some(e => e.type === 'stimulus_attempted' && e.nodeId === 'R3')")
+    # Simplify M6: every world can be inspected; the card leads with three readouts.
+    wait_playing(page, "counterpoint.transport.status === 'running'")
+    page.get_by_role("button", name="Stimulate site R3").press("i")
+    page.locator("#card-layer").wait_for(state="visible", timeout=5000)
+    assert page.evaluate("counterpoint.card.target.id") == "R3" and page.evaluate("counterpoint.selectedSite") == "R3"
+    assert page.locator(".lab-card-key dt").count() == 3
+    assert not page.locator(".lab-card-section[data-section=tune]").evaluate("node => node.open")
+    page.keyboard.press("Escape")
+    page.locator("#card-layer").wait_for(state="hidden", timeout=5000)
     page.locator("#lab-toggle").click()
     assert page.locator("#lab").is_visible()
     assert page.locator("#metrics").inner_text()
@@ -166,7 +175,7 @@ def desktop_smoke(browser, output):
     assert all(event["runId"] == exported["runId"] for event in exported["events"])
     assert not errors, errors
     check_network(requests, url)
-    print("PASS desktop Chromium file:// offline, Conduction and Circulation, keyboard/silent, reentry, pause/resume, drag does not cut, reset, dilation, inspector/export", flush=True)
+    print("PASS desktop Chromium file:// offline, Conduction and Circulation, keyboard/silent, reentry, pause/resume, drag does not cut, reset, dilation, inspector card, Lab/export", flush=True)
     context.close()
 
 

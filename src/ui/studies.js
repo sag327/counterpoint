@@ -36,14 +36,14 @@ const SCENE_LIST = {
     create: createConductionWorld,
     name: 'Conduction',
     topology: 'Six sites in a branching pathway, led by an automatic focus.',
-    hint: 'Tap a site to stimulate it.',
+    hint: 'Tap a site to stimulate it · Hold a site to inspect it',
     status: 'An automatic impulse leads the way.',
   },
   circulation: {
     create: createCirculationWorld,
     name: 'Circulation',
     topology: 'Eight excitable sites joined in a bidirectional ring.',
-    hint: 'Tap a site to stimulate it.',
+    hint: 'Tap a site to stimulate it · Hold a site to inspect it',
     status: 'The ring rests until a site is stimulated.',
   },
   ...Object.fromEntries(STUDIES.map(study => {

@@ -188,8 +188,8 @@ function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs
   }
   if (kind !== 'find-echo' && kind !== 'find-chord') guidedLast = null;
   // The player's model edits carry into the new run as logged commands at t = 0.
-  if (scene.study && card) {
-    carryCommands(scene.preset, card.state).forEach((body, index) => commands.push({ ...body, commandId: `carry-${index + 1}`, tMs: 0 }));
+  if (card) {
+    carryCommands(scene.preset ?? world, card.state).forEach((body, index) => commands.push({ ...body, commandId: `carry-${index + 1}`, tMs: 0 }));
   }
   $('status').textContent = started ? status : WORLDS[worldId].topology;
   transport.reset(world, runId, {
@@ -263,9 +263,10 @@ function setupCard() {
   card?.close();
   $('card-layer').replaceChildren();
   card = undefined;
-  if (!scene.study) return;
+  // Every world can be inspected and tuned (creator decision 2026-11-27).
   card = createInspectorCard($('card-layer'), {
     world,
+    document,
     labels: scene.labels?.lab ?? {},
     enqueue(body) {
       const command = transport.submit(body);
@@ -311,7 +312,7 @@ function updateCard(frame, now) {
   if (now - lastCardUpdate < (open ? 100 : 250)) return;
   lastCardUpdate = now;
   const events = visibleEvents(frame);
-  liveCurve.ingest(events, frame.presentedMs);
+  if (scene.study) liveCurve.ingest(events, frame.presentedMs);
   card.update({ snapshot: frame.snapshot, events, tMs: frame.presentedMs });
   renderer.markModified(card.modified());
   if (studyLab && labOpen()) studyLab.update({ events, snapshot: frame.snapshot, tMs: frame.presentedMs, state: card.state, curvePoints: liveCurve.points });
@@ -448,30 +449,24 @@ function buildSiteButtons() {
     button.disabled = true;
     button.textContent = id;
     button.dataset.site = id;
-    button.setAttribute('aria-label', scene.study
-      ? `Stimulate site ${siteLabel(id)}. Press I to inspect it.`
-      : `Stimulate site ${id}`);
+    button.setAttribute('aria-label', `Stimulate site ${siteLabel(id)}. Press I to inspect it.`);
     // Pointer activation is handled on the stage so a stroke can start on a site.
     button.onclick = event => { if (!event.detail) stimulate(id); };
     button.onfocus = () => selectNode(id);
-    if (scene.study) {
-      button.onkeydown = event => {
-        if ((event.key === 'i' || event.key === 'I') && !event.metaKey && !event.ctrlKey && !event.altKey) {
-          event.preventDefault();
-          openCard({ kind: 'node', id });
-        }
-      };
-    }
+    button.onkeydown = event => {
+      if ((event.key === 'i' || event.key === 'I') && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        event.preventDefault();
+        openCard({ kind: 'node', id });
+      }
+    };
     $('sites').append(button);
   }
 }
 
 // Keyboard access to the inspector card through the connection list.
 function buildInspectButtons() {
-  $('inspect-list').hidden = !scene.study;
   $('inspect-sites').replaceChildren();
   $('inspect-links').replaceChildren();
-  if (!scene.study) return;
   for (const node of world.nodes) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -558,13 +553,12 @@ function trackGesture(event) {
   }
 }
 
-// Press and hold: a site or a connection opens the inspector card (studies);
-// the open centre gives Stillness (Echo). A drag cancels a hold and becomes a swipe.
+// Press and hold: a site or a connection opens the inspector card (every world);
+// the open centre gives Stillness (Echo). A drag cancels a hold and does nothing.
 function armHold(active, point) {
-  if (!scene.study) return;
   const link = active.site ? null : renderer.hitTestLink(point.x, point.y);
   const centre = renderer.centre;
-  const inCentre = !active.site && !link && centre && Math.hypot(point.x - centre.x, point.y - centre.y) < centre.radius * 0.8;
+  const inCentre = scene.study && !active.site && !link && centre && Math.hypot(point.x - centre.x, point.y - centre.y) < centre.radius * 0.8;
   if (!active.site && !link && !inCentre) return;
   active.timer = setTimeout(() => {
     if (gesture !== active || active.dragged) return;

@@ -142,6 +142,7 @@ const sandbox = {
   URLSearchParams,
   URL,
   document,
+  structuredClone,
   console: { error: (error) => errors.push(error.stack ?? String(error)), warn: (error) => errors.push(String(error)) },
   location: { hash: "", pathname: "/counterpoint.html", search: "" },
   history: { replaceState() {} },

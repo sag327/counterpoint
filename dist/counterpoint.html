@@ -288,7 +288,12 @@ button.primary:hover{background:#e1c695;color:#11171a}
 .lab-card-default { margin-top: 12px; min-height: 36px; padding: 6px 14px; color: var(--lab-gold); background: transparent; border: 1px solid var(--lab-rule); border-radius: 6px; cursor: pointer; }
 .lab-card-default:disabled { opacity: .35; cursor: default; }
 .lab-card-note { margin: 10px 0 0; color: var(--lab-text2); font: italic 13px 'EB Garamond', Georgia, serif; }
-.lab-card-table summary { margin-top: 8px; color: var(--lab-text2); cursor: pointer; font-size: 12px; }
+.lab-card-key { font-size: 14px; gap: 6px 14px; }
+.lab-card-key dd { font-variant-numeric: tabular-nums; }
+.lab-card-section { border-top: 1px solid var(--lab-rule); margin: 0; max-width: none; }
+.lab-card-section > summary { display: list-item; min-height: 44px; padding: 12px 0; text-align: left; color: var(--lab-text2); cursor: pointer; font-size: 13px; }
+.lab-card-section[open] { padding-bottom: 10px; }
+.lab-card-section[open] > summary { color: var(--lab-text); }
 .lab-card-table table { width: 100%; font-size: 11px; border-collapse: collapse; }
 .lab-card-table caption { text-align: left; color: var(--lab-text2); }
 .lab-card-table td, .lab-card-table th { padding: 2px 4px; text-align: right; border-bottom: 1px solid var(--lab-rule); }
@@ -8186,7 +8191,7 @@ function restitutionModel({ siteLabel, law = null, erpMs = null, dots: allDots =
   const off = dots.filter(d => Math.abs(d.erpMs - lawAt(d.diMs)) > 0.0015).length;
   const summary = law === null
     ? `${siteLabel}: fixed ERP of ${ms(erpMs)}; ${dots.length} captures.`
-    : `${siteLabel}: ERP ${ms(law.erpMaxMs)} after a long rest, shortening by up to ${ms(law.amplitudeMs)} with tau ${ms(law.tauMs)}; ${dots.length - off} of ${dots.length} captures lie on the curve${earlier.length ? ` (${earlier.length} earlier captures used other parameters)` : ''}${liveErp === null ? '' : `; now ${ms(round3(liveErp))}`}.`;
+    : `${siteLabel}: ERP ${ms(law.erpMaxMs)} after a long rest, shortening by up to ${ms(law.amplitudeMs)} with tau ${ms(law.tauMs)}; ${dots.length - off} of ${dots.length} captures lie on the curve${earlier.length ? ` (${earlier.length} earlier captures used other parameters)` : ''}${liveErp === null ? '' : `; now ${ms(Math.round(liveErp))}`}.`;
   return {
     kind: 'restitution',
     title: `Site · ${siteLabel}`,
@@ -8904,6 +8909,9 @@ function cardModel(state, target, { events = [], snapshot = null, tMs = null, la
 // ---------------------------------------------------------------------------
 // DOM component
 
+// The first rows of the live readout are always shown; the rest sit under More readouts.
+const KEY_READOUTS = 3;
+
 function ms(value) {
   return value === null || value === undefined ? '—' : `${round3(value)} ms`;
 }
@@ -8936,19 +8944,38 @@ function createInspectorCard(container, {
   const badge = el('span', { className: 'lab-card-modified', title: 'This element differs from the study default' }, 'modified');
   const close = el('button', { type: 'button', className: 'lab-card-close', 'aria-label': 'Close the inspector card' }, '×');
   header.append(title, badge, close);
-  const fields = el('dl', { className: 'lab-card-state' });
+  // Tiers (creator decision 2026-11-27): three key readouts and a one-line summary
+  // first; further readouts, the curve with its tuning, and the data table open on demand.
+  const fields = el('dl', { className: 'lab-card-state lab-card-key' });
+  const moreFields = el('dl', { className: 'lab-card-state' });
+  const openSections = new Set();
+  const section = (id, text) => {
+    const node = el('details', { className: `lab-card-section lab-card-${id}` });
+    node.dataset.section = id;
+    node.append(el('summary', {}, text));
+    node.addEventListener('toggle', () => {
+      if (node.open) openSections.add(id); else openSections.delete(id);
+      if (node.open) render();
+    });
+    return node;
+  };
   const plot = el('div', { className: 'lab-card-plot' });
   const canvas = el('canvas', { 'aria-hidden': 'true' });
   plot.append(canvas);
   const summary = el('p', { className: 'lab-card-summary', 'aria-live': 'polite' });
   const controls = el('div', { className: 'lab-card-fields' });
   const note = el('p', { className: 'lab-card-note' });
-  const details = el('details', { className: 'lab-card-table' });
-  const detailsSummary = el('summary', {}, 'Data table');
   const table = el('div');
-  details.append(detailsSummary, table);
   const reset = el('button', { type: 'button', className: 'lab-card-default' }, 'Study default');
-  root.append(header, fields, plot, summary, controls, reset, note, details);
+  const more = section('more', 'More readouts');
+  more.append(moreFields);
+  const tune = section('tune', 'Curve and tuning');
+  tune.append(plot, controls, reset, note);
+  const details = section('table', 'Data table');
+  details.classList?.add?.('lab-card-table');
+  details.append(table);
+  const sections = [more, tune, details];
+  root.append(header, fields, summary, more, tune, details);
   container.append(root);
 
   const handleNodes = new Map();
@@ -9031,12 +9058,12 @@ function createInspectorCard(container, {
       const cycle = captures.length >= 2 ? Math.round(captures.at(-1).tMs - captures.at(-2).tMs) : null;
       const remaining = until !== null && frame.tMs !== null && frame.tMs < until ? Math.ceil(until - frame.tMs) : null;
       rows.push(['Since last activation', ms(since)]);
-      rows.push(['Last cycle length', ms(cycle)]);
       rows.push(['Refractory remaining', remaining === null ? (until === null ? '—' : 'excitable') : ms(remaining)]);
+      rows.push(['Rested ERP', ms(live?.erpMs ?? state.nodes[target.id].erpMs)]);
+      rows.push(['Last cycle length', ms(cycle)]);
       rows.push(['Recovery', live ? `${Math.round(live.recovery * 100)}%` : '—']);
       rows.push(['Current DI', until !== null && di === null ? 'refractory' : ms(di)]);
       rows.push(['ERP of last capture', ms(last?.erpMs ?? null)]);
-      rows.push(['Rested ERP', ms(live?.erpMs ?? state.nodes[target.id].erpMs)]);
     } else {
       const live = snap?.links?.[target.id];
       const direction = live?.[target.direction];
@@ -9048,7 +9075,9 @@ function createInspectorCard(container, {
       rows.push(['Last recovery', ms(lastLaunch?.recoveryMs ?? null)]);
       if (live?.lesion) rows.push(['Lesion', `${Math.round(live.lesion.progress * 100)}% of ${Math.round(live.lesion.completeness * 100)}%`]);
     }
-    fields.replaceChildren(...rows.flatMap(([k, v]) => [el('dt', {}, k), el('dd', {}, v)]));
+    const pairs = list => list.flatMap(([k, v]) => [el('dt', {}, k), el('dd', {}, v)]);
+    fields.replaceChildren(...pairs(rows.slice(0, KEY_READOUTS)));
+    moreFields.replaceChildren(...pairs(rows.slice(KEY_READOUTS)));
   }
 
   function placeHandles() {
@@ -9183,6 +9212,8 @@ function createInspectorCard(container, {
   const api = {
     open(next) {
       target = next.kind === 'link' ? { kind: 'link', id: next.id, direction: next.direction ?? 'ab' } : { kind: next.kind, id: next.id };
+      // Sections the player opened stay open from one element to the next.
+      for (const node of sections) node.open = openSections.has(node.dataset.section);
       root.hidden = false;
       buildControls();
       render();
@@ -9235,7 +9266,7 @@ function createInspectorCard(container, {
   return api;
 }
 
-return {createParameterState,applyParameterEvents,editCommand,applyCommand,defaultCommands,modifiedElements,cardModel,createInspectorCard};
+return {createParameterState,applyParameterEvents,editCommand,applyCommand,defaultCommands,modifiedElements,cardModel,KEY_READOUTS,createInspectorCard};
 })();
 __modules["src/ui/preferences.js"] = (()=>{
 const PREFERENCES_KEY = 'counterpoint.preferences.v1';
@@ -10131,14 +10162,14 @@ const SCENE_LIST = {
     create: createConductionWorld,
     name: 'Conduction',
     topology: 'Six sites in a branching pathway, led by an automatic focus.',
-    hint: 'Tap a site to stimulate it.',
+    hint: 'Tap a site to stimulate it · Hold a site to inspect it',
     status: 'An automatic impulse leads the way.',
   },
   circulation: {
     create: createCirculationWorld,
     name: 'Circulation',
     topology: 'Eight excitable sites joined in a bidirectional ring.',
-    hint: 'Tap a site to stimulate it.',
+    hint: 'Tap a site to stimulate it · Hold a site to inspect it',
     status: 'The ring rests until a site is stimulated.',
   },
   ...Object.fromEntries(STUDIES.map(study => {
@@ -12416,8 +12447,8 @@ function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs
   }
   if (kind !== 'find-echo' && kind !== 'find-chord') guidedLast = null;
   // The player's model edits carry into the new run as logged commands at t = 0.
-  if (scene.study && card) {
-    carryCommands(scene.preset, card.state).forEach((body, index) => commands.push({ ...body, commandId: `carry-${index + 1}`, tMs: 0 }));
+  if (card) {
+    carryCommands(scene.preset ?? world, card.state).forEach((body, index) => commands.push({ ...body, commandId: `carry-${index + 1}`, tMs: 0 }));
   }
   $('status').textContent = started ? status : WORLDS[worldId].topology;
   transport.reset(world, runId, {
@@ -12491,9 +12522,10 @@ function setupCard() {
   card?.close();
   $('card-layer').replaceChildren();
   card = undefined;
-  if (!scene.study) return;
+  // Every world can be inspected and tuned (creator decision 2026-11-27).
   card = createInspectorCard($('card-layer'), {
     world,
+    document,
     labels: scene.labels?.lab ?? {},
     enqueue(body) {
       const command = transport.submit(body);
@@ -12539,7 +12571,7 @@ function updateCard(frame, now) {
   if (now - lastCardUpdate < (open ? 100 : 250)) return;
   lastCardUpdate = now;
   const events = visibleEvents(frame);
-  liveCurve.ingest(events, frame.presentedMs);
+  if (scene.study) liveCurve.ingest(events, frame.presentedMs);
   card.update({ snapshot: frame.snapshot, events, tMs: frame.presentedMs });
   renderer.markModified(card.modified());
   if (studyLab && labOpen()) studyLab.update({ events, snapshot: frame.snapshot, tMs: frame.presentedMs, state: card.state, curvePoints: liveCurve.points });
@@ -12676,30 +12708,24 @@ function buildSiteButtons() {
     button.disabled = true;
     button.textContent = id;
     button.dataset.site = id;
-    button.setAttribute('aria-label', scene.study
-      ? `Stimulate site ${siteLabel(id)}. Press I to inspect it.`
-      : `Stimulate site ${id}`);
+    button.setAttribute('aria-label', `Stimulate site ${siteLabel(id)}. Press I to inspect it.`);
     // Pointer activation is handled on the stage so a stroke can start on a site.
     button.onclick = event => { if (!event.detail) stimulate(id); };
     button.onfocus = () => selectNode(id);
-    if (scene.study) {
-      button.onkeydown = event => {
-        if ((event.key === 'i' || event.key === 'I') && !event.metaKey && !event.ctrlKey && !event.altKey) {
-          event.preventDefault();
-          openCard({ kind: 'node', id });
-        }
-      };
-    }
+    button.onkeydown = event => {
+      if ((event.key === 'i' || event.key === 'I') && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        event.preventDefault();
+        openCard({ kind: 'node', id });
+      }
+    };
     $('sites').append(button);
   }
 }
 
 // Keyboard access to the inspector card through the connection list.
 function buildInspectButtons() {
-  $('inspect-list').hidden = !scene.study;
   $('inspect-sites').replaceChildren();
   $('inspect-links').replaceChildren();
-  if (!scene.study) return;
   for (const node of world.nodes) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -12786,13 +12812,12 @@ function trackGesture(event) {
   }
 }
 
-// Press and hold: a site or a connection opens the inspector card (studies);
-// the open centre gives Stillness (Echo). A drag cancels a hold and becomes a swipe.
+// Press and hold: a site or a connection opens the inspector card (every world);
+// the open centre gives Stillness (Echo). A drag cancels a hold and does nothing.
 function armHold(active, point) {
-  if (!scene.study) return;
   const link = active.site ? null : renderer.hitTestLink(point.x, point.y);
   const centre = renderer.centre;
-  const inCentre = !active.site && !link && centre && Math.hypot(point.x - centre.x, point.y - centre.y) < centre.radius * 0.8;
+  const inCentre = scene.study && !active.site && !link && centre && Math.hypot(point.x - centre.x, point.y - centre.y) < centre.radius * 0.8;
   if (!active.site && !link && !inCentre) return;
   active.timer = setTimeout(() => {
     if (gesture !== active || active.dragged) return;
