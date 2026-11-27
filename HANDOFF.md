@@ -2,7 +2,7 @@
 
 **Restart here.** This file is the rolling handoff for work that may stop at a usage limit. Each milestone updates it before its commit is pushed.
 
-- **Branch:** `study-2-simplify`, from `main` at `93f1ee5` (PR #1 merged: v0.2 Echo with the M1–M2 revisions). The creator allows merging into `main` when the block is done.
+- **Branch:** `main` (the `study-2-simplify` work merged as PR #2). Earlier base: `main` at `93f1ee5` (PR #1 merged: v0.2 Echo with the M1–M2 revisions). The creator allows merging into `main` when the block is done.
 - **Spec:** `design/study-2-spec.md`. The creator's revisions override it (see `DECISIONS.md`, 2026-11-27 entries).
 - **Setup:** `npm i --no-save @napi-rs/canvas`. Then `npm test`, `npm run check:contract`, `npm run build`, `node tests/host-integration.mjs`, `python3 tests/browser_integrate.py --chromium /usr/bin/google-chrome --screenshots /tmp/shots` and `python3 tests/browser_smoke.py --chromium /usr/bin/google-chrome`.
 
@@ -14,7 +14,7 @@
 | M4 | Remove cutting, mute/volume, S key, Echo header; fraction speeds; prominent instructions; selected-site halo | DONE | [simplify-01](docs/runs/simplify-01.md) |
 | M5 | Preconditioned Find the echo / Find the circuit | DONE | [simplify-02](docs/runs/simplify-02.md) |
 | M6 | Tiered inspector card; inspect and tune in every world | DONE | [simplify-03](docs/runs/simplify-03.md) |
-| M7 | Gate run, merge into `main`, push | NEXT | — |
+| M7 | Gate run, merge into `main`, push | DONE | https://github.com/sag327/counterpoint/pull/2 (merged `7d6da76`, Pages deployed) |
 
 ## M5 · done
 
@@ -24,9 +24,9 @@
 
 The card leads with three key readouts (`KEY_READOUTS` in `inspector-card.js`) and puts the rest in `<details data-section>` sections (more, tune, table) that remember their open state. The card exists in every world: `scene.study` now gates only Echo's Stillness, live curve, runner and Model sliders.
 
-## M7 · next
+## M7 · done
 
-All gates passed at M6. Open a PR from `study-2-simplify` into `main` and merge it (the creator allows it), then confirm the Pages deploy.
+PR #2 merged into `main` at `7d6da76`; the Pages workflow deployed it. The next session starts from `main` and asks the creator what comes next (see follow-ups below and the open items).
 
 ## Possible follow-ups (ask the creator)
 
