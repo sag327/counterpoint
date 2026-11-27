@@ -199,10 +199,10 @@ Each automatic focus keeps `suppressionMs` (initially 0). When the focus is capt
 S \leftarrow \min\big(S_{max},\; S + g\,(T - I)\big) \ \text{(driven capture)}, \qquad S \leftarrow w\,S \ \text{(spontaneous firing)}, \qquad t_{next} = t + T + S
 ```
 
-- With T 800 ms, g 0.06, S\_max 450 ms and w 0.6: 30 driven beats at 500 ms saturate S at 450 ms. The first spontaneous return is 1250 ms after the last paced beat (a corrected recovery time of 450 ms, within the normal range). Later cycles are then 1070, 962, 897 ms: a written-out accelerando back to tempo. A "sick sinus" Unknown study raises S\_max to 2000 ms.
+- With T 800 ms, g 0.06, S\_max 450 ms and w 0.6: 30 driven beats at 500 ms saturate S at 450 ms. The first spontaneous return is 1250 ms after the last paced beat (a corrected recovery time of 450 ms, within the normal range). Later cycles are then 1070, 962, 897.2 ms (exact: 800 + 0.6³ × 450): a written-out accelerando back to tempo. A "sick sinus" Unknown study raises S\_max to 2000 ms.
 - `resetOnCapture: false` keeps v1.0 behavior: a non-reset focus produces the fully compensatory pause. `resetOnCapture: true` produces the non-compensatory pause. Both pauses must appear in the post-PVC fixture.
-- **Autonomic tone (optional).** When `autonomic` is present, the effective sinus cycle is T·(1 + d·sin(2πt/P\_breath)) at scheduling time. Nodal decrement `maxExtra` is multiplied by (1 + d·sin(…)) for `nodal` targets. This is respiratory sinus arrhythmia: phrasing that comes from a modelled breath, never a beat grid. It changes intervals only and creates no attacks. Default is off; the performer control is "Breath".
-- New command `setTone { value: -1..1 }` scales sinus cycle (±20%) and nodal decrement (±50%) prospectively. It emits `parameter_changed` with `parameter: 'tone'`.
+- **Autonomic tone (optional).** When `autonomic` is present, the effective sinus cycle is T·(1 + d·sin(2πt/P\_breath)) at scheduling time. Nodal decrement `maxExtra` is multiplied by (1 + d·sin(…)) for `nodal` targets. This is respiratory sinus arrhythmia: phrasing that comes from a modelled breath, never a beat grid. It changes intervals only and creates no attacks. Default is off; the performer control is "Breath", which sends `setAutonomic { value: {…} | null }` (contract 1.1.0, 11e). The breath phase follows absolute sim time, so toggling never resets it.
+- New command `setTone { value: -1..1 }` scales sinus cycle (±20%) and nodal decrement (±50%) prospectively. Positive is sympathetic: cycle × (1 − 0.2v), decrement × (1 − 0.5v); negative is vagal (11e). It emits `parameter_changed` with `parameter: 'tone'`.
 
 ### D. Electrotonic coupling (modulated parasystole)
 
@@ -225,7 +225,7 @@ No new engine rule is required. The compact AV node is modelled as a short chain
 
 ### F. Lesion formation
 
-New command `ablate { target: linkId, durationMs, completeness: 0..1 }`. Over `durationMs` of simulated time, the engine raises the link's delay in both directions in steps of 250 ms of sim time, following delay × (1 + 3p²) for progress p. At p = completeness, the link is disabled if completeness = 1. If completeness < 1, it is left with a permanent extra delay and an ERP floor on the link.
+New command `ablate { target: linkId, durationMs, completeness: 0..1 }`. Over `durationMs` of simulated time, the engine raises the link's delay in both directions in steps of 250 ms of sim time, following delay × (1 + 3p²) for progress p. At p = completeness, the link is disabled if completeness = 1, and it stays closed until reset (`setLinkEnabled(true)` is rejected). If completeness < 1, it is left with a permanent extra delay. (The earlier "ERP floor on the link" was removed by lead decision in 11e: links have no refractoriness in this model.)
 
 - Each step emits `parameter_changed` (`parameter: 'delayMs'`, `cause: 'lesion'`). The final block emits `link_changed`. A new event `lesion_changed { linkId, progress, completeness }` drives the visual lesion.
 - Musically: a circulating phrase slows over a few laps, then stops at the line. An incomplete line conducts through its gap with a delay, and the phrase returns.
@@ -235,13 +235,14 @@ New command `ablate { target: linkId, durationMs, completeness: 0..1 }`. Over `d
 | Name | Kind | Payload | Emits |
 | --- | --- | --- | --- |
 | `stimulateTrain` | command | `nodeId, startMs, cycleMs, count, label` | One `stimulus_attempted` per pulse, `triggerId` = `<commandId>#<k>` |
-| `cancelTrain` | command | `commandId` of the train | Remaining pulses removed; nothing emitted |
+| `cancelTrain` | command | `trainId` (the train's `commandId`) | Remaining pulses removed; `train_completed { cancelled: true }` with the partial `delivered` |
+| `setAutonomic` | command | `value: { breathPeriodMs, depth, targets } \| null` | `parameter_changed` (`autonomic`) |
 | `setTone` | command | `value` | `parameter_changed` (`tone`) |
 | `ablate` | command | `target, durationMs, completeness` | `parameter_changed`, `lesion_changed`, `link_changed` |
 | `applyAgent` | command | `agent: 'stillness' \| 'slow', doseScale` | `parameter_changed` per affected site (see Maneuvers) |
 | `phase_modulated` | event | see §D |  |
 | `lesion_changed` | event | see §F |  |
-| `train_completed` | event | `commandId, delivered` |  |
+| `train_completed` | event | `commandId, trainId, delivered, count, cancelled` | Once per train, at completion or cancellation |
 
 `setCoupling { couplingId, value }` is the parameter edit for §D. It emits `parameter_changed` with `parameter: 'coupling'`.
 
@@ -263,7 +264,7 @@ New command `ablate { target: linkId, durationMs, completeness: 0..1 }`. Over `d
 - [ ] **v1 regression:** A, B, C and `ring.json` traces unchanged under v1.1 code.
 - [ ] **Restitution:** S1 train at 340 ms gives a stable ERP; at 300 ms ERP alternates, with the sequence matching a closed-form iteration.
 - [ ] **Entry slowing:** an S2 scan in a ring yields a monotonic resetting curve; reentry cycle length varies lap to lap by less than 5 ms after the third lap.
-- [ ] **Overdrive:** 30 pulses at 500 ms into an 800 ms focus give a 1250 ms return, then 1070, 962 and 897 ms (±1 tick).
+- [ ] **Overdrive:** 30 pulses at 500 ms into an 800 ms focus give a 1250 ms return, then 1070, 962 and 897.2 ms (exact).
 - [ ] **Compensatory pauses:** a premature stimulus into a non-reset focus gives a pause of exactly 2× cycle; a reset focus gives cycle + coupling interval.
 - [ ] **Coupling:** a sweep of a from 0 to 0.25 over the Duality cycles reproduces the 2:3 and 3:4 plateaus within the stated ranges.
 - [ ] **Concealed conduction:** a three-site nodal chain paced at a chosen cycle gives a 4:3 Wenckebach pattern with progressive prolongation, computed by hand.
@@ -416,7 +417,7 @@ Every maneuver is a gesture that produces ordinary engine commands, so it replay
 | Rest | Lift for one beat and press again | `R` while pacing | `cancelTrain`, new `stimulateTrain` 2× cycle later | Long–short sequence | Pause / long–short sequence |
 | Stillness | Press and hold the open centre of the canvas for 600 ms | `S` | `applyAgent { agent: 'stillness' }` | Nodal block duration, unmasked rhythm | Adenosine-like transient AV-nodal block |
 | Slow the current | Lab or performer menu | menu | `applyAgent { agent: 'slow' }` | Conduction time per link, cycle change | Class IC-like sodium-channel slowing |
-| Breath | Toggle | `B` | world `autonomic` on/off | RR variability | Respiratory sinus arrhythmia |
+| Breath | Toggle | `B` | `setAutonomic` (world `autonomic` on/off) | RR variability | Respiratory sinus arrhythmia |
 | Draw a line | Swipe across a link | Connection list: "Apply lesion" | `ablate` (each pass adds completeness 0.5) | Lesion progress, gap / complete | Radiofrequency lesion |
 | Listen to each other | Slider (Hemiola only) | Arrow keys | `setCoupling` (parameter edit on `coupling[].amplitude`) | Locking ratio | Electrotonic modulation |
 

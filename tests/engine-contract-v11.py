@@ -35,6 +35,7 @@ def check(evidence_path):
         prior_time = 0
         seen = {}
         live = {}
+        closed = set()
         for seq, event in enumerate(trace['events'], 1):
             event_validator.validate(event)
             kind = event['type']
@@ -54,7 +55,13 @@ def check(evidence_path):
                 assert event['nodeId'] == train['nodeId']
                 assert ticks(event['tMs']) == ticks(train['startMs']) + (int(index) - 1) * ticks(train['cycleMs'])
             elif kind == 'train_completed':
-                assert event['delivered'] == trains[event['commandId']]['count']
+                train = trains[event['commandId']]
+                assert event['trainId'] == event['commandId'] and event['count'] == train['count']
+                pulses = sum(1 for e in seen.values() if e['type'] == 'stimulus_attempted' and e['triggerId'].rsplit('#', 1)[0] == event['trainId'])
+                assert event['delivered'] == pulses, 'delivered counts the pulses actually emitted'
+                assert (event['delivered'] < event['count']) if event['cancelled'] else (event['delivered'] == event['count'])
+                assert event['trainId'] not in closed, 'a train closes at most once'
+                closed.add(event['trainId'])
             elif kind == 'conduction_launched':
                 activation = seen[event['activationId']]
                 assert activation['type'] == 'activation' and activation['nodeId'] == event['fromNodeId']
@@ -80,6 +87,11 @@ def check(evidence_path):
         print(f'{name}: {len(trace["events"])} actual 1.1.0 events verified, {len(live)} transits live at horizon')
     required = {'phase_modulated', 'lesion_changed', 'train_completed', 'parameter_changed', 'link_changed', 'conduction_canceled', 'activation_blocked'}
     assert required <= seen_types, required - seen_types
+    closes = [e for t in evidence['traces'].values() for e in t['events'] if e['type'] == 'train_completed']
+    assert any(e['cancelled'] for e in closes) and any(not e['cancelled'] for e in closes)
+    assert any(e['cancelled'] and e['delivered'] == 0 for e in closes), 'a train cancelled before its first pulse closes with delivered 0'
+    params = {e['parameter'] for t in evidence['traces'].values() for e in t['events'] if e['type'] == 'parameter_changed'}
+    assert {'autonomic', 'protected', 'tone', 'restitution', 'erpMs'} <= params, params
     sweep = {round(row['amplitude'], 4): row['bBeats'] for row in evidence['couplingSweep']}
     assert all(sweep[round(k / 200, 4)] == 280 for k in range(31, 42)), 'Duality locks 2:3 for a in 0.155..0.205'
     assert all(sweep[a] == 315 for a in (0.21, 0.215, 0.22)), 'Duality locks 3:4 for a in 0.21..0.22'
@@ -88,4 +100,4 @@ def check(evidence_path):
 
 
 if __name__ == '__main__':
-    check(sys.argv[1] if len(sys.argv) > 1 else ROOT / 'evidence' / 'engine-v11-01.json')
+    check(sys.argv[1] if len(sys.argv) > 1 else ROOT / 'evidence' / 'engine-v11-02.json')
