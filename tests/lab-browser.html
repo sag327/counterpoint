@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Lab card harness</title><link rel="icon" href="data:,">
+<link rel="stylesheet" href="../src/lab/lab.css">
+<style>
+@font-face { font-family: 'EB Garamond'; font-style: italic; src: url('/fonts/eb-garamond-latin-400-italic.ttf'); }
+@font-face { font-family: 'Inter'; font-weight: 300; src: url('/fonts/inter-latin-300-normal.ttf'); }
+body { margin: 0; padding: 24px; background: #070B12; display: flex; gap: 24px; align-items: flex-start; }
+</style></head>
+<body><div id="site"></div><div id="link"></div>
+<script type="module">
+// Test harness only: a live Echo v1.1 run, one site card and one link card.
+import { Engine } from '../src/engine/index.js';
+import { createInspectorCard } from '../src/lab/inspector-card.js';
+import { echoV11World } from './lab-worlds.js';
+const world = echoV11World();
+const engine = new Engine({ processingBudget: 1e6 });
+engine.reset(world, 'harness');
+const log = [];
+let t = 0;
+for (let k = 0; k < 8; k++) engine.enqueue({ commandId: `S1#${k + 1}`, runId: 'harness', type: 'stimulate', nodeId: 'CSp', tMs: 200 + 600 * k });
+engine.enqueue({ commandId: 'S2', runId: 'harness', type: 'stimulate', nodeId: 'CSp', tMs: 4650 });
+const events = [];
+const enqueue = body => { const c = { ...body, commandId: `edit${log.length + 1}`, runId: 'harness', tMs: t + 1 }; engine.enqueue(c); log.push(c); };
+const labels = { FP: 'fast pathway', SL: 'slow pathway' };
+const site = createInspectorCard(document.getElementById('site'), { world, enqueue, labels });
+const link = createInspectorCard(document.getElementById('link'), { world, enqueue, labels });
+site.open({ kind: 'node', id: 'FP' });
+link.open({ kind: 'link', id: 'SL', direction: 'ab' });
+window.lab = {
+  log, events,
+  advance(to) { t = to; events.push(...engine.advanceTo(to)); for (const card of [site, link]) card.update({ snapshot: engine.readAt(to), events, tMs: to }); },
+};
+window.lab.advance(5200);
+window.ready = true;
+</script></body></html>
