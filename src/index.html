@@ -46,12 +46,12 @@
       </div>
       <div class="settings">
         <label>Playback speed <select id="dilation" aria-describedby="dilation-hint"></select></label><span id="dilation-hint" class="visually-hidden">Fraction of real time. Slower playback spreads the rhythm out.</span>
-        <label>Palette <select id="palette"><option value="chamber">Chamber</option><option value="atmosphere">Atmosphere</option><option value="minimalism">Minimalism</option></select></label>
+        <label id="palette-control">Palette <select id="palette"><option value="chamber">Chamber</option><option value="atmosphere">Atmosphere</option><option value="minimalism">Minimalism</option></select></label>
         <label id="voicing-control" hidden>Chamber voicing <select id="voicing"><option value="balanced">Balanced</option><option value="open">Open</option><option value="suspended">Suspended</option></select></label>
       </div>
       <details id="connections">
         <summary>Inspect a site or connection</summary>
-        <div id="inspect-list" class="inspect-list" hidden>
+        <div id="inspect-list" class="inspect-list">
           <div id="inspect-sites" class="cuts" role="group" aria-label="Inspect a site"></div>
           <div id="inspect-links" class="cuts" role="group" aria-label="Inspect a connection"></div>
         </div>

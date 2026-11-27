@@ -16,6 +16,7 @@
 | M6 | Tiered inspector card; inspect and tune in every world | DONE | [simplify-03](docs/runs/simplify-03.md) |
 | M9 | Stillness removed; one-press Find the echo / Find the arrhythmia (nominal model, S2 252 / 282 ms, playback from S2 − 100 ms) | DONE | [simplify-05](docs/runs/simplify-05.md) |
 | M8 | Laboratory hidden (`SHOW_LABORATORY`); card curves drop pre-edit points; larger dots | DONE | [simplify-04](docs/runs/simplify-04.md) |
+| E1 | Circulation-only shareable edition at `/circulation/` | DONE | [edition-01](docs/runs/edition-01.md) |
 | M7 | Gate run, merge into `main`, push | DONE | https://github.com/sag327/counterpoint/pull/2 (merged `7d6da76`, Pages deployed) |
 
 ## M5 · done
@@ -37,6 +38,10 @@ The Laboratory is hidden behind `SHOW_LABORATORY = false` (`src/ui/studies.js`),
 ## M9 · done
 
 Stillness is gone from the app; the engine keeps `applyAgent` (contract). The guided protocols in `src/worlds/echo.js` (`ECHO_S2_MS`, `ARRHYTHMIA_S2_MS`, `GUIDED_LEAD_MS`) start from the nominal model (no carried edits) and present from 100 ms before the S2. Windows: one echo for S2 240–264 ms; sustained reentry for 266–298 ms (`tests/studies-echo.test.js`).
+
+## E1 · done
+
+`src/ui/edition.js` + `scripts/build.mjs --edition circulation` → `dist/counterpoint-circulation.html`, deployed to `/circulation/` by `build-site.mjs` with no inbound links. Add an edition by adding an entry to `EDITIONS` and the title map in `build.mjs`.
 
 ## Possible follow-ups (ask the creator)
 
