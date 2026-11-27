@@ -10,6 +10,8 @@ import { SCENES, SHOW_MUSIC_LABELS, VIEWS, carryCommands, formatFragment, glossa
 import { createViews } from './views.js';
 import { createStudyLab, protocolWorkerUrl } from './lab-panel.js';
 import { isDraft, renderNotes } from './notes.js';
+import { createLiveCurve } from '../lab/live-curve.js';
+import { controlTargets } from '../lab/model-controls.js';
 import ECHO_NOTES from '../content/notes/echo.md' with { type: 'text' };
 
 const $ = id => document.getElementById(id);
@@ -64,6 +66,8 @@ let stillnessDoses = [];
 let guidedNext = { 'find-echo': 0, 'find-chord': 0 };
 let guidedLast = null;
 let workerUrl;
+// Live S1–S2 curve: premature beats of this session, kept across runs, cleared on a world switch.
+const liveCurve = createLiveCurve();
 
 function retainEvents(events) {
   for (const event of events) {
@@ -105,6 +109,8 @@ const transport = createTransport({
   },
   onFault(error) { retainEvents(error.events ?? []); },
   onReset(snapshot) {
+    // Keep the finished run's premature beats before its events are dropped.
+    if (scene?.study && lastFrame) liveCurve.ingest(allEvents.filter(event => event.runId === lastFrame.runId), lastFrame.presentedMs);
     allEvents = [];
     discardedEvents = 0;
     captureTotal = 0;
@@ -246,6 +252,8 @@ function chooseWorld(id) {
   $('lab-study').hidden = !settings.study;
   resize();
   startRun('quiet', selectedNodeId, couplingMs, autoStart);
+  // After the reset, which may have kept the old world's last run, start the curve afresh.
+  liveCurve.clear();
   updateFragment();
 }
 
@@ -314,9 +322,10 @@ function updateCard(frame, now) {
   if (now - lastCardUpdate < (open ? 100 : 250)) return;
   lastCardUpdate = now;
   const events = visibleEvents(frame);
+  liveCurve.ingest(events, frame.presentedMs);
   card.update({ snapshot: frame.snapshot, events, tMs: frame.presentedMs });
   renderer.markModified(card.modified());
-  if (studyLab && labOpen()) studyLab.update({ events, snapshot: frame.snapshot, tMs: frame.presentedMs, state: card.state });
+  if (studyLab && labOpen()) studyLab.update({ events, snapshot: frame.snapshot, tMs: frame.presentedMs, state: card.state, curvePoints: liveCurve.points });
 }
 
 function setupStudyLab() {
@@ -329,7 +338,24 @@ function setupStudyLab() {
 function ensureStudyLab() {
   if (studyLab) return;
   workerUrl ??= protocolWorkerUrl(document);
-  studyLab = createStudyLab($('lab-study'), { workerUrl, onDownload: download, onNotes: openNotes });
+  studyLab = createStudyLab($('lab-study'), {
+    workerUrl, onDownload: download, onNotes: openNotes,
+    getModelState: () => card?.state ?? null,
+    // Model controls go through the card's logged commands (replayable, carried across runs).
+    onModelEdit(target, param, value) {
+      if (!card || transport.status !== 'running') return false;
+      card.edit(target, param, value);
+      inspectionDirty = true;
+      lastCardUpdate = -Infinity;
+      return true;
+    },
+    onModelRestore(controls) {
+      if (!card || transport.status !== 'running') return false;
+      for (const target of controlTargets(controls)) card.restore(target);
+      lastCardUpdate = -Infinity;
+      return true;
+    },
+  });
   setupStudyLab();
 }
 
@@ -883,5 +909,6 @@ window.counterpoint = {
   get studyLab() { return studyLab; },
   get views() { return views; },
   get musicTable() { return musicTable; },
+  get liveCurve() { return liveCurve.points; },
   stillnessLevel: () => (lastFrame ? stillnessLevel(lastFrame) : 0),
 };

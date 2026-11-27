@@ -89,3 +89,14 @@ dialog#notes-sheet::backdrop{background:#04070acc}
   #stage.alt-view #status{position:static;grid-row:1;padding:6px 12% 0}
   #stage.alt-view #view-canvas{position:static;grid-row:2;min-height:0}
 }
+
+/* Lab · Model controls (revise M2) */
+.study-lab-model { display: grid; gap: 0.75rem; margin: 0.5rem 0; }
+.study-lab-model-row { display: grid; grid-template-columns: minmax(10rem, 1fr) minmax(8rem, 2fr) 4.5rem; align-items: center; gap: 0.25rem 0.75rem; }
+.study-lab-model-row input[type=range] { width: 100%; min-height: 44px; }
+.study-lab-model-value { font-variant-numeric: tabular-nums; text-align: right; }
+.study-lab-model-row .study-lab-hint { grid-column: 1 / -1; margin: 0; }
+@media (max-width: 560px) {
+  .study-lab-model-row { grid-template-columns: 1fr 4.5rem; }
+  .study-lab-model-row input[type=range] { grid-column: 1 / -1; grid-row: 2; }
+}

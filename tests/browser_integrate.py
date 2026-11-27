@@ -5,6 +5,7 @@ import argparse
 import csv
 from pathlib import Path
 import shutil
+import time
 
 from playwright.sync_api import expect, sync_playwright
 
@@ -170,6 +171,37 @@ def check_worker(page, *, phone, output, capture):
     expect(notes).to_be_hidden()
 
 
+def check_live_curve_and_model(page, *, phone, capture):
+    """Revise M2: the S1–S2 curve builds from the session; Model sliders log commands."""
+    runner = page.locator("#lab-study")
+    # A fresh guided run (third press: S2 380 ms at 4780 ms) becomes a point once
+    # playback passes it by the settle window. Resume after a headless late wake.
+    page.locator("#find-echo").evaluate("node => node.click()")
+    deadline = time.monotonic() + 90
+    while page.evaluate("counterpoint.liveCurve.length") < 1:
+        assert time.monotonic() < deadline, page.evaluate("counterpoint.transport.state()")
+        if page.evaluate("counterpoint.transport.status") == "paused":
+            page.locator("#pause").evaluate("node => node.click()")
+        advance_phone_clock(page, phone, 2000)
+        page.wait_for_timeout(250)
+    point = page.evaluate("counterpoint.liveCurve.at(-1)")
+    assert point["couplingMs"] == 380 and point["driveCycleMs"] == 600, point
+    live = runner.locator("[data-control=curves] figure").first
+    expect(live.locator("figcaption")).to_contain_text("premature beat", timeout=5000)
+    slider = runner.locator("#model-fp-erp")
+    expect(slider).to_have_value("304")
+    slider.evaluate("node => { node.value = '340'; node.dispatchEvent(new Event('input')); node.dispatchEvent(new Event('change')); }")
+    page.wait_for_function("""counterpoint.transport.commandLog()
+        .some(c => c.type === 'setRestitution' && c.nodeId === 'FP' && c.erpMaxMs === 340)""")
+    expect(runner.locator("[data-read=model-status]")).to_contain_text("Fast pathway ERP: 340 ms")
+    runner.get_by_role("button", name="Study defaults").evaluate("node => node.click()")
+    page.wait_for_function("""counterpoint.transport.commandLog()
+        .some(c => c.type === 'setRestitution' && c.nodeId === 'FP' && c.erpMaxMs === 304)""")
+    expect(slider).to_have_value("304")
+    runner.locator("[data-control=model-panel]").evaluate("node => node.scrollIntoView({ block: 'start' })")
+    capture("model")
+
+
 def smoke(browser, output, *, phone):
     width, height = (390, 844) if phone else (1280, 900)
     context = browser.new_context(
@@ -225,9 +257,10 @@ def smoke(browser, output, *, phone):
             .some(command => command.type === 'applyAgent' && command.agent === 'stillness' && command.doseScale === 1)""")
         page.wait_for_function("counterpoint.stillnessLevel() > 0")
         check_worker(page, phone=phone, output=output, capture=capture)
+        check_live_curve_and_model(page, phone=phone, capture=capture)
         assert not errors, errors
         check_network(requests, ARTIFACT.as_uri())
-        print(f"PASS Echo {width}x{height} Chromium file:// offline, guided run, two views, "
+        print(f"PASS Echo {width}x{height} Chromium file:// offline, guided run, two views, live S1–S2 curve, model sliders, "
               "inspector by hold and keyboard, Stillness, S1–S2 Web Worker and CSV, liner notes", flush=True)
     except Exception:
         diagnostics = page.evaluate("""window.counterpoint && ({

@@ -14,6 +14,8 @@ import { protocolCsv } from '../lab/protocols.js';
 import { PLOT_CATALOG, drawPlot, tableHtml } from '../lab/plots.js';
 import { cardModel } from '../lab/inspector-card.js';
 import { activationTimes, intervals } from '../lab/measure.js';
+import { liveCurveModel } from '../lab/live-curve.js';
+import { controlsFor } from '../lab/model-controls.js';
 
 export function protocolWorkerUrl(doc = globalThis.document) {
   const source = doc?.getElementById?.('protocol-worker-source')?.textContent ?? '';
@@ -71,7 +73,7 @@ function sizeAndDraw(canvas, model) {
   drawPlot(ctx, model, { x: 0, y: 0, width, height });
 }
 
-export function createStudyLab(container, { onDownload, onNotes, workerUrl = null, document: doc = container.ownerDocument } = {}) {
+export function createStudyLab(container, { onDownload, onNotes, onModelEdit = null, onModelRestore = null, getModelState = null, workerUrl = null, document: doc = container.ownerDocument } = {}) {
   const runner = createProtocolRunner({ workerUrl, workerType: 'classic' });
   let scene = null;
   let world = null;
@@ -98,8 +100,25 @@ export function createStudyLab(container, { onDownload, onNotes, workerUrl = nul
       <h3 id="study-lab-title"></h3>
       <p class="study-lab-mechanism" data-read="mechanism"></p>
       <p class="study-lab-guided" data-read="guided" aria-live="polite"></p>
-      <p class="study-lab-model-note">Model note: a lumped-element model. Sites are a graph, not a continuum; each site has one ERP law and there are no ionic currents. Electrograms on Staves are synthetic.</p>
+      <p class="study-lab-model-note">Model note: a lumped-element model. Sites are a graph, not a continuum; each site has one ERP law and there are no ionic currents.</p>
       <button type="button" data-control="notes">Read the liner notes (draft)</button>
+    </section>
+    <section class="study-lab-panel" aria-labelledby="study-model-title" data-control="model-panel">
+      <h3 id="study-model-title">Model</h3>
+      <p class="study-lab-hint">High-level parameters of this study. Each change is a logged command at the next boundary, so it replays and carries into the next run. Sites and links that differ from the study are ringed on the canvas.</p>
+      <div class="study-lab-model" data-control="model"></div>
+      <div class="study-lab-actions"><button type="button" data-control="model-restore">Study defaults</button></div>
+      <p class="study-lab-status" data-read="model-status" aria-live="polite"></p>
+    </section>
+    <section class="study-lab-panel" aria-labelledby="study-curves-title">
+      <h3 id="study-curves-title">Live curves</h3>
+      <p class="study-lab-hint">The first curve grows with every premature beat you deliver: run Find the echo, or touch the septal atrium early. Line = model law, dots = this performance's engine events. Press and hold a site or connection on the canvas to edit it.</p>
+      <div class="study-lab-curve-controls">
+        <label class="study-lab-field">Site <select data-control="curve-site"></select></label>
+        <label class="study-lab-field">Link <select data-control="curve-link"></select></label>
+        <label class="study-lab-field">Return plot <select data-control="return-site"></select></label>
+      </div>
+      <div class="study-lab-plots" data-control="curves"></div>
     </section>
     <section class="study-lab-panel" aria-labelledby="study-runner-title">
       <h3 id="study-runner-title">Protocol runner</h3>
@@ -114,16 +133,6 @@ export function createStudyLab(container, { onDownload, onNotes, workerUrl = nul
       <progress data-control="progress" max="1" value="0" aria-label="Protocol progress"></progress>
       <p class="study-lab-status" data-read="status" aria-live="polite"></p>
       <div class="study-lab-plots" data-control="results"></div>
-    </section>
-    <section class="study-lab-panel" aria-labelledby="study-curves-title">
-      <h3 id="study-curves-title">Live curves</h3>
-      <p class="study-lab-hint">Line = model law, dots = this performance's engine events. Press and hold a site or connection on the canvas to edit it.</p>
-      <div class="study-lab-curve-controls">
-        <label class="study-lab-field">Site <select data-control="curve-site"></select></label>
-        <label class="study-lab-field">Link <select data-control="curve-link"></select></label>
-        <label class="study-lab-field">Return plot <select data-control="return-site"></select></label>
-      </div>
-      <div class="study-lab-plots" data-control="curves"></div>
     </section>
     <section class="study-lab-panel" aria-labelledby="study-words-title">
       <h3 id="study-words-title">Words in this study</h3>
@@ -244,6 +253,45 @@ export function createStudyLab(container, { onDownload, onNotes, workerUrl = nul
     }
   }
 
+  // Model controls: sliders for the study's high-level parameters.
+  let modelInputs = [];
+  function buildModelControls() {
+    const controls = scene ? controlsFor(scene.id) : [];
+    control['model-panel'].hidden = controls.length === 0;
+    modelInputs = controls.map(spec => {
+      const id = `model-${spec.id}`;
+      const row = el('div', { className: 'study-lab-model-row' });
+      const label = el('label', { for: id }, spec.label);
+      const input = el('input', { id, type: 'range', min: String(spec.min), max: String(spec.max), step: String(spec.step), 'aria-describedby': `${id}-hint` });
+      const value = el('output', { for: id, className: 'study-lab-model-value' }, '—');
+      const hint = el('p', { id: `${id}-hint`, className: 'study-lab-hint' }, spec.hint);
+      input.oninput = () => { value.textContent = `${input.value} ms`; };
+      input.onchange = () => {
+        const ok = onModelEdit?.(spec.target, spec.param, Number(input.value));
+        read['model-status'].textContent = ok === false ? 'Resume to change the model.' : `${spec.label}: ${input.value} ms from the next boundary.`;
+        syncModel(true);
+      };
+      row.append(label, input, value, hint);
+      return { spec, input, value, row };
+    });
+    control.model.replaceChildren(...modelInputs.map(item => item.row));
+    read['model-status'].textContent = '';
+    syncModel(true);
+  }
+
+  function syncModel(force = false) {
+    const state = getModelState?.() ?? live.state;
+    if (!state) return;
+    for (const { spec, input, value } of modelInputs) {
+      if (!force && doc.activeElement === input) continue;
+      const current = spec.read(state);
+      if (current === null) continue;
+      if (input.value !== String(current)) input.value = String(current);
+      const text = `${current} ms`;
+      if (value.textContent !== text) value.textContent = text;
+    }
+  }
+
   function drawLive(force = false) {
     if (!scene || !live.state || container.closest?.('[hidden]')) return;
     const now = globalThis.performance?.now?.() ?? Date.now();
@@ -255,6 +303,8 @@ export function createStudyLab(container, { onDownload, onNotes, workerUrl = nul
     const link = world.links.find(entry => entry.id === linkId);
     const direction = link.ab.enabled ? 'ab' : 'ba';
     const models = [
+      // Built while pacing (creator decision 2026-11-27): every premature beat of this session.
+      liveCurveModel(live.curvePoints ?? [], { buildConduction: PLOT_CATALOG.s1s2Conduction.build, atriumLabel: 'septal atrium', outputLabel: 'His' }),
       cardModel(live.state, { kind: 'node', id: site }, { events: live.events, snapshot: live.snapshot, tMs: live.tMs, labels, compact: false }),
       cardModel(live.state, { kind: 'link', id: linkId, direction, from: direction === 'ab' ? link.a : link.b }, { events: live.events, snapshot: live.snapshot, tMs: live.tMs, labels, compact: false }),
       PLOT_CATALOG.returnPlot.build({ intervals: intervals(activationTimes(live.events, control['return-site'].value)), siteLabel: labels[control['return-site'].value] ?? control['return-site'].value }),
@@ -284,6 +334,11 @@ export function createStudyLab(container, { onDownload, onNotes, workerUrl = nul
   };
   control.notes.onclick = () => onNotes?.();
   for (const id of ['curve-site', 'curve-link', 'return-site']) control[id].onchange = () => drawLive(true);
+  control['model-restore'].onclick = () => {
+    const ok = onModelRestore?.(controlsFor(scene?.id ?? ''));
+    read['model-status'].textContent = ok === false ? 'Resume to change the model.' : 'Study defaults restored from the next boundary.';
+    syncModel(true);
+  };
 
   return {
     get runnerMode() { return runner.mode; },
@@ -311,6 +366,7 @@ export function createStudyLab(container, { onDownload, onNotes, workerUrl = nul
       control['return-site'].replaceChildren(...world.nodes.filter(node => node.audible !== false).map(node => option(node.id, `${labels[node.id] ?? node.id} (${node.id})`)));
       control['return-site'].value = world.nodes.some(node => node.id === 'V') ? 'V' : world.nodes[0].id;
       buildFields();
+      buildModelControls();
     },
     setGlossary(entries, studyId) {
       control.glossary.closest('section').hidden = entries.length === 0;
@@ -325,6 +381,7 @@ export function createStudyLab(container, { onDownload, onNotes, workerUrl = nul
     setGuided(text) { read.guided.textContent = text; },
     update(next) {
       live = next;
+      syncModel();
       drawLive();
     },
     redraw() {

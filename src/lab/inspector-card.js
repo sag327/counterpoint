@@ -594,6 +594,17 @@ export function createInspectorCard(container, {
     },
     get target() { return target; },
     get state() { return state; },
+    // Programmatic edits for the Lab's model controls: the same logged commands
+    // as the card's handles, so they replay and carry across runs.
+    edit(editTarget, param, value) {
+      const body = editCommand(state, editTarget, param, value);
+      if (body === null) return false;
+      send(body);
+      return true;
+    },
+    restore(editTarget) {
+      for (const body of defaultCommands(world, state, editTarget)) send(body);
+    },
     modified: () => modifiedElements(world, state),
     element: root,
   };

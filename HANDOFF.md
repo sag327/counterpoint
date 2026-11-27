@@ -11,16 +11,21 @@
 | # | Milestone | State | Receipt |
 |---|---|---|---|
 | M1 | Creator revisions: no musical labels, Staves hidden, Duality withdrawn, playback 1/4 to 1/12 speed, EP-relative readouts | DONE | [revise-01](docs/runs/revise-01.md) |
-| M2 | Live curves while pacing (the AH jump curve builds from the running performance) and high-level model controls | NEXT | — |
-| M3 | Browser verification, STATUS update, PR to the creator | TODO | — |
+| M2 | Live S1–S2 curve built while pacing; Lab Model sliders (FP/SP ERP, SL conduction and decrement) | DONE | [revise-02](docs/runs/revise-02.md) |
+| M3 | Review candidate: full gate run, PR to the creator | NEXT | — |
 
-## M2 plan (next agent starts here)
+## M3 plan (next agent starts here)
 
-1. **Live jump curve.** In `src/ui/lab-panel.js` (Live curves), add an "S1–S2 from this performance" plot. Build it from the retained events with `src/lab/measure.js`. For each S2 stimulus at CSp (`stimulus_attempted`, `source: 'stimulus'`, commandId `S2`), take the coupling interval A1–A2 at CSp and the resulting A2–H2. Accumulate points across guided runs, because each Find the echo press is a fresh run, so the curve grows as the player steps S2 earlier. The store lives in `app.js` and survives `startRun` resets, but a world switch clears it. Draw it with the existing `plots.js` S1–S2 renderer so the jump annotation and data table come for free.
-2. **Also accept performer pacing.** Any `stimulate` command at an atrial site during steady drive counts too. Take the coupling interval from the previous CSp activation. EP-relative only, never cumulative time.
-3. **High-level controls.** A small "Model" group in the Lab with sliders for fast pathway ERP (FP `erpMaxMs`), slow pathway ERP (SP), slow pathway conduction (SL delay) and nodal decrement. Each slider maps to an existing logged command (`setRestitution`, `setDirectionDelay` or `setDecrement`) through `card`'s enqueue path, so edits replay and carry across runs (`carryCommands`). Add a "Study default" reset.
-4. **Tests.** A unit test that feeds a scripted sequence of guided runs into the store and checks the points match `runProtocolSync` S1–S2 rows for the same S2 values. Also a replay test for slider commands.
-5. Update this file and write `docs/runs/revise-02.md`. Then commit and push.
+1. Run the full gate set: `npm test`, `npm run check:contract`, `npm run build`, `npm run build:site`, `node tests/host-integration.mjs`, `node tests/music-offline.js` and `tests/browser_integrate.py`. Rerun the browser suite once if the press-and-hold inspector step flakes (a known headless late-wake timing issue).
+2. Open a PR from `study-2-revise` into `study-2-integrate`, or into `main` if the creator wants v0.2 released. Summarize M1 and M2 and link the receipts. Do not touch `RELEASE.sha256` or tag a release: the release gate belongs to the creator.
+3. Then pick up the next spec work with the creator: v1.1 versions of Conduction (Prelude mechanics: overdrive suppression, Hold a tempo) and Circulation, the introductory pair, with live curves and model sliders like Echo's.
+
+## Key code (M1–M2)
+
+- `src/ui/studies.js`: `SHOW_MUSIC_LABELS`, `VIEWS` / `ALL_VIEWS`, `WITHDRAWN`, `PLAIN_SUBTITLES`.
+- `src/ui/preferences.js`: `DILATIONS`, `dilationLabel`. `src/runtime/transport.js`: `MAX_DILATION = 12`.
+- `src/lab/live-curve.js`: live S1–S2 store and plot. The store lives in `app.js` as `liveCurve`, exposed as `counterpoint.liveCurve`.
+- `src/lab/model-controls.js`: per-study slider specs. `inspector-card.js` gains `edit()` and `restore()`.
 
 ## Open items carried from v0.2 (creator only)
 
