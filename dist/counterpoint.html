@@ -441,12 +441,12 @@ dialog#notes-sheet::backdrop{background:#04070acc}
       </div>
       <div class="settings">
         <label>Playback speed <select id="dilation" aria-describedby="dilation-hint"></select></label><span id="dilation-hint" class="visually-hidden">Fraction of real time. Slower playback spreads the rhythm out.</span>
-        <label>Palette <select id="palette"><option value="chamber">Chamber</option><option value="atmosphere">Atmosphere</option><option value="minimalism">Minimalism</option></select></label>
+        <label id="palette-control">Palette <select id="palette"><option value="chamber">Chamber</option><option value="atmosphere">Atmosphere</option><option value="minimalism">Minimalism</option></select></label>
         <label id="voicing-control" hidden>Chamber voicing <select id="voicing"><option value="balanced">Balanced</option><option value="open">Open</option><option value="suspended">Suspended</option></select></label>
       </div>
       <details id="connections">
         <summary>Inspect a site or connection</summary>
-        <div id="inspect-list" class="inspect-list" hidden>
+        <div id="inspect-list" class="inspect-list">
           <div id="inspect-sites" class="cuts" role="group" aria-label="Inspect a site"></div>
           <div id="inspect-links" class="cuts" role="group" aria-label="Inspect a connection"></div>
         </div>
@@ -9434,9 +9434,13 @@ const PREFERENCES_KEY = 'counterpoint.preferences.v1';
 const DILATIONS = Object.freeze([4, 5, 6, 8, 10, 12]);
 const DEFAULTS = { dilation: 4, palette: 'chamber', voicing: 'balanced', volume: 0.3, muted: false };
 
-function readPreferences(palettes, voicings) {
+// Each edition keeps its own preferences (suffix), so a preview never changes the full site's.
+let storageKey = PREFERENCES_KEY;
+
+function readPreferences(palettes, voicings, suffix = '') {
+  storageKey = PREFERENCES_KEY + suffix;
   let stored;
-  try { stored = JSON.parse(window.localStorage.getItem(PREFERENCES_KEY)); }
+  try { stored = JSON.parse(window.localStorage.getItem(storageKey)); }
   catch { return { ...DEFAULTS }; }
   if (!stored || typeof stored !== 'object') return { ...DEFAULTS };
   return {
@@ -9449,7 +9453,7 @@ function readPreferences(palettes, voicings) {
 }
 
 function savePreferences(preferences) {
-  try { window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences)); }
+  try { window.localStorage.setItem(storageKey, JSON.stringify(preferences)); }
   catch { /* Storage may be unavailable when a browser opens the local HTML. */ }
 }
 
@@ -9459,6 +9463,32 @@ function dilationLabel(dilation) {
 }
 
 return {DILATIONS,readPreferences,savePreferences,dilationLabel};
+})();
+__modules["src/ui/edition.js"] = (()=>{
+// Build editions. `node scripts/build.mjs --edition <id>` replaces EDITION_ID below.
+//   full         every world, both views, palette and voicing menus (dist/counterpoint.html)
+//   circulation  a shareable preview with Circulation alone (creator request 2026-11-27):
+//                no other worlds or links to them, Network view only, and the sound
+//                fixed to Chamber with the balanced voicing (dist/counterpoint-circulation.html)
+const EDITION_ID = "full";
+
+const EDITIONS = {
+  full: { id: 'full', worlds: null, views: null, sound: null, title: null, storageSuffix: '' },
+  circulation: {
+    id: 'circulation',
+    worlds: ['circulation'],
+    views: ['network'],
+    sound: { palette: 'chamber', voicing: 'balanced' },
+    title: 'Counterpoint · Circulation',
+    storageSuffix: '.circulation',
+  },
+};
+
+const EDITIONS_LIST = Object.freeze(Object.keys(EDITIONS));
+const EDITION = Object.freeze(EDITIONS[EDITION_ID]);
+const editionAllows = (list, value) => list === null || list.includes(value);
+
+return {EDITION_ID,EDITIONS_LIST,EDITION,editionAllows};
 })();
 __modules["src/worlds/circulation.js"] = (()=>{
 const nodeErps = [180, 300, 220, 220, 220, 220, 220, 200];
@@ -12433,6 +12463,7 @@ const { mapActivation, createAudioMixer, describeNodeMusic, musicTableFor, PALET
 const { createInspector } = __modules["src/ui/inspector.js"];
 const { createInspectorCard } = __modules["src/lab/inspector-card.js"];
 const { DILATIONS, dilationLabel, readPreferences, savePreferences } = __modules["src/ui/preferences.js"];
+const { EDITION, editionAllows } = __modules["src/ui/edition.js"];
 const { SCENES, SHOW_LABORATORY, SHOW_MUSIC_LABELS, VIEWS, carryCommands, formatFragment, glossaryFor, parseFragment, worldFromState } = __modules["src/ui/studies.js"];
 const { createViews } = __modules["src/ui/views.js"];
 const { createStudyLab, protocolWorkerUrl } = __modules["src/ui/lab-panel.js"];
@@ -12445,7 +12476,9 @@ const $ = id => document.getElementById(id);
 const WORLDS = SCENES;
 const NOTES = { echo: ECHO_NOTES };
 
-const preferences = readPreferences(PALETTES, CHAMBER_VOICINGS);
+const preferences = readPreferences(PALETTES, CHAMBER_VOICINGS, EDITION.storageSuffix);
+// An edition can fix the sound (the Circulation edition: Chamber, balanced voicing).
+if (EDITION.sound) Object.assign(preferences, EDITION.sound);
 const engine = new Engine();
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
 const EVENT_LIMIT = 4096;
@@ -12454,7 +12487,7 @@ const GUIDE_COUPLING_MS = 240;
 const DRAG_THRESHOLD = 10;
 const HOLD_SITE_MS = 500;
 const initialFragment = parseFragment(location.hash);
-let worldId = initialFragment.study ?? 'conduction';
+let worldId = EDITION.worlds ? EDITION.worlds[0] : (initialFragment.study ?? 'conduction');
 let scene = WORLDS[worldId];
 let world;
 let renderer;
@@ -12465,7 +12498,7 @@ let musicTable = null;
 let card;
 let studyLab;
 let views;
-let view = initialFragment.view ?? 'network';
+let view = EDITION.views ? EDITION.views[0] : (initialFragment.view ?? 'network');
 let started = false;
 let beginning = false;
 let visibilityChanges = 0;
@@ -12630,6 +12663,8 @@ function updateGuidedReadout() {
 }
 
 function updateFragment() {
+  // A single-world edition has nothing to put in the address.
+  if (EDITION.worlds) return;
   const fragment = formatFragment({ study: worldId === 'conduction' ? null : worldId, view });
   if (location.hash !== fragment) history.replaceState(null, '', fragment || `${location.pathname}${location.search}`);
 }
@@ -12639,7 +12674,7 @@ function labOpen() {
 }
 
 function chooseWorld(id) {
-  if (!Object.hasOwn(WORLDS, id) || (id === worldId && selectedNodeId)) return;
+  if (!Object.hasOwn(WORLDS, id) || !editionAllows(EDITION.worlds, id) || (id === worldId && selectedNodeId)) return;
   const autoStart = transport.status === 'running';
   const settings = WORLDS[id];
   const nextWorld = settings.create();
@@ -12777,7 +12812,8 @@ function updateButtons() {
 }
 
 function updatePaletteControls() {
-  $('voicing-control').hidden = worldId !== 'circulation' || preferences.palette !== 'chamber';
+  $('palette-control').hidden = Boolean(EDITION.sound);
+  $('voicing-control').hidden = Boolean(EDITION.sound) || worldId !== 'circulation' || preferences.palette !== 'chamber';
 }
 
 async function begin(silent) {
@@ -12898,7 +12934,7 @@ function resize() {
 }
 
 function setView(next) {
-  if (!VIEWS.includes(next)) return;
+  if (!VIEWS.includes(next) || !editionAllows(EDITION.views, next)) return;
   view = next;
   views.view = next;
   for (const button of $('views').querySelectorAll('button')) button.setAttribute('aria-pressed', String(button.dataset.view === view));
@@ -13084,6 +13120,12 @@ $('find-arrhythmia').onclick = () => startRun('find-arrhythmia');
 $('reset').onclick = () => startRun();
 $('notes-close').onclick = () => $('notes-sheet').close?.() ?? $('notes-sheet').removeAttribute('open');
 $('notes-sheet').addEventListener('click', event => { if (event.target === $('notes-sheet')) $('notes-sheet').close(); });
+// An edition shows only its worlds and views; with one of either, the menu goes too.
+if (EDITION.worlds) {
+  $('worlds').replaceChildren(...[...$('worlds').children].filter(button => EDITION.worlds.includes(button.dataset.world)));
+  $('worlds').hidden = EDITION.worlds.length < 2;
+}
+if (EDITION.views) $('views').hidden = EDITION.views.length < 2;
 for (const button of $('worlds').children) button.onclick = () => chooseWorld(button.dataset.world);
 for (const button of $('views').querySelectorAll('button')) button.onclick = () => setView(button.dataset.view);
 $('dilation').replaceChildren(...DILATIONS.map(value => {

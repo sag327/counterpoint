@@ -76,3 +76,7 @@ The Laboratory does not earn its place yet, so it is hidden behind `SHOW_LABORAT
 ## 2026-11-27 · no Stillness; guided runs show the behaviour in one press
 
 Stillness is removed from every world; the engine keeps the contract command, unused. Find the echo and Find the arrhythmia (formerly Find the circuit) now reset the model to nominal and precondition it with the drive already given. The next impulse, a single S2 in the middle of its window (252 ms for one echo, 282 ms for sustained reentry), produces the behaviour at once, with no stepping between presses.
+
+## 2026-11-27 · Circulation-only shareable edition
+
+The creator wants to share Circulation before the other models are ready. A build-time edition (`src/ui/edition.js`) produces a separate page with Circulation alone, the Network view only (no Ladder) and the sound fixed to Chamber / balanced, with no palette controls. It is published at `/circulation/` and nothing links to it. The full app is unchanged; one source serves both.

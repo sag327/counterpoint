@@ -3,9 +3,13 @@ const PREFERENCES_KEY = 'counterpoint.preferences.v1';
 export const DILATIONS = Object.freeze([4, 5, 6, 8, 10, 12]);
 const DEFAULTS = { dilation: 4, palette: 'chamber', voicing: 'balanced', volume: 0.3, muted: false };
 
-export function readPreferences(palettes, voicings) {
+// Each edition keeps its own preferences (suffix), so a preview never changes the full site's.
+let storageKey = PREFERENCES_KEY;
+
+export function readPreferences(palettes, voicings, suffix = '') {
+  storageKey = PREFERENCES_KEY + suffix;
   let stored;
-  try { stored = JSON.parse(window.localStorage.getItem(PREFERENCES_KEY)); }
+  try { stored = JSON.parse(window.localStorage.getItem(storageKey)); }
   catch { return { ...DEFAULTS }; }
   if (!stored || typeof stored !== 'object') return { ...DEFAULTS };
   return {
@@ -18,7 +22,7 @@ export function readPreferences(palettes, voicings) {
 }
 
 export function savePreferences(preferences) {
-  try { window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences)); }
+  try { window.localStorage.setItem(storageKey, JSON.stringify(preferences)); }
   catch { /* Storage may be unavailable when a browser opens the local HTML. */ }
 }
 
