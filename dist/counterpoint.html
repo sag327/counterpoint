@@ -3202,6 +3202,132 @@ return {installProtocolWorker,supportsWorkers,createProtocolRunner};
 })();
 </script>
   <script>const __modules = {};
+__modules["src/worlds/kit.js"] = (()=>{
+// Shared builders for the Study No. 2 worlds (contract 1.1.0). Worlds are plain
+// data: topology, refractoriness, restitution, decrement, entry slowing and
+// automaticity. Nothing here schedules an activation.
+
+const V11 = '1.1.0';
+
+const SILENT_TISSUES = new Set(['nodal', 'sinus']);
+
+// One site. `restitution` is [amplitudeMs, tauMs] (erpMax = erpMs, erpMin = erpMs - amplitude,
+// the lowest value the law can reach) or [amplitudeMs, tauMs, erpMinMs].
+function site(id, tissue, erpMs, { restitution = null, automaticity = null, audible, recoveryTailMs = 120 } = {}) {
+  const node = { id, erpMs, recoveryTailMs, automaticity, tissue, audible: audible ?? !SILENT_TISSUES.has(tissue) };
+  if (restitution !== null) {
+    const [amplitudeMs, tauMs, erpMinMs = erpMs - amplitudeMs] = restitution;
+    node.restitution = { erpMaxMs: erpMs, amplitudeMs, tauMs, erpMinMs: Math.max(1, erpMinMs) };
+  }
+  return node;
+}
+
+// One direction. decrement and entry are [maxExtraMs, tauMs] or null.
+function way(delayMs, { decrement = null, entry = null, enabled = true } = {}) {
+  return {
+    enabled,
+    delayMs,
+    decrement: decrement === null ? null : { maxExtraMs: decrement[0], tauMs: decrement[1] },
+    entry: entry === null ? null : { maxExtraMs: entry[0], tauMs: entry[1] },
+  };
+}
+
+// A physical link. Omitting `ba` makes it one-way a -> b (ba disabled, same base delay).
+function link(id, a, b, ab, ba = null) {
+  return { id, a, b, enabled: true, ab, ba: ba ?? way(ab.delayMs, { enabled: false }) };
+}
+
+// Same law both ways.
+const both = (id, a, b, delayMs, options = {}) => link(id, a, b, way(delayMs, options), way(delayMs, options));
+
+function sinusFocus(cycleMs = 800, { firstAttemptMs = 0, overdrive = { gainPerBeat: 0.06, maxMs: 450, warmupFactor: 0.6 } } = {}) {
+  return { cycleMs, firstAttemptMs, resetOnCapture: true, overdrive: overdrive === null ? null : { ...overdrive } };
+}
+
+function world(worldId, nodes, links, extra = {}) {
+  return { contractVersion: V11, worldId, nodes, links, ...extra };
+}
+
+function deepFreeze(value) {
+  if (value !== null && typeof value === 'object') {
+    for (const child of Object.values(value)) deepFreeze(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+// D-centred Dorian set used by every study (D F G A C, E for colour), as MIDI numbers.
+const PITCH = Object.freeze({
+  D3: 50, F3: 53, G3: 55, A3: 57,
+  D4: 62, E4: 64, F4: 65, G4: 67, A4: 69, C5: 72, D5: 74, E5: 76,
+  A5: 81, C6: 84, D6: 86,
+});
+
+// Voice by tissue (spec "Orchestration by tissue"). Atrial sites alternate felt and pluck.
+const TISSUE_VOICE = Object.freeze({ atrial: ['felt', 'pluck'], hisPurkinje: ['glass'], ventricular: ['bow'], accessory: ['glass'] });
+
+// Music table for the mapper: audible sites get [midi, voice, pan]; silent sites map to null.
+function music(nodes, assignments) {
+  const table = {};
+  for (const node of nodes) table[node.id] = node.audible === false ? null : assignments[node.id];
+  return table;
+}
+
+// Guided protocols only enqueue labelled stimuli and trains. `ids` makes
+// command ids unique per call; every command is a stimulate or stimulateTrain.
+const stim = (commandId, tMs, nodeId) => ({ commandId, tMs, type: 'stimulate', nodeId });
+const pace = (commandId, tMs, nodeId, cycleMs, count, label) =>
+  ({ commandId, tMs, type: 'stimulateTrain', nodeId, startMs: tMs, cycleMs, count, label });
+
+return {V11,site,way,link,both,sinusFocus,world,deepFreeze,PITCH,TISSUE_VOICE,music,stim,pace};
+})();
+__modules["src/worlds/circulation.js"] = (()=>{
+const { both, site, world } = __modules["src/worlds/kit.js"];
+
+const nodeErps = [180, 300, 220, 220, 220, 220, 220, 200];
+const direction = Object.freeze({ enabled: true, delayMs: 60, decrement: null });
+
+const circulationWorld = Object.freeze({
+  worldId: 'circulation',
+  nodes: Object.freeze(nodeErps.map((erpMs, index) => Object.freeze({
+    id: `R${index}`,
+    erpMs,
+    recoveryTailMs: 120,
+    automaticity: null,
+  }))),
+  links: Object.freeze(nodeErps.map((_, index) => Object.freeze({
+    id: `L${index}`,
+    a: `R${index}`,
+    b: `R${(index + 1) % nodeErps.length}`,
+    enabled: true,
+    ab: direction,
+    ba: direction,
+  }))),
+});
+
+function createCirculationWorld() {
+  return {
+    worldId: circulationWorld.worldId,
+    nodes: circulationWorld.nodes.map(node => ({ ...node })),
+    links: circulationWorld.links.map(link => ({ ...link, ab: { ...link.ab }, ba: { ...link.ba } })),
+  };
+}
+
+// The interactive ring uses the same DI-dependent tissue laws as Echo.
+// The fixed-delay preset above remains the reference for contract v1 fixtures.
+const CIRCULATION_S2_MS = 240;
+
+function createRestitutionRing() {
+  const nodes = nodeErps.map((erpMs, index) =>
+    site(`R${index}`, 'atrial', erpMs, { restitution: [index === 1 ? 60 : 45, 95] }));
+  const links = nodes.map(({ id }, index) =>
+    both(`L${index}`, id, nodes[(index + 1) % nodes.length].id, 60,
+      { decrement: [18, 85], entry: [24, 65] }));
+  return world('circulation', nodes, links);
+}
+
+return {circulationWorld,createCirculationWorld,CIRCULATION_S2_MS,createRestitutionRing};
+})();
 __modules["src/engine/agenda.js"] = (()=>{
 function earlier(a, b) {
   return a.tick - b.tick || a.phase - b.phase || a.order - b.order ||
@@ -6828,6 +6954,9 @@ const isV11World = (world) => world?.contractVersion === "1.1.0";
 // tissue (nodal, sinus) never sounds.
 function musicTableFor(world, presentation = null) {
   if (!isV11World(world)) return null;
+  // Circulation uses its built-in instrumentation and selectable chamber voicings.
+  if (world.worldId === "circulation" && !presentation?.music
+    && world.nodes.every(node => node.audible !== false && Object.hasOwn(worldAssignments.circulation, node.id))) return null;
   const declared = presentation?.music ?? {};
   const table = {};
   for (const node of world.nodes) {
@@ -9739,38 +9868,6 @@ const editionAllows = (list, value) => list === null || list.includes(value);
 
 return {EDITION_ID,EDITIONS_LIST,EDITION,editionAllows};
 })();
-__modules["src/worlds/circulation.js"] = (()=>{
-const nodeErps = [180, 300, 220, 220, 220, 220, 220, 200];
-const direction = Object.freeze({ enabled: true, delayMs: 60, decrement: null });
-
-const circulationWorld = Object.freeze({
-  worldId: 'circulation',
-  nodes: Object.freeze(nodeErps.map((erpMs, index) => Object.freeze({
-    id: `R${index}`,
-    erpMs,
-    recoveryTailMs: 120,
-    automaticity: null,
-  }))),
-  links: Object.freeze(nodeErps.map((_, index) => Object.freeze({
-    id: `L${index}`,
-    a: `R${index}`,
-    b: `R${(index + 1) % nodeErps.length}`,
-    enabled: true,
-    ab: direction,
-    ba: direction,
-  }))),
-});
-
-function createCirculationWorld() {
-  return {
-    worldId: circulationWorld.worldId,
-    nodes: circulationWorld.nodes.map(node => ({ ...node })),
-    links: circulationWorld.links.map(link => ({ ...link, ab: { ...link.ab }, ba: { ...link.ba } })),
-  };
-}
-
-return {circulationWorld,createCirculationWorld};
-})();
 __modules["src/worlds/feedforward.js"] = (()=>{
 function directedLink(id, a, b, delayMs, decrement = null) {
   return {
@@ -9847,85 +9944,6 @@ function createDualityWorld() {
 const dualityWorld = freezePreset(createDualityWorld());
 
 return {createDualityWorld,dualityWorld};
-})();
-__modules["src/worlds/kit.js"] = (()=>{
-// Shared builders for the Study No. 2 worlds (contract 1.1.0). Worlds are plain
-// data: topology, refractoriness, restitution, decrement, entry slowing and
-// automaticity. Nothing here schedules an activation.
-
-const V11 = '1.1.0';
-
-const SILENT_TISSUES = new Set(['nodal', 'sinus']);
-
-// One site. `restitution` is [amplitudeMs, tauMs] (erpMax = erpMs, erpMin = erpMs - amplitude,
-// the lowest value the law can reach) or [amplitudeMs, tauMs, erpMinMs].
-function site(id, tissue, erpMs, { restitution = null, automaticity = null, audible, recoveryTailMs = 120 } = {}) {
-  const node = { id, erpMs, recoveryTailMs, automaticity, tissue, audible: audible ?? !SILENT_TISSUES.has(tissue) };
-  if (restitution !== null) {
-    const [amplitudeMs, tauMs, erpMinMs = erpMs - amplitudeMs] = restitution;
-    node.restitution = { erpMaxMs: erpMs, amplitudeMs, tauMs, erpMinMs: Math.max(1, erpMinMs) };
-  }
-  return node;
-}
-
-// One direction. decrement and entry are [maxExtraMs, tauMs] or null.
-function way(delayMs, { decrement = null, entry = null, enabled = true } = {}) {
-  return {
-    enabled,
-    delayMs,
-    decrement: decrement === null ? null : { maxExtraMs: decrement[0], tauMs: decrement[1] },
-    entry: entry === null ? null : { maxExtraMs: entry[0], tauMs: entry[1] },
-  };
-}
-
-// A physical link. Omitting `ba` makes it one-way a -> b (ba disabled, same base delay).
-function link(id, a, b, ab, ba = null) {
-  return { id, a, b, enabled: true, ab, ba: ba ?? way(ab.delayMs, { enabled: false }) };
-}
-
-// Same law both ways.
-const both = (id, a, b, delayMs, options = {}) => link(id, a, b, way(delayMs, options), way(delayMs, options));
-
-function sinusFocus(cycleMs = 800, { firstAttemptMs = 0, overdrive = { gainPerBeat: 0.06, maxMs: 450, warmupFactor: 0.6 } } = {}) {
-  return { cycleMs, firstAttemptMs, resetOnCapture: true, overdrive: overdrive === null ? null : { ...overdrive } };
-}
-
-function world(worldId, nodes, links, extra = {}) {
-  return { contractVersion: V11, worldId, nodes, links, ...extra };
-}
-
-function deepFreeze(value) {
-  if (value !== null && typeof value === 'object') {
-    for (const child of Object.values(value)) deepFreeze(child);
-    Object.freeze(value);
-  }
-  return value;
-}
-
-// D-centred Dorian set used by every study (D F G A C, E for colour), as MIDI numbers.
-const PITCH = Object.freeze({
-  D3: 50, F3: 53, G3: 55, A3: 57,
-  D4: 62, E4: 64, F4: 65, G4: 67, A4: 69, C5: 72, D5: 74, E5: 76,
-  A5: 81, C6: 84, D6: 86,
-});
-
-// Voice by tissue (spec "Orchestration by tissue"). Atrial sites alternate felt and pluck.
-const TISSUE_VOICE = Object.freeze({ atrial: ['felt', 'pluck'], hisPurkinje: ['glass'], ventricular: ['bow'], accessory: ['glass'] });
-
-// Music table for the mapper: audible sites get [midi, voice, pan]; silent sites map to null.
-function music(nodes, assignments) {
-  const table = {};
-  for (const node of nodes) table[node.id] = node.audible === false ? null : assignments[node.id];
-  return table;
-}
-
-// Guided protocols only enqueue labelled stimuli and trains. `ids` makes
-// command ids unique per call; every command is a stimulate or stimulateTrain.
-const stim = (commandId, tMs, nodeId) => ({ commandId, tMs, type: 'stimulate', nodeId });
-const pace = (commandId, tMs, nodeId, cycleMs, count, label) =>
-  ({ commandId, tMs, type: 'stimulateTrain', nodeId, startMs: tMs, cycleMs, count, label });
-
-return {V11,site,way,link,both,sinusFocus,world,deepFreeze,PITCH,TISSUE_VOICE,music,stim,pace};
 })();
 __modules["src/worlds/echo.js"] = (()=>{
 // II. Echo — dual AV-nodal pathways (design/study-2-spec.md, "II. Echo").
@@ -10572,7 +10590,7 @@ __modules["src/ui/studies.js"] = (()=>{
 // The scenes the app offers: the three v0.1 worlds (contract 1.0.0, unchanged)
 // and the Study No. 2 studies registered in src/worlds/studies.js (v0.2: Echo).
 // Pure data and helpers, so they can be tested without a DOM.
-const { createCirculationWorld } = __modules["src/worlds/circulation.js"];
+const { createRestitutionRing } = __modules["src/worlds/circulation.js"];
 const { createConductionWorld } = __modules["src/worlds/conduction.js"];
 const { createDualityWorld } = __modules["src/worlds/duality.js"];
 const { STUDIES } = __modules["src/worlds/studies.js"];
@@ -10614,7 +10632,7 @@ const SCENE_LIST = {
     status: 'An automatic impulse leads the way.',
   },
   circulation: {
-    create: createCirculationWorld,
+    create: createRestitutionRing,
     name: 'Circulation',
     topology: 'Eight excitable sites joined in a bidirectional ring.',
     hint: 'Tap a site to stimulate it · Hold a site to inspect it',
@@ -12705,6 +12723,7 @@ __modules["src/content/notes/echo.md"] = (()=>{
 return { default: "<!-- DRAFT — creator writes final text -->\n**DRAFT — creator writes final text**\n\n> References must be verified against their sources before publication. They were compiled from memory in the design spec.\n\n# Echo\n\n## The musical idea\n\nNotes that first follow one another then gather almost into a single sound. A small extra note sometimes returns afterwards, like a call answered.\n\n## What the tissue is doing\n\nTwo routes run through the junction between atria and ventricles. A premature beat can find one route closed and travel slowly down the other, then return by the first.\n\n## How the model makes it\n\nIn this lumped-element model, silent nodal sites form fast and slow pathways with their own refractory curves and decrement. The node is a short chain, not a continuum.\n\n## A note from history\n\nDenes and colleagues (1973) demonstrated dual AV-nodal pathways in patients with paroxysmal supraventricular tachycardia.\n\n## Try this\n\nTap one early beat and listen for the sound that comes back.\n\n## Further reading\n\n- Denes P, Wu D, Dhingra RC, et al. Circulation 1973;48:549-555.\n- Josephson ME. Josephson's Clinical Cardiac Electrophysiology. Wolters Kluwer (current edition).\n" };
 })();
 __modules["src/ui/app.js"] = (()=>{
+const { CIRCULATION_S2_MS } = __modules["src/worlds/circulation.js"];
 const { Engine } = __modules["src/engine/index.js"];
 const { createTransport, LOOKAHEAD_WALL_MS } = __modules["src/runtime/transport.js"];
 const { createRenderer } = __modules["src/visuals/renderer.js"];
@@ -12731,7 +12750,7 @@ if (EDITION.sound) Object.assign(preferences, EDITION.sound);
 const engine = new Engine();
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
 const EVENT_LIMIT = 4096;
-const GUIDE_COUPLING_MS = 240;
+
 // A pointer that travels this far is a drag, not a tap or a hold: it does nothing.
 const DRAG_THRESHOLD = 10;
 const HOLD_SITE_MS = 500;
@@ -12759,7 +12778,7 @@ let captureTotal = 0;
 let visualFloorMs = -1;
 let selectedNodeId;
 let selectedLinkId;
-let couplingMs = GUIDE_COUPLING_MS;
+let couplingMs = CIRCULATION_S2_MS;
 let gesture;
 let lastFpsTime = 0;
 let fpsFrames = 0;
@@ -13362,7 +13381,7 @@ $('pause').onclick = async () => {
   }
 };
 $('single').onclick = () => startRun('single', 'R0');
-$('guide').onclick = () => startRun('guide', 'R0', GUIDE_COUPLING_MS);
+$('guide').onclick = () => startRun('guide', 'R0', CIRCULATION_S2_MS);
 $('premature').onclick = () => startRun('premature');
 $('find-echo').onclick = () => startRun('find-echo');
 $('find-arrhythmia').onclick = () => startRun('find-arrhythmia');

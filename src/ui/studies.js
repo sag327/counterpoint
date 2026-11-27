@@ -1,7 +1,7 @@
 // The scenes the app offers: the three v0.1 worlds (contract 1.0.0, unchanged)
 // and the Study No. 2 studies registered in src/worlds/studies.js (v0.2: Echo).
 // Pure data and helpers, so they can be tested without a DOM.
-import { createCirculationWorld } from '../worlds/circulation.js';
+import { createRestitutionRing } from '../worlds/circulation.js';
 import { createConductionWorld } from '../worlds/conduction.js';
 import { createDualityWorld } from '../worlds/duality.js';
 import { STUDIES } from '../worlds/studies.js';
@@ -43,7 +43,7 @@ const SCENE_LIST = {
     status: 'An automatic impulse leads the way.',
   },
   circulation: {
-    create: createCirculationWorld,
+    create: createRestitutionRing,
     name: 'Circulation',
     topology: 'Eight excitable sites joined in a bidirectional ring.',
     hint: 'Tap a site to stimulate it · Hold a site to inspect it',

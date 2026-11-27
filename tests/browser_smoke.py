@@ -97,13 +97,14 @@ def wait_playing(page, predicate, *, seconds=60):
 
 def await_reentry(page):
     page.locator("#guide").click()
-    page.wait_for_function(f"{ACTIVATIONS}.some(event => event.nodeId === 'R0' && event.tMs === 1200)")
+    page.wait_for_function(f"{ACTIVATIONS}.filter(event => event.nodeId === 'R0').length >= 4")
     trace = page.evaluate("""() => ({
         r0: counterpoint.events.filter(e => e.type === 'activation' && e.nodeId === 'R0').slice(0, 4).map(e => e.tMs),
         attempts: counterpoint.events.filter(e => e.type === 'stimulus_attempted').map(e => e.tMs),
-        block: counterpoint.events.some(e => e.type === 'activation_blocked' && e.nodeId === 'R1' && e.tMs === 300)
+        block: counterpoint.events.some(e => e.type === 'activation_blocked' && e.nodeId === 'R1' && e.cause === 'refractory')
     })""")
-    assert trace == {"r0": [0, 240, 720, 1200], "attempts": [0, 240], "block": True}, trace
+    assert trace["r0"][:2] == trace["attempts"] == [0, 240] and trace["block"], trace
+    assert trace["r0"][2] > 720 and trace["r0"][3] - trace["r0"][2] > 480, trace
 
 
 def desktop_smoke(browser, output):

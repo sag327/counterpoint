@@ -243,9 +243,10 @@ runFor(1100);
 assert.equal(activations().length, 8);
 assert.equal(cp.mixer.diagnostics().scheduled - scheduledBeforeRing, 8);
 select("guide").click();
-runFor(5000);
-assert.equal(activations().filter((event) => event.nodeId === "R0").map((event) => event.tMs).join(), "0,240,720,1200");
-assert.ok(cp.events.some((event) => event.type === "activation_blocked" && event.tMs === 300 && event.nodeId === "R1"));
+runFor(7500);
+assert.equal(activations().filter((event) => event.nodeId === "R0" && event.tMs < 2000).length, 5);
+assert.ok(cp.events.some((event) => event.type === "activation_blocked" && event.cause === "refractory" && event.nodeId === "R1"));
+assert.ok(cp.events.some((event) => event.type === "conduction_launched" && event.delayParts?.entryMs > 0));
 
 const run = cp.transport.runId;
 select("pause").click();
