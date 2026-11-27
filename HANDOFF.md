@@ -12,19 +12,15 @@
 |---|---|---|---|
 | M1–M3 | Revisions, live curve, model sliders, PR #1 | DONE, merged | [revise-01](docs/runs/revise-01.md), [revise-02](docs/runs/revise-02.md) |
 | M4 | Remove cutting, mute/volume, S key, Echo header; fraction speeds; prominent instructions; selected-site halo | DONE | [simplify-01](docs/runs/simplify-01.md) |
-| M5 | Preconditioned Find the echo / Find the circuit | NEXT | — |
-| M6 | Tiered inspector card; inspect and tune in every world | TODO | — |
+| M5 | Preconditioned Find the echo / Find the circuit | DONE | [simplify-02](docs/runs/simplify-02.md) |
+| M6 | Tiered inspector card; inspect and tune in every world | NEXT | — |
 | M7 | Gate run, merge into `main`, push | TODO | — |
 
-## M5 · preconditioned guided runs (next)
+## M5 · done
 
-Creator request: at 1/8 speed the eight-beat drive is too slow to wait through. Start the run as it would stand after the 7th S1, then play live from the last S1, the S2 and (for the circuit) the S3.
+`transport.reset(..., { fromMs })` runs the engine silently to `fromMs` (events go to `onPrelude`, not to sound or frames). Echo's guided protocols set `presentFromMs: 4100` (`ECHO_PRESENT_FROM_MS` in `src/worlds/echo.js`). Tests: `tests/precondition.test.js`.
 
-- Today `find-echo` paces `S1` every 600 ms at CSp ×8 (S1#1 at 0 … S1#8 at 4200) and adds S2 at 4200 + coupling. `find-chord` adds S3. See `GUIDED`/`CHORD_STEPS` in `src/ui/app.js` and the protocol settings in `src/ui/studies.js`.
-- Keep replay determinism: submit the same commands as the full protocol and only start *presentation* later. Advance the engine headlessly to t0 (one cycle before the last S1, e.g. 3600 ms), then start the transport clock at t0. The live curve and raster then see the full event history.
-- Find the transport's start or segment origin (`segments`, `audioSecAt`) and add a `startAtMs` (or equivalent) that commits through t0 without scheduling sound or animation for earlier events. Add Node tests: identical event log to the full run; the first presented frame is at t0; no audio scheduled before t0.
-
-## M6 · inspector tiers and every world
+## M6 · inspector tiers and every world (next)
 
 - `src/lab/inspector-card.js`: show the key readouts first (state, since last activation, refractory remaining, ERP). Put the restitution curve, parameters and history in `<details>` sections.
 - Remove the `scene.study` gating in `setupCard`, `armHold`, `buildInspectButtons` and the site `onkeydown` in `app.js`. Add `MODEL_CONTROLS` for Conduction and Circulation, and add "Hold a site to inspect it" to their hints.

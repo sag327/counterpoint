@@ -34,8 +34,15 @@ export function createEchoWorld() {
 
 export const echoWorld = deepFreeze(createEchoWorld());
 
-const S1S2 = (s2, { drive = 600, count = 8, start = 200, s3 = null } = {}) => {
-  const last = start + drive * (count - 1);
+const DRIVE_START_MS = 200;
+const lastS1Ms = ({ drive = 600, count = 8, start = DRIVE_START_MS } = {}) => start + drive * (count - 1);
+
+// Guided runs present from half a drive cycle before the last S1: the first
+// seven beats run silently, so the player hears the last S1 and the extrastimuli.
+export const ECHO_PRESENT_FROM_MS = lastS1Ms() - 300;
+
+const S1S2 = (s2, { drive = 600, count = 8, start = DRIVE_START_MS, s3 = null } = {}) => {
+  const last = lastS1Ms({ drive, count, start });
   const commands = [pace('S1', start, 'CSp', drive, count, `S1 drive ${drive} ms`), stim('S2', last + s2, 'CSp')];
   if (s3 !== null) commands.push(stim('S3', last + s2 + s3, 'CSp'));
   return commands;
@@ -57,8 +64,8 @@ export const echoPresentation = deepFreeze({
   }),
   protocols: [
     { id: 'find-echo', label: 'Find the echo', lab: 'S1–S2 decremental atrial extrastimulus, drive 600 ms',
-      steps: { from: 400, to: 200, step: -10 }, commands: s2 => S1S2(s2) },
+      steps: { from: 400, to: 200, step: -10 }, presentFromMs: ECHO_PRESENT_FROM_MS, commands: s2 => S1S2(s2) },
     { id: 'find-chord', label: 'Find the chord', lab: 'S1–S2–S3 atrial extrastimuli, drive 600 ms',
-      commands: (s2, s3 = s2) => S1S2(s2, { s3 }) },
+      presentFromMs: ECHO_PRESENT_FROM_MS, commands: (s2, s3 = s2) => S1S2(s2, { s3 }) },
   ],
 });

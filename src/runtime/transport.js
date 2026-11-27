@@ -21,6 +21,7 @@ export function createTransport({
   clearTimer = (handle) => clearTimeout(handle),
   onCommit = () => {},
   onReset = () => {},
+  onPrelude = () => {},
   onSilence = () => {},
   onFault = () => {},
   onStateChange = () => {},
@@ -274,7 +275,11 @@ export function createTransport({
     return accepted;
   }
 
-  function reset(world, freshRunId, { commands = [], start = false } = {}) {
+  // `fromMs` preconditions a run: the engine advances silently through the same
+  // commands to fromMs, and presentation (frames, sound, input) begins there.
+  // The prelude's events go to onPrelude, never to onCommit or the frame queue.
+  function reset(world, freshRunId, { commands = [], start = false, fromMs = 0 } = {}) {
+    if (!Number.isFinite(fromMs) || fromMs < 0) throw new RangeError('fromMs must be a non-negative number');
     if (usedRunIds.has(freshRunId)) throw new Error('Reset requires a fresh run ID');
     const nextSnapshot = engine.reset(world, freshRunId);
     const selected = pendingDilation() ?? dilation;
@@ -299,6 +304,12 @@ export function createTransport({
     onReset(restedSnapshot);
     try {
       for (const command of commands) rememberCommand({ ...command, runId });
+      if (fromMs > 0) {
+        const tick = floorTick(fromMs);
+        const prelude = engine.advanceTo(tick / TICKS_PER_MS);
+        committedTick = tick;
+        onPrelude(prelude);
+      }
     } catch (failure) {
       fault(failure);
       throw failure;

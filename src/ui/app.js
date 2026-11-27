@@ -108,6 +108,10 @@ const transport = createTransport({
     }
   },
   onFault(error) { retainEvents(error.events ?? []); },
+  onPrelude(events) {
+    // A preconditioned run's silent lead-in: kept for the views and the Lab, never sounded.
+    retainEvents(events);
+  },
   onReset(snapshot) {
     // Keep the finished run's premature beats before its events are dropped.
     if (scene?.study && lastFrame) liveCurve.ingest(allEvents.filter(event => event.runId === lastFrame.runId), lastFrame.presentedMs);
@@ -165,6 +169,7 @@ function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs
   const commands = [];
   const stimulus = (commandId, nodeId, tMs) => ({ commandId, type: 'stimulate', nodeId, tMs });
   let status = WORLDS[worldId].status;
+  let fromMs = 0;
   if (kind === 'single') {
     commands.push(stimulus('protocol-s1', nodeId, 0));
     status = 'One impulse travels through the circuit.';
@@ -176,9 +181,10 @@ function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs
     status = 'An early impulse takes the slower path.';
   } else if (kind === 'find-echo' || kind === 'find-chord') {
     commands.push(...guidedCommands(kind));
+    fromMs = scene.presentation.protocols.find(entry => entry.id === kind).presentFromMs ?? 0;
     status = kind === 'find-echo'
-      ? 'Eight steady beats, then one early touch. Each try comes a little earlier.'
-      : 'Eight steady beats, then two early beats. Each try comes a little earlier.';
+      ? 'Seven beats already given. The last beat, then one early touch. Each try comes a little earlier.'
+      : 'Seven beats already given. The last beat, then two early touches. Each try comes a little earlier.';
   }
   if (kind !== 'find-echo' && kind !== 'find-chord') guidedLast = null;
   // The player's model edits carry into the new run as logged commands at t = 0.
@@ -187,7 +193,7 @@ function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs
   }
   $('status').textContent = started ? status : WORLDS[worldId].topology;
   transport.reset(world, runId, {
-    commands, start: autoStart && !document.hidden && (!context || context.state === 'running'),
+    commands, fromMs, start: autoStart && !document.hidden && (!context || context.state === 'running'),
   });
   updateButtons();
   updateGuidedReadout();

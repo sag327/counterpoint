@@ -49,8 +49,14 @@ def check_guided_run(page, *, phone):
     # The fastest playback offered is 1/4 of real time (creator decision 2026-11-27).
     page.locator("#dilation").select_option("4")
     activate(find_echo, phone=phone)
+    # Simplify M5: the first seven drive beats run silently; playback starts at
+    # 4100 ms, 300 ms before the last S1, so the S2 arrives about 2.7 s in at 1/4.
+    prelude = page.evaluate("""() => counterpoint.events
+        .filter(e => e.type === 'stimulus_attempted' && e.nodeId === 'CSp').map(e => e.tMs)""")
+    assert prelude == [200, 800, 1400, 2000, 2600, 3200, 3800], prelude
+    assert page.evaluate("counterpoint.transport.presentedMs()") >= 4100
     times = [200, 800, 1400, 2000, 2600, 3200, 3800, 4400, 4800]
-    advance_phone_clock(page, phone, 4900 * 4)
+    advance_phone_clock(page, phone, 800 * 4)
     page.wait_for_function(
         """times => JSON.stringify(counterpoint.events
             .filter(e => e.type === 'stimulus_attempted' && e.nodeId === 'CSp')
@@ -63,8 +69,8 @@ def check_guided_run(page, *, phone):
     assert page.evaluate("counterpoint.transport.runId") != run_id
     assert page.evaluate("""counterpoint.transport.commandLog()
         .find(command => command.commandId === 'S2')?.tMs""") == 4790
-    advance_phone_clock(page, phone, 1500 * 4)
-    page.wait_for_function("counterpoint.events.some(e => e.type === 'activation' && e.tMs >= 1400)", timeout=30_000)
+    advance_phone_clock(page, phone, 400 * 4)
+    page.wait_for_function("counterpoint.events.some(e => e.type === 'activation' && e.tMs >= 4200)", timeout=30_000)
 
 
 def select_view(page, view, *, phone):
@@ -180,8 +186,8 @@ def check_worker(page, *, phone, output, capture):
 def check_live_curve_and_model(page, *, phone, capture):
     """Revise M2: the S1–S2 curve builds from the session; Model sliders log commands."""
     runner = page.locator("#lab-study")
-    # A fresh guided run (third press: S2 380 ms at 4780 ms) becomes a point once
-    # playback passes it by the settle window. Resume after a headless late wake.
+    # A fresh guided run (third press: S2 380 ms at 4780 ms, presented from 4100 ms)
+    # becomes a point once playback passes it by the settle window. Resume after a headless late wake.
     page.locator("#find-echo").evaluate("node => node.click()")
     deadline = time.monotonic() + 90
     while page.evaluate("counterpoint.liveCurve.length") < 1:
