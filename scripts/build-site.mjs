@@ -14,6 +14,9 @@ await copyFile(dist,path.join(out,'play/index.html'));
 await copyFile(dist,path.join(out,'play/counterpoint.html'));
 // The shareable Circulation preview (src/ui/edition.js): nothing on the site links to it.
 await copyFile(circulation,path.join(out,'circulation/index.html'));
+// Links shared while Pages served the branch pointed at dist/; send them to /circulation/.
+await mkdir(path.join(out,'dist'),{recursive:true});
+await writeFile(path.join(out,'dist/counterpoint-circulation.html'),'<!doctype html><meta charset="utf-8"><title>Counterpoint · Circulation</title><meta http-equiv="refresh" content="0; url=../circulation/"><link rel="canonical" href="../circulation/"><a href="../circulation/">Counterpoint · Circulation</a>\n');
 await writeFile(path.join(out,'.nojekyll'),'');
 // og.png: 1200x630 cover crop (centered) of the Ladder plate.
 const img=await loadImage(path.join(root,'design/plates/plate1_ladder.png'));
