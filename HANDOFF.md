@@ -12,9 +12,13 @@
 |---|---|---|---|
 | M1 | Creator revisions: no musical labels, Staves hidden, Duality withdrawn, playback 1/4 to 1/12 speed, EP-relative readouts | DONE | [revise-01](docs/runs/revise-01.md) |
 | M2 | Live S1–S2 curve built while pacing; Lab Model sliders (FP/SP ERP, SL conduction and decrement) | DONE | [revise-02](docs/runs/revise-02.md) |
-| M3 | Review candidate: full gate run, PR to the creator | NEXT | — |
+| M3 | Review candidate: full gate run, draft PR #1 into `study-2-integrate` | DONE | https://github.com/sag327/counterpoint/pull/1 |
 
-## M3 plan (next agent starts here)
+## After M3 (next agent starts here)
+
+The creator reviews PR #1 (listening at 1/4 speed and a phone check). Then the next block of work is step 3 below. Steps 1 and 2 are done.
+
+### M3 steps (done)
 
 1. Run the full gate set: `npm test`, `npm run check:contract`, `npm run build`, `npm run build:site`, `node tests/host-integration.mjs`, `node tests/music-offline.js` and `tests/browser_integrate.py`. Rerun the browser suite once if the press-and-hold inspector step flakes (a known headless late-wake timing issue).
 2. Open a PR from `study-2-revise` into `study-2-integrate`, or into `main` if the creator wants v0.2 released. Summarize M1 and M2 and link the receipts. Do not touch `RELEASE.sha256` or tag a release: the release gate belongs to the creator.
