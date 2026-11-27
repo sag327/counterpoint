@@ -223,7 +223,17 @@ assert.equal(cp.mixer.diagnostics().scheduled, 6);
 
 select("premature").click();
 runFor(2200);
-assert.ok(cp.events.some(e => e.type === "activation" && e.nodeId === "H" && e.tMs === 465));
+const captures = activations();
+assert.deepEqual(Array.from(captures, event => event.nodeId), [
+  "S", "A", "N", "H", "V1", "V2",
+  "A", "N", "H", "V1", "V2",
+]);
+const [baselineNode, prematureNode] = captures.filter(event => event.nodeId === "N");
+const [baselineHis, prematureHis] = captures.filter(event => event.nodeId === "H");
+assert.ok(
+  prematureHis.tMs - prematureNode.tMs > baselineHis.tMs - baselineNode.tMs,
+  "the premature beat should take longer to conduct from N to H"
+);
 
 // Duality left the menu (creator decision 2026-11-27). The switch to Circulation
 // below covers the world change, and its ring checks match notes to captures.
