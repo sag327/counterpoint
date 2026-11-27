@@ -315,9 +315,6 @@ button.primary:hover{background:#e1c695;color:#11171a}
 #views button[aria-pressed=true]{color:var(--ink);box-shadow:inset 0 -1px var(--gold);border-radius:0}
 #view-canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
 #stage canvas[hidden]{display:none}
-.inspect-list{margin-top:14px}
-.inspect-list .hint{margin:4px 0 6px}
-.inspect-list .cuts button{font-size:12px}
 #card-layer{display:none}
 #card-layer.open{display:block;position:fixed;z-index:20;right:16px;top:76px;max-height:calc(100vh - 92px);overflow:auto;border-radius:10px;box-shadow:0 18px 50px #000a}
 #card-layer .lab-card{width:min(420px,calc(100vw - 32px))}
@@ -444,13 +441,6 @@ dialog#notes-sheet::backdrop{background:#04070acc}
         <label id="palette-control">Palette <select id="palette"><option value="chamber">Chamber</option><option value="atmosphere">Atmosphere</option><option value="minimalism">Minimalism</option></select></label>
         <label id="voicing-control" hidden>Chamber voicing <select id="voicing"><option value="balanced">Balanced</option><option value="open">Open</option><option value="suspended">Suspended</option></select></label>
       </div>
-      <details id="connections">
-        <summary>Inspect a site or connection</summary>
-        <div id="inspect-list" class="inspect-list">
-          <div id="inspect-sites" class="cuts" role="group" aria-label="Inspect a site"></div>
-          <div id="inspect-links" class="cuts" role="group" aria-label="Inspect a connection"></div>
-        </div>
-      </details>
     </section>
     <div id="card-layer" aria-live="off"></div>
     <aside id="lab" aria-label="Laboratory" hidden>
@@ -12990,7 +12980,6 @@ function chooseWorld(id) {
   setupCard();
   views.configure(settings, world, { lab: labOpen() });
   buildSiteButtons();
-  buildInspectButtons();
   if (studyLab) setupStudyLab();
   $('lab-study').hidden = !settings.study;
   resize();
@@ -13183,30 +13172,6 @@ function buildSiteButtons() {
       }
     };
     $('sites').append(button);
-  }
-}
-
-// Keyboard access to the inspector card through the connection list.
-function buildInspectButtons() {
-  $('inspect-sites').replaceChildren();
-  $('inspect-links').replaceChildren();
-  for (const node of world.nodes) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = node.id;
-    button.dataset.inspect = node.id;
-    button.setAttribute('aria-label', `Inspect site ${siteLabel(node.id)}`);
-    button.onclick = () => openCard({ kind: 'node', id: node.id });
-    $('inspect-sites').append(button);
-  }
-  for (const link of world.links) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = `${link.a}–${link.b}`;
-    button.dataset.inspect = link.id;
-    button.setAttribute('aria-label', `Inspect connection ${link.a} to ${link.b}`);
-    button.onclick = () => openCard({ kind: 'link', id: link.id });
-    $('inspect-links').append(button);
   }
 }
 
