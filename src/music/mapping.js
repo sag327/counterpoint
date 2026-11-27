@@ -50,6 +50,29 @@ const paletteSettings = {
 
 export const PALETTES = Object.freeze(Object.keys(paletteSettings));
 
+const isV11World = (world) => world?.contractVersion === "1.1.0";
+
+// Music table for a world. v1.0 worlds return null: the mapper keeps its
+// built-in per-world assignments, so v0.1 notes are unchanged. v1.1 worlds use
+// the study presentation's table ([midi, voice, pan] per site); every site the
+// world marks audible:false maps to null whatever the table says, so silent
+// tissue (nodal, sinus) never sounds.
+export function musicTableFor(world, presentation = null) {
+  if (!isV11World(world)) return null;
+  const declared = presentation?.music ?? {};
+  const table = {};
+  for (const node of world.nodes) {
+    if (node.audible === false) {
+      table[node.id] = null;
+      continue;
+    }
+    const assignment = Object.hasOwn(declared, node.id) ? declared[node.id] : undefined;
+    if (!Array.isArray(assignment)) throw new RangeError(`Missing music assignment for ${world.worldId}/${node.id}`);
+    table[node.id] = Object.freeze([...assignment]);
+  }
+  return Object.freeze(table);
+}
+
 export function describeNodeMusic(worldId, nodeId, { voicing = "balanced", nodes } = {}) {
   const pitches = Object.hasOwn(voicingPitches, voicing) && voicingPitches[voicing];
   if (!pitches) throw new RangeError("Unknown musical voicing");

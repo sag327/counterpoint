@@ -160,19 +160,57 @@ function firstCrossing(curve, gesture, from, to, previousSample) {
   return first;
 }
 
-function makeGeometry(world, width, height) {
+// Tissue colours for study layouts: warm for the atrial and ventricular "staves",
+// cool for the conduction system (handoff §8.1).
+const TISSUE_COLOR = { sinus: BRASS, atrial: BRASS, ventricular: BRASS, nodal: ICE, hisPurkinje: ICE, accessory: ICE };
+
+// A study layout ({ siteId: [x, y] } relative to the centre and stage radius,
+// from the study presentation) becomes a sculpture: each link bows gently away
+// from the centroid so parallel pathways read as separate filaments.
+function sculptureFromLayout(world, layout) {
+  const nodes = {};
+  for (const node of world.nodes) {
+    const [x, y] = layout[node.id];
+    nodes[node.id] = [x, y, TISSUE_COLOR[node.tissue] ?? BRASS];
+  }
+  const ids = Object.keys(nodes);
+  const gx = ids.reduce((sum, id) => sum + nodes[id][0], 0) / ids.length;
+  const gy = ids.reduce((sum, id) => sum + nodes[id][1], 0) / ids.length;
+  const handles = {};
+  for (const link of world.links) {
+    const [ax, ay] = nodes[link.a];
+    const [bx, by] = nodes[link.b];
+    const mx = (ax + bx) / 2;
+    const my = (ay + by) / 2;
+    let nx = -(by - ay);
+    let ny = bx - ax;
+    const length = Math.hypot(nx, ny) || 1;
+    nx /= length;
+    ny /= length;
+    if (nx * (mx - gx) + ny * (my - gy) < 0) { nx = -nx; ny = -ny; }
+    const bow = 0.1 * length;
+    handles[link.id] = [
+      ax + (bx - ax) / 3 + nx * bow, ay + (by - ay) / 3 + ny * bow,
+      ax + 2 * (bx - ax) / 3 + nx * bow, ay + 2 * (by - ay) / 3 + ny * bow,
+    ];
+  }
+  return { nodes, handles, linkColor: 'end' };
+}
+
+function makeGeometry(world, width, height, layout = null) {
   const cx = width / 2;
   const cy = height / 2;
   const radius = Math.min(width, height) * 0.33;
   const filamentSpread = Math.max(4, Math.min(12, radius * 0.056));
   const isRing = world.nodes.length === 8 && world.nodes.every(({ id }) => /^R[0-7]$/.test(id));
-  const sculpture = Object.hasOwn(SCULPTURES, world.worldId) ? SCULPTURES[world.worldId] : null;
+  const sculpture = layout ? sculptureFromLayout(world, layout)
+    : Object.hasOwn(SCULPTURES, world.worldId) ? SCULPTURES[world.worldId] : null;
   const stagePoint = (x, y) => ({ x: cx + x * radius, y: cy + y * radius });
   const nodes = new Map(world.nodes.map(({ id }, index) => {
     const placement = sculpture?.nodes[id];
     if (Array.isArray(placement)) {
       const [x, y, color] = placement;
-      return [id, { ...stagePoint(x, y), angle: Math.atan2(y, x), color }];
+      return [id, { ...stagePoint(x, y), angle: Math.atan2(y, x), color, silent: world.nodes[index].audible === false }];
     }
     const angle = (isRing ? Number(id.slice(1)) : index) * TURN / world.nodes.length - Math.PI / 2;
     return [id, { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius,
@@ -316,6 +354,13 @@ function drawNode(ctx, node, state) {
   const excitable = state?.excitable ?? true;
   const edge = excitable ? 0.23 : 0.13;
   const core = color === BRASS ? FLASH : COOL_FLASH;
+  if (node.silent) {
+    // Silent tissue (audible: false) is an open ring, as in the Ladder view.
+    dot(ctx, x, y, 3.6, GROUND);
+    halo(ctx, x, y, 9, color, 0.05 + recovery * 0.14);
+    arc(ctx, x, y, 3.4 + recovery * 0.9, 0, TURN, cssColor(color, 0.3 + recovery * 0.34), 0.8);
+    return;
+  }
   dot(ctx, x, y, 2.8, GROUND);
   halo(ctx, x, y, 11.5, color, 0.10 + recovery * 0.30);
   arc(ctx, x, y, 4.3 + recovery * 1.5, 0, TURN, cssColor(color, edge + recovery * 0.24), 0.72);
@@ -368,7 +413,12 @@ function drawEvent(ctx, geometry, event, tMs, reducedMotion) {
   }
 }
 
-export function createRenderer(canvas, world, { reducedMotion = false } = {}) {
+// Small open ring beside an element whose parameters differ from the study default.
+function drawModified(ctx, x, y) {
+  arc(ctx, x, y, 3.1, 0, TURN, cssColor(FLASH, 0.78), 0.9);
+}
+
+export function createRenderer(canvas, world, { reducedMotion = false, layout = null } = {}) {
   const ctx = canvas.getContext('2d', { alpha: false });
   if (!ctx) throw new Error('Counterpoint requires Canvas 2D.');
   const backdropCanvas = canvas.ownerDocument.createElement('canvas');
@@ -382,6 +432,8 @@ export function createRenderer(canvas, world, { reducedMotion = false } = {}) {
   let backdropKey;
   let network;
   let overlay = null;
+  let modified = { nodes: new Set(), links: new Set() };
+  let dim = 0;
 
   // Adapter the Study No. 2 marks (marks.js) use to reach this renderer's geometry.
   const adapter = {
@@ -408,7 +460,7 @@ export function createRenderer(canvas, world, { reducedMotion = false } = {}) {
     ratio = nextRatio;
     backdropCanvas.width = canvas.width = Math.round(width * ratio);
     backdropCanvas.height = canvas.height = Math.round(height * ratio);
-    geometry = makeGeometry(world, width, height);
+    geometry = makeGeometry(world, width, height, layout);
     network = createNetworkMarks({ world, geometry: adapter, reducedMotion });
     backdropKey = null;
   }
@@ -424,8 +476,23 @@ export function createRenderer(canvas, world, { reducedMotion = false } = {}) {
     ctx.drawImage(backdropCanvas, 0, 0);
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     ctx.lineCap = 'round';
+    if (dim > 0) {
+      // Stillness: the ground dims by up to 6% at the agent's peak. Nothing else changes.
+      ctx.fillStyle = cssColor('#000000', 0.06 * dim);
+      ctx.fillRect(0, 0, width + 1, height + 1);
+    }
 
     for (const [id, node] of geometry.nodes) drawNode(ctx, node, snapshot.nodes[id]);
+    for (const id of modified.nodes) {
+      const node = geometry.nodes.get(id);
+      if (node) drawModified(ctx, node.x + 9, node.y - 9);
+    }
+    for (const id of modified.links) {
+      const link = geometry.links.get(id);
+      if (!link) continue;
+      const point = atFraction(link.curve, 0.5);
+      drawModified(ctx, point.x, point.y);
+    }
     for (const transit of snapshot.activeTransits) {
       const link = geometry.links.get(transit.linkId);
       if (link && !network.drawConcealedTransit(ctx, transit, tMs, events)) drawTransit(ctx, link, transit, tMs, reducedMotion);
@@ -469,6 +536,25 @@ export function createRenderer(canvas, world, { reducedMotion = false } = {}) {
     return closest;
   }
 
+  // Nearest link within a few pixels of its filament, away from the sites.
+  function hitTestLink(x, y, tolerance = 12) {
+    let closest = null;
+    let limit = tolerance;
+    for (const [id, link] of geometry.links) {
+      const from = geometry.nodes.get(link.a);
+      const to = geometry.nodes.get(link.b);
+      if (!awayFromNodes(x, y, from, to, HIT_RADIUS)) continue;
+      for (const point of link.curve.points) {
+        const distance = Math.hypot(x - point.x, y - point.y);
+        if (distance <= limit) {
+          closest = id;
+          limit = distance;
+        }
+      }
+    }
+    return closest;
+  }
+
   function nodePosition(nodeId) {
     const node = geometry.nodes.get(nodeId);
     return node ? { x: node.x, y: node.y } : null;
@@ -500,7 +586,12 @@ export function createRenderer(canvas, world, { reducedMotion = false } = {}) {
   }
 
   resize();
-  return { resize, render, hitTest, nodePosition, crossedLinks, markGesture, linkPoint,
+  return { resize, render, hitTest, hitTestLink, nodePosition, crossedLinks, markGesture, linkPoint,
+    // Open rings on sites and links that differ from the study default.
+    markModified(next) { modified = { nodes: new Set(next?.nodes ?? []), links: new Set(next?.links ?? []) }; },
+    // Stillness envelope 0..1: dims the ground by 6% at 1.
+    setDim(value) { dim = clamp(value); },
+    get centre() { return geometry ? { x: geometry.cx, y: geometry.cy, radius: geometry.radius } : null; },
     // Overlay hook (Map, listening point): called at the end of render with (ctx, { tMs, snapshot, events, width, height }).
     setOverlay(fn) { overlay = fn ?? null; },
     setReducedMotion(value) { reducedMotion = value; network?.setReducedMotion(value); },

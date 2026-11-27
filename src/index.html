@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Ccircle cx=%2232%22 cy=%2232%22 r=%2221%22 fill=%22none%22 stroke=%22%23d4b888%22 stroke-width=%222%22/%3E%3C/svg%3E">
-  <title>Counterpoint · Study No. 1</title>
+  <title>Counterpoint · Study No. 2 · Echo</title>
   <style>/* INLINE_STYLES */</style>
 </head>
 <body>
   <header>
-    <div class="brand">Counterpoint<span>STUDY NO. 1</span></div>
+    <div class="brand">Counterpoint<span>STUDY NO. 2 · v0.2</span></div>
     <button id="lab-toggle" aria-expanded="false" aria-controls="lab">Laboratory</button>
   </header>
   <main>
@@ -17,9 +17,18 @@
       <button type="button" data-world="conduction" aria-pressed="true">Conduction</button>
       <button type="button" data-world="circulation" aria-pressed="false">Circulation</button>
       <button type="button" data-world="duality" aria-pressed="false">Duality</button>
+      <button type="button" data-world="echo" aria-pressed="false" class="study-button">Echo</button>
+    </nav>
+    <div id="study-line" hidden>
+      <p class="study-title"><span id="study-numeral"></span> <span id="study-name"></span></p>
+      <p class="study-subtitle"><span id="study-subtitle"></span><button type="button" id="study-chip" class="chip" hidden></button><span aria-hidden="true"> · </span><button type="button" id="notes-link" class="text-link" aria-label="Notes: open the liner notes for this study">Notes</button></p>
+    </div>
+    <nav id="views" aria-label="View">
+      <button type="button" data-view="network" aria-pressed="true">Network</button><span aria-hidden="true">·</span><button type="button" data-view="ladder" aria-pressed="false">Ladder</button><span aria-hidden="true">·</span><button type="button" data-view="staves" aria-pressed="false">Staves</button>
     </nav>
     <div id="stage">
       <canvas id="canvas" role="img"></canvas>
+      <canvas id="view-canvas" role="img" hidden></canvas>
       <div id="sites" role="group" aria-label="Stimulate a site"></div>
       <div id="status" aria-live="polite"></div>
     </div>
@@ -35,6 +44,9 @@
         <button id="single" disabled hidden>One impulse</button>
         <button id="guide" disabled hidden>Find a rhythm</button>
         <button id="premature" disabled hidden>Premature impulse</button>
+        <button id="find-echo" disabled hidden aria-label="Find the echo: eight steady atrial beats, then one early beat, a little earlier each time (S1–S2 extrastimulus).">Find the echo</button>
+        <button id="find-chord" disabled hidden aria-label="Find the chord: eight steady atrial beats, then two early beats, a little earlier each time (S1–S2–S3 extrastimuli).">Find the chord</button>
+        <button id="stillness" disabled hidden aria-label="Stillness: briefly quiet the junction, like an adenosine-like AV-nodal block. Shortcut S.">Stillness</button>
         <button id="reset" disabled>Reset</button>
       </div>
       <p id="protocol-hint" class="hint" aria-live="off"></p>
@@ -45,19 +57,31 @@
         <button id="mute" aria-pressed="false">Mute</button>
         <label>Volume <input id="volume" type="range" min="0" max="0.7" step="0.01" value="0.3"></label>
       </div>
-      <details>
+      <details id="connections">
         <summary>Connections</summary>
         <div id="cuts" class="cuts"></div>
         <button id="restore">Restore all connections</button>
+        <div id="inspect-list" class="inspect-list" hidden>
+          <p class="hint">Inspect a site or connection: its live state, its curve and its parameters.</p>
+          <div id="inspect-sites" class="cuts" role="group" aria-label="Inspect a site"></div>
+          <div id="inspect-links" class="cuts" role="group" aria-label="Inspect a connection"></div>
+        </div>
       </details>
     </section>
+    <div id="card-layer" aria-live="off"></div>
     <aside id="lab" aria-label="Laboratory" hidden>
       <h2>Laboratory</h2>
+      <div id="lab-study" hidden></div>
       <div id="lab-content"></div>
       <button id="export">Export event history</button>
     </aside>
   </main>
-  <footer>An instrument made of electrophysiology<span>Experimental artwork · phenomenological model</span></footer>
+  <dialog id="notes-sheet" aria-labelledby="notes-title">
+    <div class="notes-bar"><span class="draft-mark">DRAFT</span><span id="notes-title">Liner notes</span><button type="button" id="notes-close" aria-label="Close the liner notes">×</button></div>
+    <article id="notes-body" class="notes-body"></article>
+  </dialog>
+  <footer>An instrument made of electrophysiology<span>Experimental artwork · lumped-element model · not for clinical use</span></footer>
+  <script type="text/plain" id="protocol-worker-source">/* INLINE_WORKER */</script>
   <script>/* INLINE_APP */</script>
 </body>
 </html>

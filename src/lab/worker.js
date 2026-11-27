@@ -45,7 +45,10 @@ export function supportsWorkers(WorkerClass = globalThis.Worker) {
   return typeof WorkerClass === 'function';
 }
 
-export function createProtocolRunner({ workerUrl = null, WorkerClass = globalThis.Worker, forceMainThread = false, runOnMain = runProtocol } = {}) {
+// workerType: 'module' for a served module URL; 'classic' for a bundled script
+// (the single-file build loads its bundle from a Blob URL, and Chromium refuses
+// module workers from Blob URLs on file:// pages).
+export function createProtocolRunner({ workerUrl = null, workerType = 'module', WorkerClass = globalThis.Worker, forceMainThread = false, runOnMain = runProtocol } = {}) {
   let worker = null;
   let mode = 'main';
   let nextId = 1;
@@ -58,7 +61,7 @@ export function createProtocolRunner({ workerUrl = null, WorkerClass = globalThi
 
   if (!forceMainThread && workerUrl !== null && supportsWorkers(WorkerClass)) {
     try {
-      worker = new WorkerClass(workerUrl, { type: 'module' });
+      worker = new WorkerClass(workerUrl, { type: workerType });
       mode = 'worker';
       worker.addEventListener('message', ({ data }) => {
         const entry = pending.get(data?.id);

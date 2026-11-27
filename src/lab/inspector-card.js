@@ -338,7 +338,12 @@ export function createInspectorCard(container, {
 
   function send(body) {
     if (body === null) return;
-    enqueue(body);
+    // A host that cannot place the command now (paused, not started) returns false:
+    // the card then keeps the model as the engine has it.
+    if (enqueue(body) === false) {
+      render();
+      return;
+    }
     applyCommand(state, body);
     render();
   }
@@ -559,14 +564,26 @@ export function createInspectorCard(container, {
     // Feed the presentation frame: snapshot = readAt(tMs) and the run's events up to tMs.
     update({ snapshot = null, events = frame.events, tMs = snapshot?.tMs ?? null } = {}) {
       const runId = snapshot?.runId ?? events[0]?.runId ?? frame.runId ?? null;
-      if (runId !== (frame.runId ?? runId) || events.length < (frame.consumed ?? 0)) {
+      if (runId !== (frame.runId ?? runId)) {
         // A fresh run starts from the world as given: forget edits of the old run.
         Object.assign(state, createParameterState(world));
+        frame.seq = -1;
         frame.consumed = 0;
       }
-      applyParameterEvents(state, events.slice(frame.consumed ?? 0));
-      frame = { snapshot, events, tMs, consumed: events.length, runId };
-      render();
+      // Event ids are e<seq>, increasing within a run, so a host that prunes old
+      // events from the front of its history never replays or skips an edit.
+      // Events without an engine id fall back to their position in the array.
+      let seq = frame.seq ?? -1;
+      const consumed = frame.runId === runId ? (frame.consumed ?? 0) : 0;
+      const fresh = [];
+      events.forEach((event, index) => {
+        const n = /^e\d+$/.test(event.eventId ?? '') ? Number(event.eventId.slice(1)) : null;
+        if (n === null ? index >= consumed : n > seq) fresh.push(event);
+        if (n !== null) seq = Math.max(seq, n);
+      });
+      applyParameterEvents(state, fresh);
+      frame = { snapshot, events, tMs, seq, consumed: events.length, runId };
+      if (!root.hidden) render();
     },
     get target() { return target; },
     get state() { return state; },

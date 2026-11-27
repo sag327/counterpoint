@@ -36,6 +36,9 @@ class Element {
   setAttribute(key, value) { this.attributes.set(key, value); }
   getBoundingClientRect() { return { left: 0, top: 0, width: 1280, height: 585 }; }
   getContext() { return context2d; }
+  classList = { add() {}, remove() {}, toggle() {} };
+  querySelectorAll() { return this.children; }
+  querySelector() { return null; }
   click() { return this.disabled ? undefined : this.onclick?.({ detail: 0 }); }
 }
 
@@ -136,9 +139,12 @@ class TestAudioContext {
 const sandbox = {
   AudioContext: TestAudioContext,
   Blob,
+  URLSearchParams,
   URL,
   document,
-  console: { error: (error) => errors.push(error.stack ?? String(error)) },
+  console: { error: (error) => errors.push(error.stack ?? String(error)), warn: (error) => errors.push(String(error)) },
+  location: { hash: "", pathname: "/counterpoint.html", search: "" },
+  history: { replaceState() {} },
   matchMedia: () => ({ matches: false, addEventListener: noOp }),
   localStorage: {
     value: null,
