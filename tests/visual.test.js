@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { createRenderer } from '../src/visuals/renderer.js';
-import { createWeaveHistory, sampleWeave, pathPassages } from '../src/visuals/weave.js';
+import { createRenderer, makeGeometry } from '../src/visuals/renderer.js';
+import { createWeaveHistory, sampleWeave, pathPassages, junctionOpening } from '../src/visuals/weave.js';
+import { routeStrands } from '../src/visuals/strands.js';
 import { Engine } from '../src/engine/index.js';
 import { circulationWorld } from '../src/worlds/circulation.js';
 import { conductionWorld } from '../src/worlds/conduction.js';
@@ -388,7 +389,15 @@ console.log('Visual checks passed for all worlds with engine snapshots, contract
   const snapshot = engine.readAt(190);
   const { renderer, image } = setup(false, width, height, conductionWorld);
   const node = renderer.nodePosition('H');
-  const cleft = { x: node.x + 1, y: node.y + 16 };
+  const geometry = makeGeometry(conductionWorld, width, height);
+  const ports = geometry.junctions.find(({ id }) => id === 'H').ports;
+  const from = ports.find((arm, i) => arm.id.startsWith('HV') && ports[(i + 1) % ports.length].id.startsWith('HV'));
+  const route = routeStrands(geometry, new Map([...geometry.links.keys()].map(id => [id, true]))).get(from.id);
+  const tip = route.points[from.samples[0].index][1 + from.sign];
+  const opening = junctionOpening(snapshot.nodes.H, 190);
+  // The contour is fitted over both arms now, so probe its actual common cleft
+  // rather than a pixel tied to the former short cubic's handle placement.
+  const cleft = { x: node.x + (tip.x - node.x) * opening, y: node.y + (tip.y - node.y) * opening };
   const distalArm = place(-.31, .71);
   const noWake = { ...snapshot, activeTransits: [] };
   renderer.render(noWake);
