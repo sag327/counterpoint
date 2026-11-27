@@ -433,6 +433,7 @@ export function createRenderer(canvas, world, { reducedMotion = false, layout = 
   let network;
   let overlay = null;
   let modified = { nodes: new Set(), links: new Set() };
+  let selected = null;
   let dim = 0;
 
   // Adapter the Study No. 2 marks (marks.js) use to reach this renderer's geometry.
@@ -483,6 +484,12 @@ export function createRenderer(canvas, world, { reducedMotion = false, layout = 
     }
 
     for (const [id, node] of geometry.nodes) drawNode(ctx, node, snapshot.nodes[id]);
+    // The selected site (last touched or inspected) wears a quiet gold halo.
+    const chosen = selected ? geometry.nodes.get(selected) : null;
+    if (chosen) {
+      arc(ctx, chosen.x, chosen.y, 15, 0, TURN, cssColor('#d6b880', 0.85), 1.2);
+      arc(ctx, chosen.x, chosen.y, 19.5, 0, TURN, cssColor('#d6b880', 0.25), 0.8);
+    }
     for (const id of modified.nodes) {
       const node = geometry.nodes.get(id);
       if (node) drawModified(ctx, node.x + 9, node.y - 9);
@@ -591,6 +598,8 @@ export function createRenderer(canvas, world, { reducedMotion = false, layout = 
     markModified(next) { modified = { nodes: new Set(next?.nodes ?? []), links: new Set(next?.links ?? []) }; },
     // Stillness envelope 0..1: dims the ground by 6% at 1.
     setDim(value) { dim = clamp(value); },
+    setSelected(nodeId) { selected = nodeId ?? null; },
+    get selected() { return selected; },
     get centre() { return geometry ? { x: geometry.cx, y: geometry.cy, radius: geometry.radius } : null; },
     // Overlay hook (Map, listening point): called at the end of render with (ctx, { tMs, snapshot, events, width, height }).
     setOverlay(fn) { overlay = fn ?? null; },

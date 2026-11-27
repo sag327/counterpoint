@@ -192,7 +192,6 @@ export function createInspector(container, callbacks = {}) {
           <dt data-read="ba-label"></dt><dd data-read="ba"></dd>
           <dt>Current transits</dt><dd data-read="transits"></dd>
         </dl>
-        <button type="button" data-control="toggle-link">Cut link</button>
       </section>
       <section class="inspector-panel" aria-labelledby="diagnostic-protocol">
         <h3 id="diagnostic-protocol">Protocol</h3>
@@ -287,7 +286,6 @@ export function createInspector(container, callbacks = {}) {
     controls.reset.disabled = !canRun;
     controls.stimulate.disabled = !canEdit || !selectedNodeId;
     controls.single.disabled = !canRun || !selectedNodeId;
-    controls['toggle-link'].disabled = !canEdit || !selectedLinkId;
     controls.guide.disabled = !canRun || !couplingValid;
     controls.premature.disabled = !canRun;
   }
@@ -419,7 +417,6 @@ export function createInspector(container, callbacks = {}) {
     read('transits', transits.length
       ? transits.map(transit => `${transit.fromNodeId} → ${transit.toNodeId} (${ms(transit.departureMs)} → ${ms(transit.arrivalMs)})`).join(' · ')
       : 'None');
-    controls['toggle-link'].textContent = link?.enabled ? 'Cut link' : 'Restore link';
     read('palette', context.palette);
     read('music-note', note);
     const masterGain = audio?.masterGain ?? (audio ? (audio.muted ? 0 : audio.volume) : null);
@@ -437,7 +434,6 @@ export function createInspector(container, callbacks = {}) {
   controls.link.onchange = () => callbacks.onSelectLink?.(controls.link.value);
   controls.stimulate.onclick = () => callbacks.onStimulus?.(controls.node.value);
   controls.single.onclick = () => callbacks.onRunProtocol?.('single', controls.node.value);
-  controls['toggle-link'].onclick = () => callbacks.onToggleLink?.(controls.link.value);
   controls.coupling.oninput = () => updateCouplingValidation(false);
   controls.coupling.onchange = commitCoupling;
   controls.coupling.onkeydown = event => {

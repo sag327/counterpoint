@@ -18,10 +18,6 @@
       <button type="button" data-world="circulation" aria-pressed="false">Circulation</button>
       <button type="button" data-world="echo" aria-pressed="false" class="study-button">Echo</button>
     </nav>
-    <div id="study-line" hidden>
-      <p class="study-title"><span id="study-numeral"></span> <span id="study-name"></span></p>
-      <p class="study-subtitle"><span id="study-subtitle"></span><button type="button" id="study-chip" class="chip" hidden></button><span aria-hidden="true"> · </span><button type="button" id="notes-link" class="text-link" aria-label="Notes: open the liner notes for this study">Notes</button></p>
-    </div>
     <nav id="views" aria-label="View">
       <button type="button" data-view="network" aria-pressed="true">Network</button><span aria-hidden="true">·</span><button type="button" data-view="ladder" aria-pressed="false">Ladder</button>
     </nav>
@@ -38,6 +34,7 @@
       </div>
     </section>
     <section id="performance" class="controls" aria-label="Performance controls" hidden>
+      <p id="protocol-hint" class="instructions" aria-live="off"></p>
       <div class="actions">
         <button id="pause" disabled>Pause</button>
         <button id="single" disabled hidden>One impulse</button>
@@ -45,23 +42,17 @@
         <button id="premature" disabled hidden>Premature impulse</button>
         <button id="find-echo" disabled hidden aria-label="Find the echo: eight steady atrial beats, then one early beat, a little earlier each time (S1–S2 extrastimulus).">Find the echo</button>
         <button id="find-chord" disabled hidden aria-label="Find the circuit: eight steady atrial beats, then two early beats, a little earlier each time (S1–S2–S3 extrastimuli).">Find the circuit</button>
-        <button id="stillness" disabled hidden aria-label="Stillness: briefly quiet the junction, like an adenosine-like AV-nodal block. Shortcut S.">Stillness</button>
+        <button id="stillness" disabled hidden aria-label="Stillness: briefly quiet the junction, like an adenosine-like AV-nodal block.">Stillness</button>
         <button id="reset" disabled>Reset</button>
       </div>
-      <p id="protocol-hint" class="hint" aria-live="off"></p>
       <div class="settings">
         <label>Playback speed <select id="dilation" aria-describedby="dilation-hint"></select></label><span id="dilation-hint" class="visually-hidden">Fraction of real time. Slower playback spreads the rhythm out.</span>
         <label>Palette <select id="palette"><option value="chamber">Chamber</option><option value="atmosphere">Atmosphere</option><option value="minimalism">Minimalism</option></select></label>
         <label id="voicing-control" hidden>Chamber voicing <select id="voicing"><option value="balanced">Balanced</option><option value="open">Open</option><option value="suspended">Suspended</option></select></label>
-        <button id="mute" aria-pressed="false">Mute</button>
-        <label>Volume <input id="volume" type="range" min="0" max="0.7" step="0.01" value="0.3"></label>
       </div>
       <details id="connections">
-        <summary>Connections</summary>
-        <div id="cuts" class="cuts"></div>
-        <button id="restore">Restore all connections</button>
+        <summary>Inspect a site or connection</summary>
         <div id="inspect-list" class="inspect-list" hidden>
-          <p class="hint">Inspect a site or connection: its live state, its curve and its parameters.</p>
           <div id="inspect-sites" class="cuts" role="group" aria-label="Inspect a site"></div>
           <div id="inspect-links" class="cuts" role="group" aria-label="Inspect a connection"></div>
         </div>

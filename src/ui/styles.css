@@ -32,3 +32,7 @@ button.primary:hover{background:#e1c695;color:#11171a}
   position: absolute; width: 1px; height: 1px; overflow: hidden;
   clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
 }
+
+/* Instructions: short, legible, directly under the stage (creator decision 2026-11-27). */
+.instructions{text-align:center;font:16px/1.5 Georgia,serif;color:var(--ink);margin:4px auto 14px;max-width:60ch}
+.instructions kbd,.instructions b{font:inherit;color:var(--gold);font-weight:normal}

@@ -27,7 +27,12 @@
 .lab-card-default { margin-top: 12px; min-height: 36px; padding: 6px 14px; color: var(--lab-gold); background: transparent; border: 1px solid var(--lab-rule); border-radius: 6px; cursor: pointer; }
 .lab-card-default:disabled { opacity: .35; cursor: default; }
 .lab-card-note { margin: 10px 0 0; color: var(--lab-text2); font: italic 13px 'EB Garamond', Georgia, serif; }
-.lab-card-table summary { margin-top: 8px; color: var(--lab-text2); cursor: pointer; font-size: 12px; }
+.lab-card-key { font-size: 14px; gap: 6px 14px; }
+.lab-card-key dd { font-variant-numeric: tabular-nums; }
+.lab-card-section { border-top: 1px solid var(--lab-rule); margin: 0; max-width: none; }
+.lab-card-section > summary { display: list-item; min-height: 44px; padding: 12px 0; text-align: left; color: var(--lab-text2); cursor: pointer; font-size: 13px; }
+.lab-card-section[open] { padding-bottom: 10px; }
+.lab-card-section[open] > summary { color: var(--lab-text); }
 .lab-card-table table { width: 100%; font-size: 11px; border-collapse: collapse; }
 .lab-card-table caption { text-align: left; color: var(--lab-text2); }
 .lab-card-table td, .lab-card-table th { padding: 2px 4px; text-align: right; border-bottom: 1px solid var(--lab-rule); }

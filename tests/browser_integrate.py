@@ -49,8 +49,14 @@ def check_guided_run(page, *, phone):
     # The fastest playback offered is 1/4 of real time (creator decision 2026-11-27).
     page.locator("#dilation").select_option("4")
     activate(find_echo, phone=phone)
+    # Simplify M5: the first seven drive beats run silently; playback starts at
+    # 4100 ms, 300 ms before the last S1, so the S2 arrives about 2.7 s in at 1/4.
+    prelude = page.evaluate("""() => counterpoint.events
+        .filter(e => e.type === 'stimulus_attempted' && e.nodeId === 'CSp').map(e => e.tMs)""")
+    assert prelude == [200, 800, 1400, 2000, 2600, 3200, 3800], prelude
+    assert page.evaluate("counterpoint.transport.presentedMs()") >= 4100
     times = [200, 800, 1400, 2000, 2600, 3200, 3800, 4400, 4800]
-    advance_phone_clock(page, phone, 4900 * 4)
+    advance_phone_clock(page, phone, 800 * 4)
     page.wait_for_function(
         """times => JSON.stringify(counterpoint.events
             .filter(e => e.type === 'stimulus_attempted' && e.nodeId === 'CSp')
@@ -63,8 +69,8 @@ def check_guided_run(page, *, phone):
     assert page.evaluate("counterpoint.transport.runId") != run_id
     assert page.evaluate("""counterpoint.transport.commandLog()
         .find(command => command.commandId === 'S2')?.tMs""") == 4790
-    advance_phone_clock(page, phone, 1500 * 4)
-    page.wait_for_function("counterpoint.events.some(e => e.type === 'activation' && e.tMs >= 1400)", timeout=30_000)
+    advance_phone_clock(page, phone, 400 * 4)
+    page.wait_for_function("counterpoint.events.some(e => e.type === 'activation' && e.tMs >= 4200)", timeout=30_000)
 
 
 def select_view(page, view, *, phone):
@@ -110,6 +116,7 @@ def check_inspector(page, cdp, capture):
     finally:
         pointer(page, cdp, "up", point)
     assert page.evaluate("counterpoint.card.target.id") == "FP"
+    assert page.evaluate("counterpoint.selectedSite") == "FP", "the inspected site is highlighted"
     if cdp:
         sheet = card.bounding_box()
         viewport = page.viewport_size
@@ -118,6 +125,11 @@ def check_inspector(page, cdp, capture):
     capture("card")
     activate(close, phone=cdp is not None)
     expect(card).to_be_hidden()
+    # A screenshot can stall headless Chrome past the commit horizon (late wake);
+    # the sites are disabled while paused, so resume before the keyboard step.
+    if page.evaluate("counterpoint.transport.status") == "paused":
+        page.locator("#pause").evaluate("node => node.click()")
+        page.wait_for_function("counterpoint.transport.status === 'running'")
     site.press("i")
     expect(card).to_be_visible()
     expect(close).to_be_focused()
@@ -174,8 +186,8 @@ def check_worker(page, *, phone, output, capture):
 def check_live_curve_and_model(page, *, phone, capture):
     """Revise M2: the S1–S2 curve builds from the session; Model sliders log commands."""
     runner = page.locator("#lab-study")
-    # A fresh guided run (third press: S2 380 ms at 4780 ms) becomes a point once
-    # playback passes it by the settle window. Resume after a headless late wake.
+    # A fresh guided run (third press: S2 380 ms at 4780 ms, presented from 4100 ms)
+    # becomes a point once playback passes it by the settle window. Resume after a headless late wake.
     page.locator("#find-echo").evaluate("node => node.click()")
     deadline = time.monotonic() + 90
     while page.evaluate("counterpoint.liveCurve.length") < 1:
@@ -228,7 +240,7 @@ def smoke(browser, output, *, phone):
         page.goto(url)
         expect(page.get_by_role("button", name="Echo", exact=True)).to_have_attribute("aria-pressed", "true")
         assert page.evaluate("counterpoint.worldId") == "echo"
-        expect(page.locator("#study-name")).to_have_text("Echo")
+        assert page.locator("#study-line").count() == 0, "Echo's header matches the other worlds"
         activate(page.get_by_role("button", name="Begin in silence"), phone=phone)
         assert page.evaluate("counterpoint.mixer") is None
         check_guided_run(page, phone=phone)
@@ -241,8 +253,12 @@ def smoke(browser, output, *, phone):
         # is withdrawn; playback speed reads as a fraction of real time.
         assert page.locator("[data-view=staves]").count() == 0
         assert page.locator("[data-world=duality]").count() == 0
-        assert page.locator("#study-subtitle").inner_text() == "Two routes through the junction"
-        assert page.locator("#dilation option").all_inner_texts()[0] == "1/4 speed · 25%"
+        assert page.locator("#dilation option").all_inner_texts()[0] == "1/4 speed"
+        assert page.locator("#mute").count() == 0 and page.locator("#volume").count() == 0
+        instructions = page.locator("#protocol-hint")
+        expect(instructions).to_be_visible()
+        assert float(instructions.evaluate("node => parseFloat(getComputedStyle(node).fontSize)")) >= 16
+        assert page.evaluate("counterpoint.selectedSite") == "HRA"
         for view in ["network", "ladder"]:
             select_view(page, view, phone=phone)
             capture(view)

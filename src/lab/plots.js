@@ -431,7 +431,7 @@ export function restitutionModel({ siteLabel, law = null, erpMs = null, dots: al
   const off = dots.filter(d => Math.abs(d.erpMs - lawAt(d.diMs)) > 0.0015).length;
   const summary = law === null
     ? `${siteLabel}: fixed ERP of ${ms(erpMs)}; ${dots.length} captures.`
-    : `${siteLabel}: ERP ${ms(law.erpMaxMs)} after a long rest, shortening by up to ${ms(law.amplitudeMs)} with tau ${ms(law.tauMs)}; ${dots.length - off} of ${dots.length} captures lie on the curve${earlier.length ? ` (${earlier.length} earlier captures used other parameters)` : ''}${liveErp === null ? '' : `; now ${ms(round3(liveErp))}`}.`;
+    : `${siteLabel}: ERP ${ms(law.erpMaxMs)} after a long rest, shortening by up to ${ms(law.amplitudeMs)} with tau ${ms(law.tauMs)}; ${dots.length - off} of ${dots.length} captures lie on the curve${earlier.length ? ` (${earlier.length} earlier captures used other parameters)` : ''}${liveErp === null ? '' : `; now ${ms(Math.round(liveErp))}`}.`;
   return {
     kind: 'restitution',
     title: `Site · ${siteLabel}`,

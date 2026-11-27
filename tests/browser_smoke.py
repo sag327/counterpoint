@@ -53,7 +53,9 @@ def choose_world(page, world):
     assert page.get_by_role("button", name=world, exact=True).get_attribute("aria-pressed") == "true"
 
 
-def ring_cut_swipe(page, link_index, *, touch=False, context=None):
+def ring_drag(page, link_index, *, touch=False, context=None):
+    """Drag across a ring connection. Cutting was removed (2026-11-27): no command results."""
+    before = page.evaluate("counterpoint.transport.commandLog().length")
     box = page.locator("#canvas").bounding_box()
     radius = min(box["width"], box["height"]) * 0.33
     theta = (link_index + 0.5) * math.tau / 8 - math.pi / 2
@@ -69,15 +71,27 @@ def ring_cut_swipe(page, link_index, *, touch=False, context=None):
         cdp.send("Input.dispatchTouchEvent", {"type": "touchMove", "touchPoints": [end]})
         cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
         cdp.detach()
+        # Headless Chromium suppresses the click of the next real tap after a raw
+        # CDP touch sequence; settle it with one tap on the plain footer text.
+        page.locator("footer").first.tap()
     else:
         page.mouse.move(start["x"], start["y"])
         page.mouse.down()
         page.mouse.move(end["x"], end["y"], steps=6)
         page.mouse.up()
-    page.wait_for_function(
-        "(id) => document.querySelector('[data-link=' + id + ']').getAttribute('aria-pressed') === 'true'",
-        arg=f"L{link_index}",
-    )
+    page.wait_for_timeout(150)
+    assert page.evaluate("counterpoint.transport.commandLog().length") == before, "a drag submits nothing"
+    assert page.locator("[data-link]").count() == 0
+
+
+def wait_playing(page, predicate, *, seconds=60):
+    """Wait for a page predicate, resuming after a headless late-wake pause."""
+    deadline = time.monotonic() + seconds
+    while not page.evaluate(predicate):
+        assert time.monotonic() < deadline, page.evaluate("counterpoint.transport.state()")
+        if page.evaluate("counterpoint.transport.status") == "paused":
+            page.locator("#pause").evaluate("node => node.click()")
+        page.wait_for_timeout(200)
 
 
 def await_reentry(page):
@@ -109,10 +123,7 @@ def desktop_smoke(browser, output):
     page.locator("#premature").click()
     page.wait_for_function(f"{ACTIVATIONS}.some(e => e.nodeId === 'H' && e.tMs === 465)")
     screenshot(page, output, "conduction-running")
-    choose_world(page, "Duality")
-    page.wait_for_function(f"{ACTIVATIONS}.some(e => e.nodeId === 'B2' && e.tMs === 280)")
-    assert page.evaluate("counterpoint.events.every(e => e.worldId === 'duality')")
-    screenshot(page, output, "duality-running")
+    assert page.get_by_role("button", name="Duality", exact=True).count() == 0
     choose_world(page, "Circulation")
     page.locator("#single").click()
     page.wait_for_function(f"{ACTIVATIONS}.length === 8")
@@ -128,30 +139,25 @@ def desktop_smoke(browser, output):
     page.wait_for_function("(count) => counterpoint.events.length > count", arg=count)
     assert page.evaluate("counterpoint.transport.runId") == run_id
 
-    command_count = page.evaluate("counterpoint.transport.commandLog().length")
-    ring_cut_swipe(page, 4)
-    swipe = page.evaluate("count => counterpoint.transport.commandLog().slice(count)", command_count)
-    assert len(swipe) == 1 and swipe[0]["type"] == "setLinkEnabled" and swipe[0]["linkId"] == "L4", swipe
-    ring_cut_swipe(page, 4)
-    assert page.evaluate("counterpoint.transport.commandLog().length") == command_count + 1
-    page.locator("summary").click()
-    cut = page.locator("[data-link=L1]")
-    cut.focus()
-    page.keyboard.press("Space")
-    page.wait_for_function("document.querySelector('[data-link=L1]').getAttribute('aria-pressed') === 'true'")
-    time.sleep(2.15)
-    count = page.evaluate(f"{ACTIVATIONS}.length")
-    page.locator("#restore").click()
-    page.wait_for_function("Array.from(document.querySelectorAll('[data-link]')).every(button => button.getAttribute('aria-pressed') === 'false')")
-    time.sleep(0.48)
-    assert page.evaluate(f"{ACTIVATIONS}.length") == count
+    ring_drag(page, 4)
+    assert page.locator("#restore").count() == 0 and page.locator("#mute").count() == 0 and page.locator("#volume").count() == 0
 
     page.locator("#reset").click()
     page.wait_for_function("(run) => counterpoint.transport.runId !== run && counterpoint.events.length === 0", arg=run_id)
     page.locator("#dilation").select_option("5")
+    assert page.locator("#dilation option").all_inner_texts() == ["1/4 speed", "1/5 speed", "1/6 speed", "1/8 speed", "1/10 speed", "1/12 speed"]
     page.get_by_role("button", name="Stimulate site R3").focus()
     page.keyboard.press("Space")
     page.wait_for_function("counterpoint.events.some(e => e.type === 'stimulus_attempted' && e.nodeId === 'R3')")
+    # Simplify M6: every world can be inspected; the card leads with three readouts.
+    wait_playing(page, "counterpoint.transport.status === 'running'")
+    page.get_by_role("button", name="Stimulate site R3").press("i")
+    page.locator("#card-layer").wait_for(state="visible", timeout=5000)
+    assert page.evaluate("counterpoint.card.target.id") == "R3" and page.evaluate("counterpoint.selectedSite") == "R3"
+    assert page.locator(".lab-card-key dt").count() == 3
+    assert not page.locator(".lab-card-section[data-section=tune]").evaluate("node => node.open")
+    page.keyboard.press("Escape")
+    page.locator("#card-layer").wait_for(state="hidden", timeout=5000)
     page.locator("#lab-toggle").click()
     assert page.locator("#lab").is_visible()
     assert page.locator("#metrics").inner_text()
@@ -169,7 +175,7 @@ def desktop_smoke(browser, output):
     assert all(event["runId"] == exported["runId"] for event in exported["events"])
     assert not errors, errors
     check_network(requests, url)
-    print("PASS desktop Chromium file:// offline, three worlds, keyboard/silent, reentry, pause/resume, drag and keyboard cuts, restore, reset, dilation, inspector/export", flush=True)
+    print("PASS desktop Chromium file:// offline, Conduction and Circulation, keyboard/silent, reentry, pause/resume, drag does not cut, reset, dilation, inspector card, Lab/export", flush=True)
     context.close()
 
 
@@ -188,7 +194,7 @@ def mobile_smoke(browser, url, output):
     choose_world(page, "Circulation")
     page.locator("#begin").tap()
     page.wait_for_function("counterpoint.mixer != null")
-    page.wait_for_function(f"{ACTIVATIONS}.length === 8")
+    wait_playing(page, f"{ACTIVATIONS}.length >= 8")
     checked_notes = page.evaluate("""() => {
         const notes = counterpoint.mixer.diagnostics();
         const captures = counterpoint.events.filter(e => e.type === 'activation');
@@ -196,33 +202,29 @@ def mobile_smoke(browser, url, output):
             && notes.scheduled === captures.length && !notes.duplicates;
     }""")
     assert checked_notes, page.evaluate("counterpoint.mixer.diagnostics()")
-    page.locator("#mute").tap()
-    assert page.locator("#mute").get_attribute("aria-pressed") == "true"
-    page.locator("#mute").tap()
-    assert page.locator("#mute").get_attribute("aria-pressed") == "false"
     page.locator("#reset").tap()
+    wait_playing(page, "counterpoint.transport.status === 'running'")
     site = page.get_by_role("button", name="Stimulate site R5")
     box = site.bounding_box()
     assert box and box["width"] >= 44 and box["height"] >= 44, box
     site.tap()
     page.wait_for_function("counterpoint.events.some(e => e.type === 'stimulus_attempted' && e.nodeId === 'R5')")
-    ring_cut_swipe(page, 1, touch=True, context=context)
+    ring_drag(page, 1, touch=True, context=context)
     run_id = page.evaluate("counterpoint.transport.runId")
     page.locator("#palette").select_option("minimalism")
-    page.locator("#volume").fill("0.42")
     assert page.evaluate("counterpoint.transport.runId") == run_id
     screenshot(page, output, "mobile-running")
     page.locator("#lab-toggle").tap()
-    assert page.get_by_role("heading", name="Activation raster").is_visible()
+    page.get_by_role("heading", name="Activation raster").wait_for(state="visible", timeout=5000)
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
     page.reload()
     assert page.locator("#palette").input_value() == "minimalism"
-    assert float(page.locator("#volume").input_value()) == 0.42
-    assert page.get_by_role("button", name="Conduction", exact=True).get_attribute("aria-pressed") == "true"
+    # The URL fragment keeps the chosen world across a reload (Study No. 2).
+    assert page.get_by_role("button", name="Circulation", exact=True).get_attribute("aria-pressed") == "true"
     assert page.evaluate("counterpoint.mixer == null")
     assert not errors, errors
     check_network(requests, url)
-    print("PASS Chromium HTTP, 360 CSS px / DPR 2, reduced motion, touch tap/swipe, Web Audio, mute, palette/preferences, inspector", flush=True)
+    print("PASS Chromium HTTP, 360 CSS px / DPR 2, reduced motion, touch tap/drag, Web Audio, palette/preferences, inspector", flush=True)
     context.close()
 
 

@@ -280,6 +280,9 @@ export function cardModel(state, target, { events = [], snapshot = null, tMs = n
 // ---------------------------------------------------------------------------
 // DOM component
 
+// The first rows of the live readout are always shown; the rest sit under More readouts.
+export const KEY_READOUTS = 3;
+
 function ms(value) {
   return value === null || value === undefined ? '—' : `${round3(value)} ms`;
 }
@@ -312,19 +315,38 @@ export function createInspectorCard(container, {
   const badge = el('span', { className: 'lab-card-modified', title: 'This element differs from the study default' }, 'modified');
   const close = el('button', { type: 'button', className: 'lab-card-close', 'aria-label': 'Close the inspector card' }, '×');
   header.append(title, badge, close);
-  const fields = el('dl', { className: 'lab-card-state' });
+  // Tiers (creator decision 2026-11-27): three key readouts and a one-line summary
+  // first; further readouts, the curve with its tuning, and the data table open on demand.
+  const fields = el('dl', { className: 'lab-card-state lab-card-key' });
+  const moreFields = el('dl', { className: 'lab-card-state' });
+  const openSections = new Set();
+  const section = (id, text) => {
+    const node = el('details', { className: `lab-card-section lab-card-${id}` });
+    node.dataset.section = id;
+    node.append(el('summary', {}, text));
+    node.addEventListener('toggle', () => {
+      if (node.open) openSections.add(id); else openSections.delete(id);
+      if (node.open) render();
+    });
+    return node;
+  };
   const plot = el('div', { className: 'lab-card-plot' });
   const canvas = el('canvas', { 'aria-hidden': 'true' });
   plot.append(canvas);
   const summary = el('p', { className: 'lab-card-summary', 'aria-live': 'polite' });
   const controls = el('div', { className: 'lab-card-fields' });
   const note = el('p', { className: 'lab-card-note' });
-  const details = el('details', { className: 'lab-card-table' });
-  const detailsSummary = el('summary', {}, 'Data table');
   const table = el('div');
-  details.append(detailsSummary, table);
   const reset = el('button', { type: 'button', className: 'lab-card-default' }, 'Study default');
-  root.append(header, fields, plot, summary, controls, reset, note, details);
+  const more = section('more', 'More readouts');
+  more.append(moreFields);
+  const tune = section('tune', 'Curve and tuning');
+  tune.append(plot, controls, reset, note);
+  const details = section('table', 'Data table');
+  details.classList?.add?.('lab-card-table');
+  details.append(table);
+  const sections = [more, tune, details];
+  root.append(header, fields, summary, more, tune, details);
   container.append(root);
 
   const handleNodes = new Map();
@@ -407,12 +429,12 @@ export function createInspectorCard(container, {
       const cycle = captures.length >= 2 ? Math.round(captures.at(-1).tMs - captures.at(-2).tMs) : null;
       const remaining = until !== null && frame.tMs !== null && frame.tMs < until ? Math.ceil(until - frame.tMs) : null;
       rows.push(['Since last activation', ms(since)]);
-      rows.push(['Last cycle length', ms(cycle)]);
       rows.push(['Refractory remaining', remaining === null ? (until === null ? '—' : 'excitable') : ms(remaining)]);
+      rows.push(['Rested ERP', ms(live?.erpMs ?? state.nodes[target.id].erpMs)]);
+      rows.push(['Last cycle length', ms(cycle)]);
       rows.push(['Recovery', live ? `${Math.round(live.recovery * 100)}%` : '—']);
       rows.push(['Current DI', until !== null && di === null ? 'refractory' : ms(di)]);
       rows.push(['ERP of last capture', ms(last?.erpMs ?? null)]);
-      rows.push(['Rested ERP', ms(live?.erpMs ?? state.nodes[target.id].erpMs)]);
     } else {
       const live = snap?.links?.[target.id];
       const direction = live?.[target.direction];
@@ -424,7 +446,9 @@ export function createInspectorCard(container, {
       rows.push(['Last recovery', ms(lastLaunch?.recoveryMs ?? null)]);
       if (live?.lesion) rows.push(['Lesion', `${Math.round(live.lesion.progress * 100)}% of ${Math.round(live.lesion.completeness * 100)}%`]);
     }
-    fields.replaceChildren(...rows.flatMap(([k, v]) => [el('dt', {}, k), el('dd', {}, v)]));
+    const pairs = list => list.flatMap(([k, v]) => [el('dt', {}, k), el('dd', {}, v)]);
+    fields.replaceChildren(...pairs(rows.slice(0, KEY_READOUTS)));
+    moreFields.replaceChildren(...pairs(rows.slice(KEY_READOUTS)));
   }
 
   function placeHandles() {
@@ -559,6 +583,8 @@ export function createInspectorCard(container, {
   const api = {
     open(next) {
       target = next.kind === 'link' ? { kind: 'link', id: next.id, direction: next.direction ?? 'ab' } : { kind: next.kind, id: next.id };
+      // Sections the player opened stay open from one element to the next.
+      for (const node of sections) node.open = openSections.has(node.dataset.section);
       root.hidden = false;
       buildControls();
       render();

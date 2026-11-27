@@ -166,3 +166,43 @@ test('The link card plots launches in its own direction on the decrement and ent
   assert.match(model.summary, /slow|SL/);
   assert.deepEqual(model.handles.map(h => h.id), ['delay', 'decrementMax', 'decrementTau', 'entryMax', 'entryTau']);
 });
+
+test('the card leads with three key readouts; detail opens on demand and stays open across elements', () => {
+  const world = echoV11World();
+  const host = liveRun(world);
+  const fakeContainer = new FakeElement('div');
+  const card = createInspectorCard(fakeContainer, { world, enqueue: body => host.enqueue(body), document: fakeDocument });
+  host.advance(1500);
+  card.open({ kind: 'node', id: 'FP' });
+  card.update({ snapshot: host.engine.readAt(1500), events: host.events, tMs: 1500 });
+  const root = fakeContainer.children[0];
+  const key = root.children.find(n => n.className.includes('lab-card-key'));
+  assert.deepEqual(key.children.filter(n => n.tag === 'dt').map(n => n.textContent), ['Since last activation', 'Refractory remaining', 'Rested ERP']);
+  const sections = root.children.filter(n => n.tag === 'details');
+  assert.deepEqual(sections.map(n => n.dataset.section), ['more', 'tune', 'table']);
+  assert.ok(sections.every(n => !n.open), 'detail starts closed');
+  const more = sections[0].all(n => n.tag === 'dt').map(n => n.textContent);
+  assert.deepEqual(more, ['Last cycle length', 'Recovery', 'Current DI', 'ERP of last capture']);
+  // The curve, its handles and the fields sit under Curve and tuning.
+  assert.equal(sections[1].all(n => n.attributes.role === 'slider').length, 3);
+  sections[1].open = true;
+  sections[1].fire('toggle');
+  card.open({ kind: 'link', id: 'SL', direction: 'ab' });
+  assert.equal(sections[1].open, true, 'an opened section stays open for the next element');
+  assert.equal(sections[0].open, false);
+  assert.deepEqual(key.children.filter(n => n.tag === 'dt').map(n => n.textContent), ['State', 'Delay now', 'Last conduction time']);
+});
+
+test('introductory worlds without restitution can be inspected and tuned', async () => {
+  const { circulationWorld } = await import('../src/worlds/circulation.js');
+  const sent = [];
+  const fakeContainer = new FakeElement('div');
+  const card = createInspectorCard(fakeContainer, { world: circulationWorld, enqueue: body => { sent.push(body); }, document: fakeDocument });
+  card.open({ kind: 'node', id: 'R0' });
+  const input = fakeContainer.all(n => n.tag === 'input')[0];
+  input.value = '250';
+  input.fire('change');
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].nodeId, 'R0');
+  assert.deepEqual(card.modified().nodes, new Set(['R0']));
+});
