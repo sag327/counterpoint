@@ -1,5 +1,5 @@
 // Actual headless contract 1.1.0 traces for the oracle scenes, written to
-// evidence/engine-v11-01.json and validated by tests/engine-contract-v11.py.
+// evidence/engine-v11-02.json and validated by tests/engine-contract-v11.py.
 import {
   ablate, chainWorld, entryRingWorld, focusWorld, hemiolaWorld, induction, join, lesionRingWorld, play, pulseAt,
   restitutionWorld, site, train, v11World, way,
@@ -29,6 +29,13 @@ const toneWorld = v11World('tone', [
 const trainsWorld = v11World('trains', [site('A', 100), site('B', 100), site('C', 100)]);
 const orderWorld = v11World('order', [site('A', 100), site('B', 100)], [join('L', 'A', 'B', way(100), way(100))]);
 
+const breathToggleWorld = v11World('breath-toggle', [
+  site('S', 200, { tissue: 'sinus', automaticity: { cycleMs: 800, firstAttemptMs: 0, resetOnCapture: true } }),
+]);
+const unprotectWorld = v11World('unprotect', [site('P', 200, { tissue: 'atrial', automaticity: { cycleMs: 1000, firstAttemptMs: 100, resetOnCapture: true, protected: true } }),
+  site('Q', 50, { tissue: 'atrial' })], [join('PQ', 'P', 'Q', way(50), way(50))]);
+const breath = { breathPeriodMs: 4000, depth: 0.05, targets: ['sinus'] };
+
 const traces = {
   restitution340: trace(restitutionWorld(), 'rest340', [train('S1', 0, 'A', 0, 340, 64)], 64 * 340),
   restitution300: trace(restitutionWorld(), 'rest300', [train('S1', 0, 'A', 0, 300, 64)], 64 * 300),
@@ -56,6 +63,14 @@ const traces = {
     { commandId: 'tone', tMs: 250, type: 'setTone', value: -0.5 },
     { commandId: 'delay', tMs: 250, type: 'setDirectionDelay', linkId: 'L', direction: 'ab', delayMs: 80 },
     { commandId: 'ic', tMs: 150, type: 'applyAgent', agent: 'slow', doseScale: 1 }], 1000),
+  // Contract 1.1.0 attempt 02 (ticket 11e).
+  breathToggle: trace(breathToggleWorld, 'breath-toggle', [{ commandId: 'on', tMs: 1000, type: 'setAutonomic', value: breath },
+    { commandId: 'off', tMs: 9000, type: 'setAutonomic', value: null }], 12000),
+  cancelPartial: trace(trainsWorld, 'cancel', [train('T', 0, 'A', 100, 200, 10), { commandId: 'stop', tMs: 500, type: 'cancelTrain', trainId: 'T' },
+    train('U', 0, 'B', 1000, 200, 3), { commandId: 'early', tMs: 600, type: 'cancelTrain', trainId: 'U' }], 2000),
+  unprotect: trace(unprotectWorld, 'unprotect', [{ commandId: 'off', tMs: 500, type: 'setAutomaticity', nodeId: 'P', cycleMs: null }, pulseAt('q', 1200, 'Q')], 2000),
+  lesionDisabled: trace(orderWorld, 'burn-off', [{ commandId: 'cut', tMs: 0, type: 'setLinkEnabled', linkId: 'L', enabled: false },
+    ablate('burn', 100, 'L', 500, 1)], 1000),
 };
 
 // Coupling staircase on Duality cycles: B beats during A beats 100..520 (420 A cycles).

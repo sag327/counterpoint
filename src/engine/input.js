@@ -1,7 +1,11 @@
 import { addTicks, toTick } from './time.js';
 
+export const CONTRACT_V10 = '1.0.0';
 export const CONTRACT_V11 = '1.1.0';
 export const TRAIN_MAX_PULSES = 64;
+// Concurrent trains: a world may declare limits.maxConcurrentTrains up to this value (default 4).
+export const TRAIN_CONCURRENCY_DEFAULT = 4;
+export const TRAIN_CONCURRENCY_MAX = 16;
 export const TISSUES = Object.freeze(['sinus', 'atrial', 'nodal', 'hisPurkinje', 'ventricular', 'accessory']);
 
 const ERP_EDIT = [50, 1000];
@@ -31,11 +35,12 @@ const commandKeys = new Map([
   ['setRestitution', ['nodeId', 'erpMaxMs', 'amplitudeMs', 'tauMs', 'erpMinMs']],
   ['setDecrement', ['linkId', 'direction', 'maxExtraMs', 'tauMs']],
   ['setEntry', ['linkId', 'direction', 'maxExtraMs', 'tauMs']],
+  ['setAutonomic', ['value']],
 ]);
 const v11Commands = new Set(['stimulateTrain', 'cancelTrain', 'setTone', 'ablate', 'applyAgent', 'setCoupling',
-  'setRestitution', 'setDecrement', 'setEntry']);
+  'setRestitution', 'setDecrement', 'setEntry', 'setAutonomic']);
 const targetFields = { nodeId: 'nodes', linkId: 'links', target: 'links', couplingId: 'couplings', trainId: 'trains' };
-const WORLD_V11_KEYS = ['contractVersion', 'coupling', 'autonomic'];
+const WORLD_V11_KEYS = ['contractVersion', 'coupling', 'autonomic', 'limits'];
 const NODE_V11_KEYS = ['tissue', 'audible', 'restitution'];
 const AUTOMATICITY_V11_KEYS = ['overdrive', 'protected'];
 const DIRECTION_V11_KEYS = ['entry'];
@@ -157,7 +162,13 @@ function restitution(value, erp, label) {
   };
   if (law.erpMin > law.erpMax) throw new RangeError(`${label}.erpMinMs must not exceed erpMaxMs`);
   if (law.erpMax !== erp) throw new RangeError(`${label}.erpMaxMs must equal the node's erpMs`);
-  return law;
+  return withFloorOffset(law);
+}
+
+// §A. setNodeERP shifts erpMin with erpMax. The floor is kept as an offset below erpMax and
+// clamped to 1 ms only where it is used, so every setNodeERP edit can be undone exactly.
+export function withFloorOffset(law) {
+  return { ...law, floorOffset: law.erpMax - law.erpMin };
 }
 
 function readNode(node, version) {
@@ -173,6 +184,7 @@ function readNode(node, version) {
     until: null,
     erpGeneration: 0,
     cycleGeneration: 0,
+    protectedGeneration: 0,
     auto: { ...automaticity(node.automaticity, version), token: null },
     incident: [],
     tissue,
@@ -207,29 +219,50 @@ function readCoupling(entries, nodes, maxLinks) {
   });
 }
 
-function readAutonomic(value) {
+function readAutonomic(value, label = 'autonomic') {
   if (value === null) return null;
-  objectWithKeys(value, ['breathPeriodMs', 'depth', 'targets'], 'autonomic');
+  objectWithKeys(value, ['breathPeriodMs', 'depth', 'targets'], label);
   if (!Array.isArray(value.targets) || new Set(value.targets).size !== value.targets.length ||
       !value.targets.every(target => target === 'sinus' || target === 'nodal')) {
-    throw new RangeError('autonomic.targets must list sinus and/or nodal at most once each');
+    throw new RangeError(`${label}.targets must list sinus and/or nodal at most once each`);
   }
   return {
-    period: positiveTick(value.breathPeriodMs, 'autonomic.breathPeriodMs'),
-    depth: requireNumber(value.depth, 'autonomic.depth', 0, 0.5),
+    period: positiveTick(value.breathPeriodMs, `${label}.breathPeriodMs`),
+    depth: requireNumber(value.depth, `${label}.depth`, 0, 0.5),
     sinus: value.targets.includes('sinus'),
     nodal: value.targets.includes('nodal'),
   };
 }
 
-// Accepts contract 1.0.0 worlds and 1.1.0 worlds. A world is read as 1.1.0
-// when it declares contractVersion '1.1.0' or carries any 1.1.0 field.
-export function readWorld(world, { maxNodes, maxLinks }) {
+function readLimits(value, cap) {
+  objectWithKeys(value, [], 'limits', ['maxConcurrentTrains']);
+  const trains = value.maxConcurrentTrains ?? TRAIN_CONCURRENCY_DEFAULT;
+  if (!Number.isSafeInteger(trains) || trains < 1 || trains > TRAIN_CONCURRENCY_MAX) {
+    throw new RangeError(`limits.maxConcurrentTrains must be an integer from 1 to ${TRAIN_CONCURRENCY_MAX}`);
+  }
+  return { maxConcurrentTrains: trains, cap };
+}
+
+// The concurrent-train limit is part of the world, so a performance replays from its own
+// files. The engine option is only a host cap: a world asking for more is refused at reset.
+function trainLimit(limits, cap) {
+  if (limits.maxConcurrentTrains > cap) {
+    throw new RangeError(`World limits.maxConcurrentTrains (${limits.maxConcurrentTrains}) exceeds this engine's cap of ${cap}`);
+  }
+  return limits.maxConcurrentTrains;
+}
+
+// Accepts contract 1.0.0 worlds and 1.1.0 worlds. A world is read as 1.1.0 when it declares
+// contractVersion '1.1.0' or carries any 1.1.0 field. contractVersion '1.0.0' declares a
+// 1.0.0 world explicitly; such a world may not carry 1.1.0 fields.
+export function readWorld(world, { maxNodes, maxLinks, maxConcurrentTrains = TRAIN_CONCURRENCY_MAX }) {
   const version = { v11: objectWithKeys(world, ['worldId', 'nodes', 'links'], 'world', WORLD_V11_KEYS) };
   requireId(world.worldId, 'worldId');
-  if (Object.hasOwn(world, 'contractVersion') && world.contractVersion !== CONTRACT_V11) {
-    throw new RangeError(`contractVersion must be ${CONTRACT_V11}; omit it for a contract 1.0.0 world`);
+  const declared = Object.hasOwn(world, 'contractVersion') ? world.contractVersion : undefined;
+  if (declared !== undefined && declared !== CONTRACT_V11 && declared !== CONTRACT_V10) {
+    throw new RangeError(`contractVersion must be ${CONTRACT_V11} or ${CONTRACT_V10}, or omitted`);
   }
+  if (declared === CONTRACT_V10) version.v11 = Object.keys(world).some(key => key !== 'contractVersion' && WORLD_V11_KEYS.includes(key));
   if (!Array.isArray(world.nodes) || !Array.isArray(world.links)) {
     throw new TypeError('World nodes and links must be arrays');
   }
@@ -270,7 +303,24 @@ export function readWorld(world, { maxNodes, maxLinks }) {
   }
   const coupling = world.coupling === undefined ? [] : readCoupling(world.coupling, byId, maxLinks);
   const autonomic = world.autonomic === undefined ? null : readAutonomic(world.autonomic);
-  return { worldId: world.worldId, nodes, links, v11: version.v11, coupling, autonomic };
+  if (declared === CONTRACT_V10 && version.v11) {
+    throw new RangeError(`A world that declares contractVersion ${CONTRACT_V10} must not carry ${CONTRACT_V11} fields`);
+  }
+  const limits = readLimits(world.limits ?? {}, maxConcurrentTrains);
+  const maxTrains = version.v11 ? trainLimit(limits, maxConcurrentTrains) : null;
+  return { worldId: world.worldId, nodes, links, v11: version.v11, coupling, autonomic, maxConcurrentTrains: maxTrains };
+}
+
+// Study-world lint (12a, 13a–13g): every site of a shipped study world declares its tissue, so
+// Stillness never quietly treats an untagged nodal or ventricular site as atrial. Returns one
+// finding per site, in world order; an empty array means the world passes.
+export function lintStudyWorld(world) {
+  const nodes = Array.isArray(world?.nodes) ? world.nodes : [];
+  return Object.freeze(nodes.flatMap((node, index) => {
+    if (node !== null && typeof node === 'object' && Object.hasOwn(node, 'tissue')) return [];
+    const nodeId = typeof node?.id === 'string' ? node.id : `#${index}`;
+    return [Object.freeze({ code: 'MISSING_TISSUE', nodeId, message: `Site ${nodeId} does not declare tissue (the engine default is atrial)` })];
+  }));
 }
 
 function requireDirection(value) {
@@ -333,6 +383,10 @@ export function readCommand(command, run) {
     }
     case 'setTone':
       accepted.value = requireNumber(command.value, 'Tone', -1, 1);
+      break;
+    case 'setAutonomic':
+      if (command.value === undefined) throw new TypeError('Autonomic value must be an object or null');
+      accepted.value = readAutonomic(command.value, 'Autonomic value');
       break;
     case 'ablate':
       accepted.value = {
