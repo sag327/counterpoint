@@ -43,6 +43,10 @@ Stillness is gone from the app; the engine keeps `applyAgent` (contract). The gu
 
 `src/ui/edition.js` + `scripts/build.mjs --edition circulation` → `dist/counterpoint-circulation.html`, deployed to `/circulation/` by `build-site.mjs` with no inbound links. Add an edition by adding an entry to `EDITIONS` and the title map in `build.mjs`.
 
+## Pages source (found during E1)
+
+The live site serves the `main` branch through Jekyll (the "pages build and deployment" run), not the workflow's `_site`. So `/play/` and `/circulation/` return 404, and the committed `dist/counterpoint-circulation.html` is what is live. Fix (creator, repo settings): Settings → Pages → Source: GitHub Actions. The proxy blocks the Pages API.
+
 ## Possible follow-ups (ask the creator)
 
 - A home for the liner notes now that the Laboratory is hidden. The Echo header used to link to them.
