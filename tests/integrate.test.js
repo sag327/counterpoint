@@ -69,7 +69,7 @@ test('Ladder tiers cover each Echo site once; Staves are the audible sites in ch
 test('Guided protocols only enqueue labelled stimuli and trains', () => {
   for (const protocol of echoPresentation.protocols) {
     for (const s2 of [400, 300, 250]) {
-      const commands = protocol.id === 'find-echo' ? protocol.commands(s2) : protocol.commands(s2, s2);
+      const commands = protocol.commands(s2);
       assert.ok(commands.every(command => ['stimulate', 'stimulateTrain'].includes(command.type)));
       assert.equal(new Set(commands.map(command => command.commandId)).size, commands.length);
       const engine = new Engine();

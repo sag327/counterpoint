@@ -14,6 +14,7 @@
 | M4 | Remove cutting, mute/volume, S key, Echo header; fraction speeds; prominent instructions; selected-site halo | DONE | [simplify-01](docs/runs/simplify-01.md) |
 | M5 | Preconditioned Find the echo / Find the circuit | DONE | [simplify-02](docs/runs/simplify-02.md) |
 | M6 | Tiered inspector card; inspect and tune in every world | DONE | [simplify-03](docs/runs/simplify-03.md) |
+| M9 | Stillness removed; one-press Find the echo / Find the arrhythmia (nominal model, S2 252 / 282 ms, playback from S2 − 100 ms) | DONE | [simplify-05](docs/runs/simplify-05.md) |
 | M8 | Laboratory hidden (`SHOW_LABORATORY`); card curves drop pre-edit points; larger dots | DONE | [simplify-04](docs/runs/simplify-04.md) |
 | M7 | Gate run, merge into `main`, push | DONE | https://github.com/sag327/counterpoint/pull/2 (merged `7d6da76`, Pages deployed) |
 
@@ -32,6 +33,10 @@ PR #2 merged into `main` at `7d6da76`; the Pages workflow deployed it. The next 
 ## M8 · done
 
 The Laboratory is hidden behind `SHOW_LABORATORY = false` (`src/ui/studies.js`), and its code is kept. The browser suites skip its steps while the button is hidden. Liner notes are unreachable while it is hidden. Inspector curves (`restitutionModel` / `conductionModel` in `src/lab/plots.js`) drop points captured before the element's last edit and draw larger haloed dots.
+
+## M9 · done
+
+Stillness is gone from the app; the engine keeps `applyAgent` (contract). The guided protocols in `src/worlds/echo.js` (`ECHO_S2_MS`, `ARRHYTHMIA_S2_MS`, `GUIDED_LEAD_MS`) start from the nominal model (no carried edits) and present from 100 ms before the S2. Windows: one echo for S2 240–264 ms; sustained reentry for 266–298 ms (`tests/studies-echo.test.js`).
 
 ## Possible follow-ups (ask the creator)
 

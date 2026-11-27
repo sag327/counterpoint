@@ -20,6 +20,7 @@
 | 11a–11d | REVIEW | [Contract 1.1.0 receipt](docs/runs/contract-v11-01.md); [independent G1 review: PASS](docs/runs/g1-review-01.md). Lead decisions applied in 11e. |
 | 11e | REVIEW | [Contract 1.1.0 amendments receipt](docs/runs/contract-v11-02.md): tone sign, train_completed on cancel, setAutonomic, permanent complete lesions, L2–L7, lintStudyWorld. v1 invariance passes. Next: lead review, then freeze 1.1.0. |
 | v0.2 integration | REVIEW | [Echo browser review](docs/runs/integrate-02.md): desktop and phone-emulated Echo smoke pass, including Worker and CSV download. Layout corrections, site build, and 173 Node tests pass. Live Chromium timing, physical phone review, and creator listening at 4× remain open. |
+| Simplify M9 | REVIEW | [No Stillness; one-press echo and arrhythmia](docs/runs/simplify-05.md). 190 Node tests and both Chromium suites pass. |
 | Simplify M8 | REVIEW | [Laboratory hidden; card curves reset on edit](docs/runs/simplify-04.md). 188 Node tests and both Chromium suites pass. |
 | Simplify M6 | REVIEW | [Layered card, every world](docs/runs/simplify-03.md): three key readouts first, detail in collapsible sections; Conduction and Circulation can be inspected and tuned. 187 Node tests and both Chromium suites pass. |
 | Simplify M5 | REVIEW | [Preconditioned guided runs](docs/runs/simplify-02.md): Find the echo and Find the circuit start 300 ms before the last S1 with the first seven beats already run; same commands and events as a full run. 185 Node tests and the Chromium Echo suite pass. |

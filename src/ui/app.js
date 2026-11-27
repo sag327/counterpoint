@@ -1,5 +1,4 @@
 import { Engine } from '../engine/index.js';
-import { stillnessEnvelope } from '../engine/laws.js';
 import { createTransport, LOOKAHEAD_WALL_MS } from '../runtime/transport.js';
 import { createRenderer } from '../visuals/renderer.js';
 import { mapActivation, createAudioMixer, describeNodeMusic, musicTableFor, PALETTES, CHAMBER_VOICINGS } from '../music/index.js';
@@ -26,10 +25,6 @@ const GUIDE_COUPLING_MS = 240;
 // A pointer that travels this far is a drag, not a tap or a hold: it does nothing.
 const DRAG_THRESHOLD = 10;
 const HOLD_SITE_MS = 500;
-const HOLD_CENTRE_MS = 600;
-// "Find the chord" starts at the jump: in the shipped tuning S2 from 299 to 265 ms
-// sustains circulation (docs/runs/studies-01.md); S3 follows at the same coupling.
-const CHORD_STEPS = Object.freeze({ from: 300, to: 240, step: -10 });
 const initialFragment = parseFragment(location.hash);
 let worldId = initialFragment.study ?? 'conduction';
 let scene = WORLDS[worldId];
@@ -62,8 +57,6 @@ let fps = 0;
 let lastInspectionTime = -Infinity;
 let inspectionDirty = true;
 let lastCardUpdate = -Infinity;
-let stillnessDoses = [];
-let guidedNext = { 'find-echo': 0, 'find-chord': 0 };
 let guidedLast = null;
 let workerUrl;
 // Live S1–S2 curve: premature beats of this session, kept across runs, cleared on a world switch.
@@ -121,9 +114,7 @@ const transport = createTransport({
     visualFloorMs = -1;
     lastFrame = undefined;
     cancelGesture();
-    stillnessDoses = [];
     renderer.clearGestures();
-    renderer.setDim(0);
     mixer?.beginRun(snapshot.runId);
     inspectionDirty = true;
     lastCardUpdate = -Infinity;
@@ -147,16 +138,14 @@ const transport = createTransport({
   },
 });
 
-function guidedCommands(kind) {
+const GUIDED = ['find-echo', 'find-arrhythmia'];
+
+// One press shows the behaviour: nominal model, the drive already given, and the
+// decisive S2 at the middle of its window (src/worlds/echo.js).
+function guidedProtocol(kind) {
   const protocol = scene.presentation.protocols.find(entry => entry.id === kind);
-  const steps = kind === 'find-echo' ? protocol.steps : CHORD_STEPS;
-  const count = Math.floor((steps.to - steps.from) / steps.step) + 1;
-  const index = guidedNext[kind] % count;
-  guidedNext[kind] = index + 1;
-  const s2 = steps.from + index * steps.step;
-  const commands = kind === 'find-echo' ? protocol.commands(s2) : protocol.commands(s2, s2);
-  guidedLast = { kind, label: protocol.lab, s2, s3: kind === 'find-chord' ? s2 : null };
-  return commands;
+  guidedLast = { kind, label: protocol.lab, s2: protocol.s2, s3: null };
+  return protocol;
 }
 
 function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs, autoStart = started) {
@@ -164,7 +153,7 @@ function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs
   if (kind === 'guide' && (worldId !== 'circulation' || !world.nodes.some(node => node.id === nodeId)
     || !Number.isInteger(interval) || interval < 1 || interval > 5000)) return;
   if (kind === 'premature' && worldId !== 'conduction') return;
-  if ((kind === 'find-echo' || kind === 'find-chord') && worldId !== 'echo') return;
+  if (GUIDED.includes(kind) && worldId !== 'echo') return;
   const runId = `run-${++runCounter}`;
   const commands = [];
   const stimulus = (commandId, nodeId, tMs) => ({ commandId, type: 'stimulate', nodeId, tMs });
@@ -179,16 +168,18 @@ function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs
   } else if (kind === 'premature' && worldId === 'conduction') {
     commands.push(stimulus('protocol-premature', 'A', 275));
     status = 'An early impulse takes the slower path.';
-  } else if (kind === 'find-echo' || kind === 'find-chord') {
-    commands.push(...guidedCommands(kind));
-    fromMs = scene.presentation.protocols.find(entry => entry.id === kind).presentFromMs ?? 0;
+  } else if (GUIDED.includes(kind)) {
+    const protocol = guidedProtocol(kind);
+    commands.push(...protocol.commands());
+    fromMs = protocol.presentFromMs;
     status = kind === 'find-echo'
-      ? 'Seven beats already given. The last beat, then one early touch. Each try comes a little earlier.'
-      : 'Seven beats already given. The last beat, then two early touches. Each try comes a little earlier.';
+      ? `Nominal model, paced at 600 ms. Next: an early beat at ${protocol.s2} ms gives one echo.`
+      : `Nominal model, paced at 600 ms. Next: an early beat at ${protocol.s2} ms starts reentry.`;
   }
-  if (kind !== 'find-echo' && kind !== 'find-chord') guidedLast = null;
-  // The player's model edits carry into the new run as logged commands at t = 0.
-  if (card) {
+  if (!GUIDED.includes(kind)) guidedLast = null;
+  // The player's model edits carry into the new run as logged commands at t = 0;
+  // the guided runs start from the nominal model instead.
+  if (card && !GUIDED.includes(kind)) {
     carryCommands(scene.preset ?? world, card.state).forEach((body, index) => commands.push({ ...body, commandId: `carry-${index + 1}`, tMs: 0 }));
   }
   $('status').textContent = started ? status : WORLDS[worldId].topology;
@@ -235,7 +226,6 @@ function chooseWorld(id) {
   selectedNodeId = world.nodes.find(node => node.audible !== false)?.id ?? world.nodes[0].id;
   renderer.setSelected(selectedNodeId);
   selectedLinkId = world.links[0].id;
-  guidedNext = { 'find-echo': 0, 'find-chord': 0 };
   guidedLast = null;
   for (const button of $('worlds').children) {
     button.setAttribute('aria-pressed', String(button.dataset.world === worldId));
@@ -243,7 +233,7 @@ function chooseWorld(id) {
   $('canvas').setAttribute('aria-label', settings.topology + ' Use the site buttons to stimulate.');
   $('single').hidden = $('guide').hidden = id !== 'circulation';
   $('premature').hidden = id !== 'conduction';
-  $('find-echo').hidden = $('find-chord').hidden = $('stillness').hidden = id !== 'echo';
+  $('find-echo').hidden = $('find-arrhythmia').hidden = id !== 'echo';
   updatePaletteControls();
   $('protocol-hint').textContent = settings.hint;
   setupCard();
@@ -353,8 +343,7 @@ function updateButtons() {
   const running = transport.status === 'running';
   if (!running) cancelGesture();
   for (const button of $('sites').children) button.disabled = !running;
-  for (const id of ['single', 'guide', 'premature', 'find-echo', 'find-chord', 'reset']) $(id).disabled = !started;
-  $('stillness').disabled = !running;
+  for (const id of ['single', 'guide', 'premature', 'find-echo', 'find-arrhythmia', 'reset']) $(id).disabled = !started;
   $('pause').textContent = transport.status === 'pausing' ? 'Pausing…' : running ? 'Pause' : 'Resume';
   $('pause').disabled = !started || ['pausing', 'faulted'].includes(transport.status);
 }
@@ -417,24 +406,6 @@ function stimulate(nodeId) {
   selectNode(nodeId);
   const command = transport.submit({ type: 'stimulate', nodeId });
   if (command) renderer.markGesture(nodeId, command.commandId, command.tMs, command.runId);
-}
-
-// Stillness: an adenosine-like agent. One logged applyAgent command; the engine
-// applies the envelope to nodal, sinus and atrial sites in 100 ms steps.
-function stillness() {
-  if (!scene.study || transport.status !== 'running') return;
-  const command = transport.submit({ type: 'applyAgent', agent: 'stillness', doseScale: 1 });
-  if (!command) return;
-  stillnessDoses.push({ tMs: command.tMs, runId: command.runId });
-  $('status').textContent = 'Stillness. The junction goes quiet for a while.';
-}
-
-function stillnessLevel(frame) {
-  let level = 0;
-  for (const dose of stillnessDoses) {
-    if (dose.runId === frame.runId) level = Math.max(level, stillnessEnvelope((frame.presentedMs - dose.tMs) * 1000));
-  }
-  return level;
 }
 
 function siteLabel(id) {
@@ -553,21 +524,18 @@ function trackGesture(event) {
   }
 }
 
-// Press and hold: a site or a connection opens the inspector card (every world);
-// the open centre gives Stillness (Echo). A drag cancels a hold and does nothing.
+// Press and hold: a site or a connection opens the inspector card (every world).
+// A drag cancels a hold and does nothing.
 function armHold(active, point) {
   const link = active.site ? null : renderer.hitTestLink(point.x, point.y);
-  const centre = renderer.centre;
-  const inCentre = scene.study && !active.site && !link && centre && Math.hypot(point.x - centre.x, point.y - centre.y) < centre.radius * 0.8;
-  if (!active.site && !link && !inCentre) return;
+  if (!active.site && !link) return;
   active.timer = setTimeout(() => {
     if (gesture !== active || active.dragged) return;
     active.held = true;
     active.timer = null;
     if (active.site) openCard({ kind: 'node', id: active.site });
-    else if (link) openCard({ kind: 'link', id: link });
-    else stillness();
-  }, active.site || link ? HOLD_SITE_MS : HOLD_CENTRE_MS);
+    else openCard({ kind: 'link', id: link });
+  }, HOLD_SITE_MS);
 }
 
 const stage = $('stage');
@@ -684,8 +652,7 @@ $('single').onclick = () => startRun('single', 'R0');
 $('guide').onclick = () => startRun('guide', 'R0', GUIDE_COUPLING_MS);
 $('premature').onclick = () => startRun('premature');
 $('find-echo').onclick = () => startRun('find-echo');
-$('find-chord').onclick = () => startRun('find-chord');
-$('stillness').onclick = stillness;
+$('find-arrhythmia').onclick = () => startRun('find-arrhythmia');
 $('reset').onclick = () => startRun();
 $('notes-close').onclick = () => $('notes-sheet').close?.() ?? $('notes-sheet').removeAttribute('open');
 $('notes-sheet').addEventListener('click', event => { if (event.target === $('notes-sheet')) $('notes-sheet').close(); });
@@ -783,7 +750,6 @@ function draw(now) {
     if (frame.snapshot) {
       const events = visualFloorMs < 0 ? allEvents : allEvents.filter(event => event.tMs > visualFloorMs);
       if (view === 'network') {
-        renderer.setDim(stillnessLevel(frame));
         renderer.render(frame.snapshot, events, frame.presentedMs);
       } else {
         views.draw({ events, presentedMs: frame.presentedMs, lab: labOpen() });
@@ -813,5 +779,4 @@ window.counterpoint = {
   get musicTable() { return musicTable; },
   get liveCurve() { return liveCurve.points; },
   get selectedSite() { return renderer?.selected ?? null; },
-  stillnessLevel: () => (lastFrame ? stillnessLevel(lastFrame) : 0),
 };

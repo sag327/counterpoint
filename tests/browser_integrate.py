@@ -44,33 +44,58 @@ def advance_phone_clock(page, phone, ms):
         page.clock.run_for(ms)
 
 
+def resume_after_late_wake(page):
+    if page.evaluate("counterpoint.transport.status") == "paused":
+        page.locator("#pause").evaluate("node => node.click()")
+
+
+def wait_echoes(page, phone, count, after_ms):
+    deadline = time.monotonic() + 90
+    query = """(after) => counterpoint.events.filter(e => e.type === 'activation' && e.nodeId === 'CSp'
+        && e.tMs > after && e.incomingLinkIds.includes('CF')).length"""
+    while page.evaluate(query, after_ms) < count:
+        assert time.monotonic() < deadline, page.evaluate("counterpoint.transport.state()")
+        resume_after_late_wake(page)
+        advance_phone_clock(page, phone, 500)
+        page.wait_for_timeout(100)
+
+
 def check_guided_run(page, *, phone):
-    find_echo = page.locator("#find-echo")
-    # The fastest playback offered is 1/4 of real time (creator decision 2026-11-27).
+    """One press shows the behaviour (creator decision 2026-11-27): nominal model,
+    the drive already given, playback from 100 ms before the decisive S2."""
     page.locator("#dilation").select_option("4")
-    activate(find_echo, phone=phone)
-    # Simplify M5: the first seven drive beats run silently; playback starts at
-    # 4100 ms, 300 ms before the last S1, so the S2 arrives about 2.7 s in at 1/4.
+    # An edit to the model does not carry into a guided run.
+    resume_after_late_wake(page)
+    page.wait_for_function("counterpoint.transport.status === 'running'")
+    site = page.locator("[data-site=FP]")
+    site.press("i")
+    field = page.locator(".lab-card-fields input").first
+    page.locator(".lab-card-section[data-section=tune]").evaluate("node => { node.open = true; }")
+    field.fill("330")
+    field.dispatch_event("change")
+    page.locator(".lab-card-close").evaluate("node => node.click()")
+
+    activate(page.locator("#find-echo"), phone=phone)
+    log = page.evaluate("counterpoint.transport.commandLog().map(c => c.commandId + ':' + c.tMs)")
+    assert log == ["S1:200", "S2:4652"], log
     prelude = page.evaluate("""() => counterpoint.events
         .filter(e => e.type === 'stimulus_attempted' && e.nodeId === 'CSp').map(e => e.tMs)""")
-    assert prelude == [200, 800, 1400, 2000, 2600, 3200, 3800], prelude
-    assert page.evaluate("counterpoint.transport.presentedMs()") >= 4100
-    times = [200, 800, 1400, 2000, 2600, 3200, 3800, 4400, 4800]
-    advance_phone_clock(page, phone, 800 * 4)
-    page.wait_for_function(
-        """times => JSON.stringify(counterpoint.events
-            .filter(e => e.type === 'stimulus_attempted' && e.nodeId === 'CSp')
-            .map(e => e.tMs)) === JSON.stringify(times)""",
-        arg=times,
-        timeout=60_000,
-    )
-    run_id = page.evaluate("counterpoint.transport.runId")
-    activate(find_echo, phone=phone)
-    assert page.evaluate("counterpoint.transport.runId") != run_id
-    assert page.evaluate("""counterpoint.transport.commandLog()
-        .find(command => command.commandId === 'S2')?.tMs""") == 4790
-    advance_phone_clock(page, phone, 400 * 4)
-    page.wait_for_function("counterpoint.events.some(e => e.type === 'activation' && e.tMs >= 4200)", timeout=30_000)
+    assert prelude == [200, 800, 1400, 2000, 2600, 3200, 3800, 4400], prelude
+    assert page.evaluate("counterpoint.transport.presentedMs()") >= 4552
+    wait_echoes(page, phone, 1, 4652)
+    # Exactly one echo: none follows within the next second.
+    deadline = time.monotonic() + 90
+    while page.evaluate("counterpoint.transport.presentedMs()") < 5900:
+        assert time.monotonic() < deadline, page.evaluate("counterpoint.transport.state()")
+        resume_after_late_wake(page)
+        advance_phone_clock(page, phone, 500)
+        page.wait_for_timeout(100)
+    assert page.evaluate("""counterpoint.events.filter(e => e.type === 'activation' && e.nodeId === 'CSp'
+        && e.tMs > 4652 && e.incomingLinkIds.includes('CF')).length""") == 1
+
+    activate(page.locator("#find-arrhythmia"), phone=phone)
+    assert page.evaluate("counterpoint.transport.commandLog().find(c => c.commandId === 'S2')?.tMs") == 4682
+    wait_echoes(page, phone, 3, 4682)
 
 
 def select_view(page, view, *, phone):
@@ -186,8 +211,8 @@ def check_worker(page, *, phone, output, capture):
 def check_live_curve_and_model(page, *, phone, capture):
     """Revise M2: the S1–S2 curve builds from the session; Model sliders log commands."""
     runner = page.locator("#lab-study")
-    # A fresh guided run (third press: S2 380 ms at 4780 ms, presented from 4100 ms)
-    # becomes a point once playback passes it by the settle window. Resume after a headless late wake.
+    # A fresh guided run (S2 252 ms at 4652 ms, presented from 4552 ms) becomes a
+    # point once playback passes it by the settle window. Resume after a headless late wake.
     page.locator("#find-echo").evaluate("node => node.click()")
     deadline = time.monotonic() + 90
     while page.evaluate("counterpoint.liveCurve.length") < 1:
@@ -197,7 +222,7 @@ def check_live_curve_and_model(page, *, phone, capture):
         advance_phone_clock(page, phone, 2000)
         page.wait_for_timeout(250)
     point = page.evaluate("counterpoint.liveCurve.at(-1)")
-    assert point["couplingMs"] == 380 and point["driveCycleMs"] == 600, point
+    assert point["couplingMs"] == 252 and point["driveCycleMs"] == 600, point
     live = runner.locator("[data-control=curves] figure").first
     expect(live.locator("figcaption")).to_contain_text("premature beat", timeout=5000)
     slider = runner.locator("#model-fp-erp")
@@ -258,7 +283,7 @@ def smoke(browser, output, *, phone):
         instructions = page.locator("#protocol-hint")
         expect(instructions).to_be_visible()
         assert float(instructions.evaluate("node => parseFloat(getComputedStyle(node).fontSize)")) >= 16
-        assert page.evaluate("counterpoint.selectedSite") == "HRA"
+        assert page.evaluate("counterpoint.selectedSite") == "FP"  # inspected in check_guided_run
         for view in ["network", "ladder"]:
             select_view(page, view, phone=phone)
             capture(view)
@@ -267,11 +292,7 @@ def smoke(browser, output, *, phone):
         activate(page.get_by_role("button", name="Resume", exact=True), phone=phone)
         page.wait_for_function("counterpoint.transport.status === 'running'")
         check_inspector(page, cdp, capture)
-        activate(page.locator("#stillness"), phone=phone)
-        advance_phone_clock(page, phone, 100)
-        page.wait_for_function("""counterpoint.transport.commandLog()
-            .some(command => command.type === 'applyAgent' && command.agent === 'stillness' && command.doseScale === 1)""")
-        page.wait_for_function("counterpoint.stillnessLevel() > 0")
+        assert page.locator("#stillness").count() == 0, "Stillness is removed (2026-11-27)"
         # The Laboratory is hidden for now (SHOW_LABORATORY = false, 2026-11-27).
         # Its steps run again when the flag returns.
         if page.locator("#lab-toggle").is_visible():
@@ -281,8 +302,8 @@ def smoke(browser, output, *, phone):
             assert page.locator("#lab").is_hidden()
         assert not errors, errors
         check_network(requests, ARTIFACT.as_uri())
-        print(f"PASS Echo {width}x{height} Chromium file:// offline, guided run, two views, "
-              "inspector by hold and keyboard, Stillness, Laboratory hidden", flush=True)
+        print(f"PASS Echo {width}x{height} Chromium file:// offline, one-press echo and arrhythmia, two views, "
+              "inspector by hold and keyboard, no Stillness, Laboratory hidden", flush=True)
     except Exception:
         diagnostics = page.evaluate("""window.counterpoint && ({
             state: counterpoint.transport.state(),

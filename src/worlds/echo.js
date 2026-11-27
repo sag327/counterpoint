@@ -37,9 +37,15 @@ export const echoWorld = deepFreeze(createEchoWorld());
 const DRIVE_START_MS = 200;
 const lastS1Ms = ({ drive = 600, count = 8, start = DRIVE_START_MS } = {}) => start + drive * (count - 1);
 
-// Guided runs present from half a drive cycle before the last S1: the first
-// seven beats run silently, so the player hears the last S1 and the extrastimuli.
-export const ECHO_PRESENT_FROM_MS = lastS1Ms() - 300;
+// Guided runs (creator decision 2026-11-27): one press shows the behaviour. The
+// model is nominal, the drive runs silently, and presentation starts 100 ms
+// before the decisive S2. With the nominal model, S2 240–264 ms gives exactly
+// one echo and S2 266–298 ms sustained AV-nodal reentry (tests/studies-echo.test.js);
+// each button uses the middle of its window.
+export const ECHO_S2_MS = 252;
+export const ARRHYTHMIA_S2_MS = 282;
+export const GUIDED_LEAD_MS = 100;
+export const s2AtMs = s2 => lastS1Ms() + s2;
 
 const S1S2 = (s2, { drive = 600, count = 8, start = DRIVE_START_MS, s3 = null } = {}) => {
   const last = lastS1Ms({ drive, count, start });
@@ -63,9 +69,9 @@ export const echoPresentation = deepFreeze({
     V: [PITCH.D3, 'bow', 0.15],
   }),
   protocols: [
-    { id: 'find-echo', label: 'Find the echo', lab: 'S1–S2 decremental atrial extrastimulus, drive 600 ms',
-      steps: { from: 400, to: 200, step: -10 }, presentFromMs: ECHO_PRESENT_FROM_MS, commands: s2 => S1S2(s2) },
-    { id: 'find-chord', label: 'Find the chord', lab: 'S1–S2–S3 atrial extrastimuli, drive 600 ms',
-      presentFromMs: ECHO_PRESENT_FROM_MS, commands: (s2, s3 = s2) => S1S2(s2, { s3 }) },
+    { id: 'find-echo', label: 'Find the echo', lab: `S1 600 ms × 8 from CSp, S2 ${ECHO_S2_MS} ms: one AV-nodal echo`,
+      s2: ECHO_S2_MS, presentFromMs: s2AtMs(ECHO_S2_MS) - GUIDED_LEAD_MS, commands: (s2 = ECHO_S2_MS) => S1S2(s2) },
+    { id: 'find-arrhythmia', label: 'Find the arrhythmia', lab: `S1 600 ms × 8 from CSp, S2 ${ARRHYTHMIA_S2_MS} ms: sustained AV-nodal reentry`,
+      s2: ARRHYTHMIA_S2_MS, presentFromMs: s2AtMs(ARRHYTHMIA_S2_MS) - GUIDED_LEAD_MS, commands: (s2 = ARRHYTHMIA_S2_MS) => S1S2(s2) },
   ],
 });
