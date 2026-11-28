@@ -239,6 +239,7 @@ assert.equal(pacedAfterAway.runId, pacedBeforeAway.runId);
 assert.equal(pacedAfterAway.dilation, pacedBeforeAway.dilation);
 assert.equal(pacedAfterAway.pacing.nodeId, "A");
 assert.equal(pacedAfterAway.pacing.cycleMs, 590);
+select("pacing-plus").click();
 
 select("premature").click();
 runFor(2700);
