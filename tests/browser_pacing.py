@@ -28,6 +28,14 @@ def exercise(browser, *, phone, artifact, model):
     expect(field).to_have_count(1)
     expect(page.get_by_text("Pacing cycle length", exact=True)).to_be_visible()
     initial_length = int(field.input_value())
+    paced_model = model in ("conduction", "echo")
+    if paced_model:
+        assert initial_length == 600
+        expect(page.get_by_role("button", name="Stop pacing", exact=True)).to_be_visible()
+        page.clock.run_for(2600)
+        startup = live_pulses(page)
+        assert [(pulse["nodeId"], pulse["tMs"]) for pulse in startup] == [("S", 0), ("S", 600)]
+        click(page.get_by_role("button", name="Stop pacing", exact=True))
     minus, plus = page.locator("#pacing-minus"), page.locator("#pacing-plus")
     click(minus)
     expect(field).to_have_value(str(initial_length - 10))
@@ -47,8 +55,8 @@ def exercise(browser, *, phone, artifact, model):
     pulses = live_pulses(page)[initial_count:]
     assert len(pulses) >= 3, pulses
     assert round(pulses[-1]["tMs"] - pulses[-2]["tMs"], 3) == 530
-    if model != "circulation":
-        assert pulses[-1]["nodeId"] == {"conduction": "A", "echo": "CSp"}[model]
+    if paced_model:
+        assert all(pulse["nodeId"] == "S" for pulse in pulses)
     field.fill("470")
     field.press("Enter")
     page.clock.run_for(4200)
@@ -61,9 +69,13 @@ def exercise(browser, *, phone, artifact, model):
     assert len(live_pulses(page)) == stopped
     assert page.evaluate("counterpoint.transport.status") == "running"
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+    if paced_model:
+        assert page.evaluate("""() => !counterpoint.events.some(e =>
+            e.source === 'automaticity' || (e.type === 'activation'
+            && e.tMs >= counterpoint.transport.presentedMs() - 500))""")
     page.reload()
-    expect(field).to_have_value("470")
-    expect(page.get_by_role("button", name="Pace", exact=True)).to_be_visible()
+    expect(field).to_have_value("600" if paced_model else "470")
+    expect(page.get_by_role("button", name="Stop pacing" if paced_model else "Pace", exact=True)).to_be_visible()
     assert not errors, errors
     print(f"PASS {model}, {artifact.name}, {'touch' if phone else 'desktop'}", flush=True)
     context.close()

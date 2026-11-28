@@ -5,9 +5,10 @@ export const WAKE_WALL_MS = 25;
 export const LOOKAHEAD_WALL_MS = 60;
 export const INPUT_MARGIN_WALL_MS = 5;
 export const COMMAND_LOG_LIMIT = 4096;
+export const DEFAULT_PACING_CYCLE = 600;
 export const PACING_MIN_CYCLE = 150;
 export const PACING_MAX_CYCLE = 2000;
-export const clampPacingCycle = value => Math.min(PACING_MAX_CYCLE, Math.max(PACING_MIN_CYCLE, Number.isFinite(Number(value)) && value !== '' ? Math.round(Number(value)) : 600));
+export const clampPacingCycle = value => Math.min(PACING_MAX_CYCLE, Math.max(PACING_MIN_CYCLE, Number.isFinite(Number(value)) && value !== '' ? Math.round(Number(value)) : DEFAULT_PACING_CYCLE));
 
 const TICKS_PER_MS = 1_000;
 const clockTolerance = (sec) => 8 * Number.EPSILON * Math.max(1, Math.abs(sec));
@@ -290,10 +291,14 @@ export function createTransport({
     return accepted;
   }
 
+  function pacingPlan(nodeId, cycleMs, firstMs) {
+    return { nodeId, cycleMs: clampPacingCycle(cycleMs), nextMs: firstMs, lastMs: null, fromMs: firstMs };
+  }
+
   // `fromMs` preconditions a run: the engine advances silently through the same
   // commands to fromMs, and presentation (frames, sound, input) begins there.
   // The prelude's events go to onPrelude, never to onCommit or the frame queue.
-  function reset(world, freshRunId, { commands = [], start = false, fromMs = 0 } = {}) {
+  function reset(world, freshRunId, { commands = [], start = false, fromMs = 0, initialPacing = null } = {}) {
     if (!Number.isFinite(fromMs) || fromMs < 0) throw new RangeError('fromMs must be a non-negative number');
     if (usedRunIds.has(freshRunId)) throw new Error('Reset requires a fresh run ID');
     const nextSnapshot = engine.reset(world, freshRunId);
@@ -331,6 +336,10 @@ export function createTransport({
       fault(failure);
       throw failure;
     }
+    if (initialPacing) {
+      const firstMs = committedTick === null ? 0 : (committedTick + 1) / TICKS_PER_MS;
+      pacing = pacingPlan(initialPacing.nodeId, initialPacing.cycleMs, firstMs);
+    }
     if (start) resume();
     else emitState();
     return restedSnapshot;
@@ -353,8 +362,7 @@ export function createTransport({
     if (status !== 'running') return false;
     refresh(nowSec());
     if (status !== 'running') return false;
-    const firstMs = earliestInputMs();
-    pacing = { nodeId, cycleMs: clampPacingCycle(cycleMs), nextMs: firstMs, lastMs: null, fromMs: firstMs };
+    pacing = pacingPlan(nodeId, cycleMs, earliestInputMs());
     emitState();
     return true;
   }

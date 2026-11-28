@@ -38,9 +38,9 @@ const SCENE_LIST = {
   conduction: {
     create: createRestitutionConduction,
     name: 'Conduction',
-    topology: 'Six sites in a branching pathway, led by an automatic focus.',
+    topology: 'Six sites in a branching pathway from atrium to ventricles.',
     hint: 'Tap a site to stimulate it · Hold a site to inspect it',
-    status: 'An automatic impulse leads the way.',
+    status: 'Impulses travel from atrium to ventricles.',
   },
   circulation: {
     create: createRestitutionRing,
@@ -68,7 +68,7 @@ const SCENE_LIST = {
       labels: study.id === 'echo' ? ECHO_LABELS : null,
       topology: 'Two routes through the junction between upper and lower chambers. Silent sites are open rings.',
       hint: 'Tap a site to stimulate it · Hold a site to inspect it',
-      status: 'Sinus impulses travel from atrium to ventricle.',
+      status: 'Impulses travel from atrium to ventricle.',
     }];
   })),
 };

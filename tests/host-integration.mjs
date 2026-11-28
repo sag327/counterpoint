@@ -204,6 +204,8 @@ function pointer(type, point, pointerId = 1, isPrimary = true) {
 }
 
 assert.equal(cp.transport.status, "running");
+assert.equal(cp.transport.state().pacing.nodeId, "S");
+assert.equal(cp.transport.state().pacing.cycleMs, 600);
 assert.equal(select("sites").children.length, 6);
 assert.equal(select("sites").children[0].textContent, "S");
 assert.ok(select("sites").children.every(node => !node.disabled));
@@ -221,7 +223,7 @@ runFor(2700);
 const captures = activations();
 assert.deepEqual(Array.from(captures, event => event.nodeId), [
   "S", "A", "N", "H", "V1", "V2",
-  "A", "S", "N", "H", "V1", "V2",
+  "S", "A", "N", "H", "V1", "V2",
 ]);
 const [baselineNode, prematureNode] = captures.filter(event => event.nodeId === "N");
 const [baselineAtrium, prematureAtrium] = captures.filter(event => event.nodeId === "A");
@@ -333,10 +335,14 @@ const pacedCount = cp.transport.commandLog().length;
 runFor(2000);
 assert.equal(cp.transport.commandLog().length, pacedCount);
 chooseWorld('conduction');
-assert.equal(cp.selectedSite, 'A');
+assert.equal(cp.selectedSite, 'S');
+assert.equal(cp.transport.state().pacing.nodeId, 'S');
+assert.equal(cp.transport.state().pacing.cycleMs, 600);
+select('sites').children[1].onfocus();
+select('pacing-toggle').click();
 assert.equal(cp.transport.state().pacing, null);
 select('pacing-toggle').click();
-assert.equal(cp.transport.state().pacing.nodeId, 'A');
+assert.equal(cp.transport.state().pacing.nodeId, 'S');
 select('premature').click();
 assert.equal(cp.transport.state().pacing, null, 'demonstrations cancel pacing');
 chooseWorld('circulation');

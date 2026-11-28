@@ -1,10 +1,9 @@
 // Live S1–S2 curve: the AH jump curve built from the performance itself.
 //
-// Every premature stimulus delivered at the atrial pacing site (a guided S2 or
-// a player's touch) becomes one point: its coupling interval A1–A2, measured
-// from the previous activation at that site, against A2–H2, the time to the
+// A premature stimulus at the septal atrium or the upstream pacing site
+// becomes one point: the septal coupling interval A1–A2 against A2–H2, the time to the
 // first causally descended His activation. Points are kept across runs, so the
-// curve grows as "Find the echo" steps the extrastimulus earlier. All values
+// curve grows as the player tries different premature beats. All values
 // are intervals (EP-relative), never the run clock.
 //
 // The store is pure and DOM-free. Feed it events with ingest(); a point is final
@@ -14,13 +13,13 @@ import { descendantsOf, detectJumps, firstDescendant, round3 } from './measure.j
 
 // Drive pulses come from a train (triggerId `<train>#<k>`) and are S1 by
 // definition; an extrastimulus is a single stimulus.
-const isStimulusAt = (event, nodeId) => event.type === 'stimulus_attempted' && event.nodeId === nodeId
-  && event.source === 'stimulus' && !String(event.triggerId ?? '').includes('#');
+const isExtrastimulus = event => event.type === 'stimulus_attempted' && event.source === 'stimulus'
+  && !String(event.triggerId ?? '').includes('#') && !String(event.triggerId ?? '').startsWith('pace-');
 
 // Pure: the extrastimulus points in one run's events, up to throughMs.
 // A single (non-train) stimulus counts as premature when its coupling interval is at least
 // prematureMs shorter than the cycle that preceded it at the pacing site.
-export function extrastimulusPoints(events, { atrium = 'CSp', his = 'H', settleMs = 1200, prematureMs = 20, throughMs = Infinity } = {}) {
+export function extrastimulusPoints(events, { atrium = 'CSp', upstream = 'S', his = 'H', settleMs = 1200, prematureMs = 20, throughMs = Infinity } = {}) {
   const points = [];
   const activations = [];
   for (const event of events) {
@@ -28,17 +27,19 @@ export function extrastimulusPoints(events, { atrium = 'CSp', his = 'H', settleM
       activations.push(event.tMs);
       continue;
     }
-    if (!isStimulusAt(event, atrium)) continue;
+    if (!isExtrastimulus(event) || (event.nodeId !== atrium && event.nodeId !== upstream)) continue;
+    if (event.tMs + settleMs > throughMs) continue;
     // Activations strictly before this stimulus define A1 and the preceding cycle.
     const before = activations.filter(tMs => tMs < event.tMs);
     if (before.length < 2) continue;
     const a1 = before.at(-1);
     const cycleMs = round3(a1 - before.at(-2));
-    const couplingMs = round3(event.tMs - a1);
-    if (couplingMs > cycleMs - prematureMs) continue;
-    if (event.tMs + settleMs > throughMs) continue;
     const set = descendantsOf(events, [event.eventId]);
     const a2 = firstDescendant(events, set, atrium, ['activation']);
+    // An upstream stimulus blocked before the septal atrium has no local A2.
+    if (!a2 && event.nodeId !== atrium) continue;
+    const couplingMs = round3((a2?.tMs ?? event.tMs) - a1);
+    if (couplingMs > cycleMs - prematureMs) continue;
     const h2 = a2 ? firstDescendant(events, set, his, ['activation']) : null;
     points.push({
       key: `${event.runId}:${event.eventId}`,

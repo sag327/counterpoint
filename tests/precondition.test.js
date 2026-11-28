@@ -48,6 +48,7 @@ test('the two buttons use one S2 each, in the middle of its window, presented 10
     const { commands, fromMs } = guided(id);
     const s2 = commands.find(c => c.commandId === 'S2');
     assert.equal(s2.tMs, s2AtMs(protocol(id).s2));
+    assert.ok(commands.every(command => command.nodeId === 'S'));
     assert.equal(fromMs, s2.tMs - GUIDED_LEAD_MS);
     assert.ok(!commands.some(c => c.commandId === 'S3'), 'no S3 needed');
   }
@@ -75,17 +76,17 @@ test('a preconditioned run reproduces the full run’s event history and state e
   }
 });
 
-test('the prelude is silent and holds the eight drive beats; the echo sounds about 3 s after the press at 1/8 speed', () => {
+test('the prelude is silent and holds the eight drive beats; the echo sounds about 3.5 s after the press at 1/8 speed', () => {
   const { commands, fromMs } = guided('find-echo');
   const pre = run({ commands, fromMs });
   assert.ok(pre.prelude.length > 0 && pre.prelude.every(event => event.tMs <= fromMs));
   assert.ok(pre.committed.every(event => event.tMs > fromMs), 'no prelude event is committed for sound');
-  const drive = pre.prelude.filter(event => event.type === 'stimulus_attempted' && event.nodeId === 'CSp');
+  const drive = pre.prelude.filter(event => event.type === 'stimulus_attempted' && event.nodeId === 'S');
   assert.deepEqual(drive.map(event => event.tMs), [200, 800, 1400, 2000, 2600, 3200, 3800, 4400]);
   assert.equal(pre.rested.presentedMs, fromMs);
   assert.ok(pre.firstInput > fromMs, 'live input lands after the precondition');
   const echo = pre.onsets.find(({ event }) => event.nodeId === 'CSp' && event.incomingLinkIds.includes('CF'));
-  assert.ok(echo.sec > 2 && echo.sec < 3.5, `echo at ${echo.sec} s`);
+  assert.ok(echo.sec > 3 && echo.sec < 4, `echo at ${echo.sec} s`);
 });
 
 test('fromMs must be a non-negative number', () => {

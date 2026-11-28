@@ -9,11 +9,12 @@ test('Conduction retains its resting sequence and slows the premature beat throu
   const world = createRestitutionConduction();
   const engine = new Engine();
   engine.reset(world, 'conduction');
-  engine.enqueue({ commandId: 'early', runId: 'conduction', type: 'stimulate', nodeId: 'A', tMs: 275 });
+  engine.enqueue({ commandId: 'drive', runId: 'conduction', type: 'stimulate', nodeId: 'S', tMs: 0 });
+  engine.enqueue({ commandId: 'early', runId: 'conduction', type: 'stimulate', nodeId: 'S', tMs: 250 });
   const events = engine.advanceTo(750);
   const captures = events.filter(event => event.type === 'activation');
   assert.deepEqual(captures.slice(0, 6).map(event => event.nodeId), ['S', 'A', 'N', 'H', 'V1', 'V2']);
-  assert.deepEqual(captures.slice(6).map(event => event.nodeId), ['A', 'S', 'N', 'H', 'V1', 'V2']);
+  assert.deepEqual(captures.slice(6).map(event => event.nodeId), ['S', 'A', 'N', 'H', 'V1', 'V2']);
   const [restedA, earlyA] = captures.filter(event => event.nodeId === 'A');
   assert.ok(earlyA.erpMs < restedA.erpMs);
   const [rested, premature] = events.filter(event => event.type === 'conduction_launched' && event.linkId === 'AN' && event.fromNodeId === 'A');
@@ -26,14 +27,14 @@ test('Conduction retains its resting sequence and slows the premature beat throu
 
 test('progressive AV delay precedes nodal block at intermediate atrial pacing rates', () => {
   const rows = runProtocolSync(createRestitutionConduction(), {
-    type: 'incremental', siteId: 'A', outputId: 'H',
+    type: 'incremental', siteId: 'S', outputId: 'H',
     cycles: { fromMs: 390, toMs: 310, stepMs: 10 }, beats: 48,
   }).rows;
   assert.deepEqual(rows.map(row => row.ratio), ['1:1', '8:7', '4:3', '4:3', '3:2', '3:2', '3:2', '3:2', '2:1']);
   assert.ok(rows.slice(1, -1).every(row => row.kind === 'wenckebach'));
   const engine = new Engine();
   engine.reset(createRestitutionConduction(), 'drive');
-  engine.enqueue({ runId: 'drive', commandId: 'drive', type: 'stimulateTrain', nodeId: 'A',
+  engine.enqueue({ runId: 'drive', commandId: 'drive', type: 'stimulateTrain', nodeId: 'S',
     tMs: 200, startMs: 200, cycleMs: 360, count: 32, label: 'atrial drive' });
   const events = engine.advanceTo(12000);
   const blocks = events.filter(e => e.type === 'activation_blocked' && e.source === 'conduction');

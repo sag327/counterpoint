@@ -1,6 +1,6 @@
 import { CIRCULATION_S2_MS } from '../worlds/circulation.js';
 import { Engine } from '../engine/index.js';
-import { createTransport, LOOKAHEAD_WALL_MS } from '../runtime/transport.js';
+import { createTransport, DEFAULT_PACING_CYCLE, LOOKAHEAD_WALL_MS } from '../runtime/transport.js';
 import { createRenderer } from '../visuals/renderer.js';
 import { mapActivation, createAudioMixer, describeNodeMusic, musicTableFor } from '../music/index.js';
 import { createInspector } from './inspector.js';
@@ -21,6 +21,7 @@ const WORLDS = SCENES;
 const NOTES = { echo: ECHO_NOTES };
 
 const preferences = readPreferences(EDITION.storageSuffix);
+let firstNodeCycleMs = DEFAULT_PACING_CYCLE;
 const sound = Object.freeze({ palette: 'chamber', voicing: 'balanced' });
 const engine = new Engine();
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -150,11 +151,11 @@ const GUIDED = ['find-echo', 'find-arrhythmia'];
 // decisive S2 at the middle of its window (src/worlds/echo.js).
 function guidedProtocol(kind) {
   const protocol = scene.presentation.protocols.find(entry => entry.id === kind);
-  guidedLast = { kind, label: protocol.lab, s2: protocol.s2, s3: null };
+  guidedLast = protocol.lab;
   return protocol;
 }
 
-function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs, autoStart = started) {
+function startRun(kind = 'default', nodeId = selectedNodeId, interval = couplingMs, autoStart = started) {
   if (kind === 'single' && !world.nodes.some(node => node.id === nodeId)) return;
   if (kind === 'guide' && (worldId !== 'circulation' || !world.nodes.some(node => node.id === nodeId)
     || !Number.isInteger(interval) || interval < 1 || interval > 5000)) return;
@@ -162,6 +163,9 @@ function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs
   if (GUIDED.includes(kind) && worldId !== 'echo') return;
   const runId = `run-${++runCounter}`;
   const commands = [];
+  const initialPacing = kind === 'default' && worldId !== 'circulation'
+    ? { nodeId: world.nodes[0].id, cycleMs: firstNodeCycleMs }
+    : null;
   const stimulus = (commandId, nodeId, tMs) => ({ commandId, type: 'stimulate', nodeId, tMs });
   let status = WORLDS[worldId].status;
   let fromMs = 0;
@@ -172,7 +176,8 @@ function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs
     commands.push(stimulus('protocol-s1', nodeId, 0), stimulus('protocol-s2', nodeId, interval));
     status = 'Two impulses. A chance to keep going.';
   } else if (kind === 'premature' && worldId === 'conduction') {
-    commands.push(stimulus('protocol-premature', 'A', 275));
+    const firstNode = world.nodes[0].id;
+    commands.push(stimulus('protocol-s1', firstNode, 0), stimulus('protocol-premature', firstNode, 250));
     status = 'An early impulse takes the slower path.';
   } else if (GUIDED.includes(kind)) {
     const protocol = guidedProtocol(kind);
@@ -190,7 +195,7 @@ function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs
   }
   $('status').textContent = started ? status : WORLDS[worldId].topology;
   transport.reset(world, runId, {
-    commands, fromMs, start: autoStart && !document.hidden && (!context || context.state === 'running'),
+    commands, fromMs, initialPacing, start: autoStart && !document.hidden && (!context || context.state === 'running'),
   });
   updateButtons();
   updateGuidedReadout();
@@ -202,9 +207,7 @@ function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs
 
 function updateGuidedReadout() {
   if (!studyLab) return;
-  studyLab.setGuided(guidedLast
-    ? `Last guided run: ${guidedLast.label}. S1 600 ms × 8 from CSp, S2 ${guidedLast.s2} ms${guidedLast.s3 === null ? '' : `, S3 ${guidedLast.s3} ms`}.`
-    : '');
+  studyLab.setGuided(guidedLast ? `Last guided run: ${guidedLast}.` : '');
 }
 
 function updateFragment() {
@@ -231,7 +234,8 @@ function chooseWorld(id, initial = false) {
   world = nextWorld;
   renderer = nextRenderer;
   musicTable = musicTableFor(world, settings.presentation);
-  selectedNodeId = ({ conduction: 'A', echo: 'CSp', circulation: 'R0' })[id] ?? world.nodes[0].id;
+  selectedNodeId = world.nodes[0].id;
+  $('pacing-cycle').value = String(id === 'circulation' ? preferences.pacingCycleMs : firstNodeCycleMs);
   renderer.setSelected(selectedNodeId);
   selectedLinkId = world.links[0].id;
   guidedLast = null;
@@ -249,7 +253,7 @@ function chooseWorld(id, initial = false) {
   if (studyLab) setupStudyLab();
   $('lab-study').hidden = !settings.study;
   resize();
-  startRun(initial && id === 'circulation' ? 'single' : 'quiet', selectedNodeId, couplingMs, autoStart);
+  startRun(initial && id === 'circulation' ? 'single' : 'default', selectedNodeId, couplingMs, autoStart);
   // After the reset, which may have kept the old world's last run, start the curve afresh.
   liveCurve.clear();
   updateFragment();
@@ -660,11 +664,16 @@ $('premature').onclick = () => startRun('premature');
 $('find-echo').onclick = () => startRun('find-echo');
 $('find-arrhythmia').onclick = () => startRun('find-arrhythmia');
 $('reset').onclick = () => startRun();
-$('pacing-cycle').value = String(preferences.pacingCycleMs);
 function changePacingCycle(value) {
-  preferences.pacingCycleMs = transport.setPacingCycle(value);
-  $('pacing-cycle').value = String(preferences.pacingCycleMs);
-  savePreferences(preferences);
+  const cycleMs = transport.setPacingCycle(value);
+  $('pacing-cycle').value = String(cycleMs);
+  if (worldId === 'circulation') {
+    preferences.pacingCycleMs = cycleMs;
+    savePreferences(preferences);
+  } else {
+    firstNodeCycleMs = cycleMs;
+  }
+  return cycleMs;
 }
 $('pacing-cycle').onchange = () => changePacingCycle($('pacing-cycle').value);
 $('pacing-minus').onclick = () => changePacingCycle(Number($('pacing-cycle').value) - 10);
@@ -672,8 +681,8 @@ $('pacing-plus').onclick = () => changePacingCycle(Number($('pacing-cycle').valu
 $('pacing-toggle').onclick = () => {
   if (transport.state().pacing) transport.stopPacing();
   else {
-    changePacingCycle($('pacing-cycle').value);
-    transport.startPacing(worldId === 'circulation' ? selectedNodeId : worldId === 'echo' ? 'CSp' : 'A', preferences.pacingCycleMs);
+    const cycleMs = changePacingCycle($('pacing-cycle').value);
+    transport.startPacing(worldId === 'circulation' ? selectedNodeId : world.nodes[0].id, cycleMs);
   }
 };
 $('notes-close').onclick = () => $('notes-sheet').close?.() ?? $('notes-sheet').removeAttribute('open');

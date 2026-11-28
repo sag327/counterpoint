@@ -14,7 +14,7 @@ function s2Run(s2, horizon = 4000, extra = []) {
   const events = play(createEchoWorld(), [...commands, ...extra.map(c => ({ ...c, tMs: t2 + c.tMs }))], t2 + horizon);
   return { events, t2, late: after(events, t2) };
 }
-const ah = ({ late, t2 }) => acts(late, 'H')[0].tMs - t2;
+const ah = ({ late }) => acts(late, 'H')[0].tMs - acts(late, 'CSp')[0].tMs;
 const echoes = late => acts(late, 'CSp').filter(a => a.incomingLinkIds.includes('CF'));
 
 test('Echo AH curve rises smoothly on the fast pathway, then jumps at least 50 ms below 300 ms', () => {
@@ -24,12 +24,12 @@ test('Echo AH curve rises smoothly on the fast pathway, then jumps at least 50 m
   const jump = steps.findIndex(step => step >= 50);
   assert.ok(jump >= 0, 'a jump exists');
   assert.ok(steps.every((step, i) => i === jump || (step >= 0 && step < 40)), `smooth elsewhere: ${steps}`);
-  // At 1 ms resolution the jump is at the first S2 below the fast-pathway ERP: 300 conducts fast, 299 jumps.
-  const fine = [300, 299].map(s2 => ah(s2Run(s2)));
-  assert.ok(fine[1] - fine[0] >= 50, `jump 300 -> 299: ${fine}`);
-  // Fast-pathway conduction at 300 (FP captured from CF), slow-pathway at 299 (FP blocked).
-  assert.equal(blocked(s2Run(300).late, 'FP').length, 0);
-  assert.ok(blocked(s2Run(299).late, 'FP').length >= 1);
+  // At 1 ms resolution the jump is at the first S2 below the fast-pathway ERP: 297 conducts fast, 296 jumps.
+  const fine = [297, 296].map(s2 => ah(s2Run(s2)));
+  assert.ok(fine[1] - fine[0] >= 50, `jump 297 -> 296: ${fine}`);
+  // Fast-pathway conduction at 297 (FP captured from CF), slow-pathway at 296 (FP blocked).
+  assert.equal(blocked(s2Run(297).late, 'FP').length, 0);
+  assert.ok(blocked(s2Run(296).late, 'FP').length >= 1);
 });
 
 test('Echo laws: every ERP and every launch in an S1–S2 run follows §A, decrement and §B from event fields', () => {
@@ -37,8 +37,8 @@ test('Echo laws: every ERP and every launch in an S1–S2 run follows §A, decre
   assert.ok(assertLaws(echoWorld, events) > 100);
 });
 
-test('Echo single-echo window: S2 from 260 to 240 ms gives exactly one echo (CSp captured from FP), then FP blocks', () => {
-  for (let s2 = 260; s2 >= 240; s2 -= 2) {
+test('Echo single-echo window: S2 from 256 to 230 ms gives exactly one echo (CSp captured from FP), then FP blocks', () => {
+  for (let s2 = 256; s2 >= 230; s2 -= 2) {
     const run = s2Run(s2);
     assert.equal(echoes(run.late).length, 1, `S2 ${s2}`);
     const echo = echoes(run.late)[0];
@@ -71,11 +71,11 @@ test('Echo sustained circulation for 60 s with CSp-to-V between 10 and 60 ms, an
   assert.ok(still.events.every(e => e.type !== 'link_changed'), 'never by a cut');
 });
 
-test('Guided windows: S2 240–264 ms gives one echo, 266–298 ms sustained reentry; the buttons sit 12 ms inside each', () => {
-  for (const s2 of [240, 252, 264]) assert.equal(echoes(s2Run(s2, 5000).late).length, 1, `S2 ${s2}`);
-  for (const s2 of [266, 282, 298]) assert.ok(echoes(s2Run(s2, 5000).late).length >= 10, `S2 ${s2}`);
-  assert.equal(echoes(s2Run(238, 5000).late).length, 0);
-  assert.equal(echoes(s2Run(300, 5000).late).length, 0);
+test('Guided windows from S: 230–256 ms gives one echo, 257–296 ms sustained reentry', () => {
+  for (const s2 of [230, 243, 256]) assert.equal(echoes(s2Run(s2, 5000).late).length, 1, `S2 ${s2}`);
+  for (const s2 of [257, 277, 296]) assert.ok(echoes(s2Run(s2, 5000).late).length >= 10, `S2 ${s2}`);
+  assert.equal(echoes(s2Run(229, 5000).late).length, 0);
+  assert.equal(echoes(s2Run(297, 5000).late).length, 0);
   const s2Of = id => echoPresentation.protocols.find(p => p.id === id).s2;
-  assert.deepEqual([s2Of('find-echo'), s2Of('find-arrhythmia')], [252, 282]);
+  assert.deepEqual([s2Of('find-echo'), s2Of('find-arrhythmia')], [243, 277]);
 });
