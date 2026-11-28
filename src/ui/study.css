@@ -108,6 +108,10 @@ dialog#notes-sheet::backdrop{background:#04070acc}
 #card-layer .lab-card-header h3{font-size:21px}
 #card-layer .lab-card-close{min-height:36px;min-width:36px;padding:0;border:0}
 #card-layer summary{text-align:left;min-height:32px;padding:6px 0}
+#stage.ladder-view {
+  height: clamp(235px, 34vh, 330px);
+  min-height: 0;
+}
 /* Ladder and Staves keep their lower margin for calipers: status moves to the top. */
 #stage.alt-view #status{top:6px;bottom:auto}
 @media(max-width:600px){
