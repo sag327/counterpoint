@@ -77,12 +77,12 @@ def check_guided_run(page, *, phone):
 
     activate(page.locator("#find-echo"), phone=phone)
     log = page.evaluate("counterpoint.transport.commandLog().map(c => c.commandId + ':' + c.tMs)")
-    assert log == ["S1:200", "S2:4652"], log
+    assert log == ["S1:200", "S2:4643"], log
     prelude = page.evaluate("""() => counterpoint.events
-        .filter(e => e.type === 'stimulus_attempted' && e.nodeId === 'CSp').map(e => e.tMs)""")
+        .filter(e => e.type === 'stimulus_attempted' && e.nodeId === 'S').map(e => e.tMs)""")
     assert prelude == [200, 800, 1400, 2000, 2600, 3200, 3800, 4400], prelude
-    assert page.evaluate("counterpoint.transport.presentedMs()") >= 4552
-    wait_echoes(page, phone, 1, 4652)
+    assert page.evaluate("counterpoint.transport.presentedMs()") >= 4543
+    wait_echoes(page, phone, 1, 4643)
     # Exactly one echo: none follows within the next second.
     deadline = time.monotonic() + 90
     while page.evaluate("counterpoint.transport.presentedMs()") < 5900:
@@ -91,11 +91,11 @@ def check_guided_run(page, *, phone):
         advance_phone_clock(page, phone, 500)
         page.wait_for_timeout(100)
     assert page.evaluate("""counterpoint.events.filter(e => e.type === 'activation' && e.nodeId === 'CSp'
-        && e.tMs > 4652 && e.incomingLinkIds.includes('CF')).length""") == 1
+        && e.tMs > 4643 && e.incomingLinkIds.includes('CF')).length""") == 1
 
     activate(page.locator("#find-arrhythmia"), phone=phone)
-    assert page.evaluate("counterpoint.transport.commandLog().find(c => c.commandId === 'S2')?.tMs") == 4682
-    wait_echoes(page, phone, 3, 4682)
+    assert page.evaluate("counterpoint.transport.commandLog().find(c => c.commandId === 'S2')?.tMs") == 4677
+    wait_echoes(page, phone, 3, 4677)
 
 
 def select_view(page, view, *, phone):
@@ -211,7 +211,7 @@ def check_worker(page, *, phone, output, capture):
 def check_live_curve_and_model(page, *, phone, capture):
     """Revise M2: the S1–S2 curve builds from the session; Model sliders log commands."""
     runner = page.locator("#lab-study")
-    # A fresh guided run (S2 252 ms at 4652 ms, presented from 4552 ms) becomes a
+    # A fresh guided run (S2 243 ms at 4643 ms, presented from 4543 ms) becomes a
     # point once playback passes it by the settle window. Resume after a headless late wake.
     page.locator("#find-echo").evaluate("node => node.click()")
     deadline = time.monotonic() + 90
@@ -222,7 +222,7 @@ def check_live_curve_and_model(page, *, phone, capture):
         advance_phone_clock(page, phone, 2000)
         page.wait_for_timeout(250)
     point = page.evaluate("counterpoint.liveCurve.at(-1)")
-    assert point["couplingMs"] == 252 and point["driveCycleMs"] == 600, point
+    assert 253 < point["couplingMs"] < 254 and point["driveCycleMs"] == 600, point
     live = runner.locator("[data-control=curves] figure").first
     expect(live.locator("figcaption")).to_contain_text("premature beat", timeout=5000)
     slider = runner.locator("#model-fp-erp")
@@ -254,6 +254,7 @@ def smoke(browser, output, *, phone):
         page.clock.install(time="2026-01-01T00:00:00Z")
         page.clock.pause_at("2026-01-01T00:00:01Z")
     errors, requests = observe(page)
+    page.add_init_script("window.AudioContext = window.webkitAudioContext = undefined")
     url = f"{ARTIFACT.as_uri()}#study=echo"
     screen_prefix = "integrate-01-phone" if phone else "integrate-01"
 
@@ -266,7 +267,6 @@ def smoke(browser, output, *, phone):
         expect(page.get_by_role("button", name="Echo", exact=True)).to_have_attribute("aria-pressed", "true")
         assert page.evaluate("counterpoint.worldId") == "echo"
         assert page.locator("#study-line").count() == 0, "Echo's header matches the other worlds"
-        activate(page.get_by_role("button", name="Begin in silence"), phone=phone)
         assert page.evaluate("counterpoint.mixer") is None
         check_guided_run(page, phone=phone)
         activate(page.get_by_role("button", name="Pause", exact=True), phone=phone)
@@ -278,7 +278,7 @@ def smoke(browser, output, *, phone):
         # is withdrawn; playback speed reads as a fraction of real time.
         assert page.locator("[data-view=staves]").count() == 0
         assert page.locator("[data-world=duality]").count() == 0
-        assert page.locator("#dilation option").all_inner_texts()[0] == "1/4 speed"
+        assert page.locator("#dilation option").all_inner_texts() == ["1", "1/4", "1/8", "1/12"]
         assert page.locator("#mute").count() == 0 and page.locator("#volume").count() == 0
         instructions = page.locator("#protocol-hint")
         expect(instructions).to_be_visible()

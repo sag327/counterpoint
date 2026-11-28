@@ -5048,9 +5048,10 @@ const WAKE_WALL_MS = 25;
 const LOOKAHEAD_WALL_MS = 60;
 const INPUT_MARGIN_WALL_MS = 5;
 const COMMAND_LOG_LIMIT = 4096;
+const DEFAULT_PACING_CYCLE = 600;
 const PACING_MIN_CYCLE = 150;
 const PACING_MAX_CYCLE = 2000;
-const clampPacingCycle = value => Math.min(PACING_MAX_CYCLE, Math.max(PACING_MIN_CYCLE, Number.isFinite(Number(value)) && value !== '' ? Math.round(Number(value)) : 600));
+const clampPacingCycle = value => Math.min(PACING_MAX_CYCLE, Math.max(PACING_MIN_CYCLE, Number.isFinite(Number(value)) && value !== '' ? Math.round(Number(value)) : DEFAULT_PACING_CYCLE));
 
 const TICKS_PER_MS = 1_000;
 const clockTolerance = (sec) => 8 * Number.EPSILON * Math.max(1, Math.abs(sec));
@@ -5333,10 +5334,14 @@ function createTransport({
     return accepted;
   }
 
+  function pacingPlan(nodeId, cycleMs, firstMs) {
+    return { nodeId, cycleMs, nextMs: firstMs, lastMs: null, fromMs: firstMs };
+  }
+
   // `fromMs` preconditions a run: the engine advances silently through the same
   // commands to fromMs, and presentation (frames, sound, input) begins there.
   // The prelude's events go to onPrelude, never to onCommit or the frame queue.
-  function reset(world, freshRunId, { commands = [], start = false, fromMs = 0 } = {}) {
+  function reset(world, freshRunId, { commands = [], start = false, fromMs = 0, initialPacing = null } = {}) {
     if (!Number.isFinite(fromMs) || fromMs < 0) throw new RangeError('fromMs must be a non-negative number');
     if (usedRunIds.has(freshRunId)) throw new Error('Reset requires a fresh run ID');
     const nextSnapshot = engine.reset(world, freshRunId);
@@ -5374,6 +5379,10 @@ function createTransport({
       fault(failure);
       throw failure;
     }
+    if (initialPacing) {
+      const firstMs = committedTick === null ? 0 : (committedTick + 1) / TICKS_PER_MS;
+      pacing = pacingPlan(initialPacing.nodeId, clampPacingCycle(initialPacing.cycleMs), firstMs);
+    }
     if (start) resume();
     else emitState();
     return restedSnapshot;
@@ -5396,8 +5405,11 @@ function createTransport({
     if (status !== 'running') return false;
     refresh(nowSec());
     if (status !== 'running') return false;
-    const firstMs = earliestInputMs();
-    pacing = { nodeId, cycleMs: clampPacingCycle(cycleMs), nextMs: firstMs, lastMs: null, fromMs: firstMs };
+    const cycle = clampPacingCycle(cycleMs);
+    const lastPulse = acceptedCommands.findLast(command => command.nodeId === nodeId && command.commandId.startsWith('pace-'));
+    // Restarting a drive should not deliver a premature beat relative to its last pulse.
+    const nextCycleMs = lastPulse ? (floorTick(lastPulse.tMs) + cycle * TICKS_PER_MS) / TICKS_PER_MS : 0;
+    pacing = pacingPlan(nodeId, cycle, Math.max(earliestInputMs(), nextCycleMs));
     emitState();
     return true;
   }
@@ -5461,7 +5473,7 @@ function createTransport({
   };
 }
 
-return {DEFAULT_DILATION,MAX_DILATION,WAKE_WALL_MS,LOOKAHEAD_WALL_MS,INPUT_MARGIN_WALL_MS,COMMAND_LOG_LIMIT,PACING_MIN_CYCLE,PACING_MAX_CYCLE,clampPacingCycle,createTransport};
+return {DEFAULT_DILATION,MAX_DILATION,WAKE_WALL_MS,LOOKAHEAD_WALL_MS,INPUT_MARGIN_WALL_MS,COMMAND_LOG_LIMIT,DEFAULT_PACING_CYCLE,PACING_MIN_CYCLE,PACING_MAX_CYCLE,clampPacingCycle,createTransport};
 })();
 __modules["src/visuals/common.js"] = (()=>{
 // Shared helpers for the Study No. 2 view modules (Ladder, Staves, Map, Network marks).
@@ -9987,7 +9999,7 @@ function freezePreset(value) {
 return {directedLink,freezePreset};
 })();
 __modules["src/worlds/conduction.js"] = (()=>{
-const { both, link, sinusFocus, site, way, world } = __modules["src/worlds/kit.js"];
+const { both, link, site, way, world } = __modules["src/worlds/kit.js"];
 const { directedLink, freezePreset } = __modules["src/worlds/feedforward.js"];
 
 function createConductionWorld() {
@@ -10018,7 +10030,7 @@ const conductionWorld = freezePreset(createConductionWorld());
 // The fixed-ERP preset above is retained for the contract v1 reference cases.
 function createRestitutionConduction() {
   return world('conduction', [
-    site('S', 'sinus', 200, { restitution: [40, 90], automaticity: sinusFocus(800), audible: true }),
+    site('S', 'sinus', 200, { restitution: [40, 90], audible: true }),
     site('A', 'atrial', 220, { restitution: [45, 90] }),
     site('N', 'nodal', 310, { restitution: [90, 130], audible: true }),
     site('H', 'hisPurkinje', 180, { restitution: [35, 95] }),
@@ -10070,15 +10082,15 @@ __modules["src/worlds/echo.js"] = (()=>{
 // II. Echo — dual AV-nodal pathways (design/study-2-spec.md, "II. Echo").
 // A fast pathway with a long ERP and a slow pathway with a short ERP join at a
 // silent lower common pathway. Everything below is topology and tissue law.
-const { PITCH, both, deepFreeze, music, pace, sinusFocus, site, stim, world } = __modules["src/worlds/kit.js"];
+const { PITCH, both, deepFreeze, music, pace, site, stim, world } = __modules["src/worlds/kit.js"];
 
 const ECHO_PARAMETERS = Object.freeze({
-  drive: { site: 'CSp', cycleMs: 600, count: 8 },
+  drive: Object.freeze({ site: 'S', cycleMs: 600, count: 8 }),
 });
 
 function createEchoWorld() {
   const nodes = [
-    site('S', 'sinus', 200, { automaticity: sinusFocus(800) }),
+    site('S', 'sinus', 200),
     site('HRA', 'atrial', 230, { restitution: [60, 80] }),
     site('CSp', 'atrial', 230, { restitution: [60, 80] }),
     site('FP', 'nodal', 304, { restitution: [60, 120] }),
@@ -10088,7 +10100,7 @@ function createEchoWorld() {
     site('V', 'ventricular', 250, { restitution: [60, 80] }),
   ];
   const links = [
-    // Sinus exit to the high atrium; atrial pacing also enters the sinus node and resets it.
+    // First paced site to the high atrium, with a path for retrograde conduction.
     both('SH', 'S', 'HRA', 25),
     both('HC', 'HRA', 'CSp', 30, { entry: [15, 40] }),
     both('CF', 'CSp', 'FP', 10, { entry: [20, 60] }),
@@ -10104,24 +10116,23 @@ function createEchoWorld() {
 const echoWorld = deepFreeze(createEchoWorld());
 
 const DRIVE_START_MS = 200;
-const lastS1Ms = ({ drive = 600, count = 8, start = DRIVE_START_MS } = {}) => start + drive * (count - 1);
+const { site: driveSite, cycleMs: driveCycleMs, count: driveCount } = ECHO_PARAMETERS.drive;
+const lastS1Ms = DRIVE_START_MS + driveCycleMs * (driveCount - 1);
 
 // Guided runs (creator decision 2026-11-27): one press shows the behaviour. The
 // model is nominal, the drive runs silently, and presentation starts 100 ms
-// before the decisive S2. With the nominal model, S2 240–264 ms gives exactly
-// one echo and S2 266–298 ms sustained AV-nodal reentry (tests/studies-echo.test.js);
+// before the decisive S2. With pacing at S, S2 230–256 ms gives exactly
+// one echo and S2 257–296 ms sustained AV-nodal reentry (tests/studies-echo.test.js);
 // each button uses the middle of its window.
-const ECHO_S2_MS = 252;
-const ARRHYTHMIA_S2_MS = 282;
+const ECHO_S2_MS = 243;
+const ARRHYTHMIA_S2_MS = 277;
 const GUIDED_LEAD_MS = 100;
-const s2AtMs = s2 => lastS1Ms() + s2;
+const s2AtMs = s2 => lastS1Ms + s2;
 
-const S1S2 = (s2, { drive = 600, count = 8, start = DRIVE_START_MS, s3 = null } = {}) => {
-  const last = lastS1Ms({ drive, count, start });
-  const commands = [pace('S1', start, 'CSp', drive, count, `S1 drive ${drive} ms`), stim('S2', last + s2, 'CSp')];
-  if (s3 !== null) commands.push(stim('S3', last + s2 + s3, 'CSp'));
-  return commands;
-};
+const S1S2 = s2 => [
+  pace('S1', DRIVE_START_MS, driveSite, driveCycleMs, driveCount, `S1 drive ${driveCycleMs} ms`),
+  stim('S2', s2AtMs(s2), driveSite),
+];
 
 const echoPresentation = deepFreeze({
   layout: {
@@ -10138,9 +10149,9 @@ const echoPresentation = deepFreeze({
     V: [PITCH.D3, 'bow', 0.15],
   }),
   protocols: [
-    { id: 'find-echo', label: 'Find the echo', lab: `S1 600 ms × 8 from CSp, S2 ${ECHO_S2_MS} ms: one AV-nodal echo`,
+    { id: 'find-echo', label: 'Find the echo', lab: `S1 ${driveCycleMs} ms × ${driveCount} from ${driveSite}, S2 ${ECHO_S2_MS} ms: one AV-nodal echo`,
       s2: ECHO_S2_MS, presentFromMs: s2AtMs(ECHO_S2_MS) - GUIDED_LEAD_MS, commands: (s2 = ECHO_S2_MS) => S1S2(s2) },
-    { id: 'find-arrhythmia', label: 'Find the arrhythmia', lab: `S1 600 ms × 8 from CSp, S2 ${ARRHYTHMIA_S2_MS} ms: sustained AV-nodal reentry`,
+    { id: 'find-arrhythmia', label: 'Find the arrhythmia', lab: `S1 ${driveCycleMs} ms × ${driveCount} from ${driveSite}, S2 ${ARRHYTHMIA_S2_MS} ms: sustained AV-nodal reentry`,
       s2: ARRHYTHMIA_S2_MS, presentFromMs: s2AtMs(ARRHYTHMIA_S2_MS) - GUIDED_LEAD_MS, commands: (s2 = ARRHYTHMIA_S2_MS) => S1S2(s2) },
   ],
 });
@@ -10748,9 +10759,9 @@ const SCENE_LIST = {
   conduction: {
     create: createRestitutionConduction,
     name: 'Conduction',
-    topology: 'Six sites in a branching pathway, led by an automatic focus.',
+    topology: 'Six sites in a branching pathway from atrium to ventricles.',
     hint: 'Tap a site to stimulate it · Hold a site to inspect it',
-    status: 'An automatic impulse leads the way.',
+    status: 'Impulses travel from atrium to ventricles.',
   },
   circulation: {
     create: createRestitutionRing,
@@ -10778,7 +10789,7 @@ const SCENE_LIST = {
       labels: study.id === 'echo' ? ECHO_LABELS : null,
       topology: 'Two routes through the junction between upper and lower chambers. Silent sites are open rings.',
       hint: 'Tap a site to stimulate it · Hold a site to inspect it',
-      status: 'Sinus impulses travel from atrium to ventricle.',
+      status: 'Impulses travel from atrium to ventricle.',
     }];
   })),
 };
@@ -12198,11 +12209,10 @@ return {installProtocolWorker,supportsWorkers,createProtocolRunner};
 __modules["src/lab/live-curve.js"] = (()=>{
 // Live S1–S2 curve: the AH jump curve built from the performance itself.
 //
-// Every premature stimulus delivered at the atrial pacing site (a guided S2 or
-// a player's touch) becomes one point: its coupling interval A1–A2, measured
-// from the previous activation at that site, against A2–H2, the time to the
+// A premature stimulus at the septal atrium or the upstream pacing site
+// becomes one point: the septal coupling interval A1–A2 against A2–H2, the time to the
 // first causally descended His activation. Points are kept across runs, so the
-// curve grows as "Find the echo" steps the extrastimulus earlier. All values
+// curve grows as the player tries different premature beats. All values
 // are intervals (EP-relative), never the run clock.
 //
 // The store is pure and DOM-free. Feed it events with ingest(); a point is final
@@ -12212,13 +12222,13 @@ const { descendantsOf, detectJumps, firstDescendant, round3 } = __modules["src/l
 
 // Drive pulses come from a train (triggerId `<train>#<k>`) and are S1 by
 // definition; an extrastimulus is a single stimulus.
-const isStimulusAt = (event, nodeId) => event.type === 'stimulus_attempted' && event.nodeId === nodeId
-  && event.source === 'stimulus' && !String(event.triggerId ?? '').includes('#');
+const isExtrastimulus = event => event.type === 'stimulus_attempted' && event.source === 'stimulus'
+  && !String(event.triggerId ?? '').includes('#') && !String(event.triggerId ?? '').startsWith('pace-');
 
 // Pure: the extrastimulus points in one run's events, up to throughMs.
 // A single (non-train) stimulus counts as premature when its coupling interval is at least
 // prematureMs shorter than the cycle that preceded it at the pacing site.
-function extrastimulusPoints(events, { atrium = 'CSp', his = 'H', settleMs = 1200, prematureMs = 20, throughMs = Infinity } = {}) {
+function extrastimulusPoints(events, { atrium = 'CSp', upstream = 'S', his = 'H', settleMs = 1200, prematureMs = 20, throughMs = Infinity } = {}) {
   const points = [];
   const activations = [];
   for (const event of events) {
@@ -12226,17 +12236,19 @@ function extrastimulusPoints(events, { atrium = 'CSp', his = 'H', settleMs = 120
       activations.push(event.tMs);
       continue;
     }
-    if (!isStimulusAt(event, atrium)) continue;
+    if (!isExtrastimulus(event) || (event.nodeId !== atrium && event.nodeId !== upstream)) continue;
+    if (event.tMs + settleMs > throughMs) continue;
     // Activations strictly before this stimulus define A1 and the preceding cycle.
     const before = activations.filter(tMs => tMs < event.tMs);
     if (before.length < 2) continue;
     const a1 = before.at(-1);
     const cycleMs = round3(a1 - before.at(-2));
-    const couplingMs = round3(event.tMs - a1);
-    if (couplingMs > cycleMs - prematureMs) continue;
-    if (event.tMs + settleMs > throughMs) continue;
     const set = descendantsOf(events, [event.eventId]);
     const a2 = firstDescendant(events, set, atrium, ['activation']);
+    // An upstream stimulus blocked before the septal atrium has no local A2.
+    if (!a2 && event.nodeId !== atrium) continue;
+    const couplingMs = round3((a2?.tMs ?? event.tMs) - a1);
+    if (couplingMs > cycleMs - prematureMs) continue;
     const h2 = a2 ? firstDescendant(events, set, his, ['activation']) : null;
     points.push({
       key: `${event.runId}:${event.eventId}`,
@@ -12872,7 +12884,7 @@ return { default: "<!-- DRAFT — creator writes final text -->\n**DRAFT — cre
 __modules["src/ui/app.js"] = (()=>{
 const { CIRCULATION_S2_MS } = __modules["src/worlds/circulation.js"];
 const { Engine } = __modules["src/engine/index.js"];
-const { createTransport, LOOKAHEAD_WALL_MS } = __modules["src/runtime/transport.js"];
+const { createTransport, DEFAULT_PACING_CYCLE, LOOKAHEAD_WALL_MS } = __modules["src/runtime/transport.js"];
 const { createRenderer } = __modules["src/visuals/renderer.js"];
 const { mapActivation, createAudioMixer, describeNodeMusic, musicTableFor } = __modules["src/music/index.js"];
 const { createInspector } = __modules["src/ui/inspector.js"];
@@ -12893,6 +12905,7 @@ const WORLDS = SCENES;
 const NOTES = { echo: ECHO_NOTES };
 
 const preferences = readPreferences(EDITION.storageSuffix);
+let firstNodeCycleMs = DEFAULT_PACING_CYCLE;
 const sound = Object.freeze({ palette: 'chamber', voicing: 'balanced' });
 const engine = new Engine();
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -13022,11 +13035,11 @@ const GUIDED = ['find-echo', 'find-arrhythmia'];
 // decisive S2 at the middle of its window (src/worlds/echo.js).
 function guidedProtocol(kind) {
   const protocol = scene.presentation.protocols.find(entry => entry.id === kind);
-  guidedLast = { kind, label: protocol.lab, s2: protocol.s2, s3: null };
+  guidedLast = protocol.lab;
   return protocol;
 }
 
-function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs, autoStart = started) {
+function startRun(kind = 'default', nodeId = selectedNodeId, interval = couplingMs, autoStart = started) {
   if (kind === 'single' && !world.nodes.some(node => node.id === nodeId)) return;
   if (kind === 'guide' && (worldId !== 'circulation' || !world.nodes.some(node => node.id === nodeId)
     || !Number.isInteger(interval) || interval < 1 || interval > 5000)) return;
@@ -13034,6 +13047,9 @@ function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs
   if (GUIDED.includes(kind) && worldId !== 'echo') return;
   const runId = `run-${++runCounter}`;
   const commands = [];
+  const initialPacing = kind === 'default' && worldId !== 'circulation'
+    ? { nodeId: world.nodes[0].id, cycleMs: firstNodeCycleMs }
+    : null;
   const stimulus = (commandId, nodeId, tMs) => ({ commandId, type: 'stimulate', nodeId, tMs });
   let status = WORLDS[worldId].status;
   let fromMs = 0;
@@ -13044,7 +13060,8 @@ function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs
     commands.push(stimulus('protocol-s1', nodeId, 0), stimulus('protocol-s2', nodeId, interval));
     status = 'Two impulses. A chance to keep going.';
   } else if (kind === 'premature' && worldId === 'conduction') {
-    commands.push(stimulus('protocol-premature', 'A', 275));
+    const firstNode = world.nodes[0].id;
+    commands.push(stimulus('protocol-s1', firstNode, 0), stimulus('protocol-premature', firstNode, 250));
     status = 'An early impulse takes the slower path.';
   } else if (GUIDED.includes(kind)) {
     const protocol = guidedProtocol(kind);
@@ -13062,7 +13079,7 @@ function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs
   }
   $('status').textContent = started ? status : WORLDS[worldId].topology;
   transport.reset(world, runId, {
-    commands, fromMs, start: autoStart && !document.hidden && (!context || context.state === 'running'),
+    commands, fromMs, initialPacing, start: autoStart && !document.hidden && (!context || context.state === 'running'),
   });
   updateButtons();
   updateGuidedReadout();
@@ -13074,9 +13091,7 @@ function startRun(kind = 'quiet', nodeId = selectedNodeId, interval = couplingMs
 
 function updateGuidedReadout() {
   if (!studyLab) return;
-  studyLab.setGuided(guidedLast
-    ? `Last guided run: ${guidedLast.label}. S1 600 ms × 8 from CSp, S2 ${guidedLast.s2} ms${guidedLast.s3 === null ? '' : `, S3 ${guidedLast.s3} ms`}.`
-    : '');
+  studyLab.setGuided(guidedLast ? `Last guided run: ${guidedLast}.` : '');
 }
 
 function updateFragment() {
@@ -13103,7 +13118,8 @@ function chooseWorld(id, initial = false) {
   world = nextWorld;
   renderer = nextRenderer;
   musicTable = musicTableFor(world, settings.presentation);
-  selectedNodeId = ({ conduction: 'A', echo: 'CSp', circulation: 'R0' })[id] ?? world.nodes[0].id;
+  selectedNodeId = world.nodes[0].id;
+  $('pacing-cycle').value = String(id === 'circulation' ? preferences.pacingCycleMs : firstNodeCycleMs);
   renderer.setSelected(selectedNodeId);
   selectedLinkId = world.links[0].id;
   guidedLast = null;
@@ -13121,7 +13137,7 @@ function chooseWorld(id, initial = false) {
   if (studyLab) setupStudyLab();
   $('lab-study').hidden = !settings.study;
   resize();
-  startRun(initial && id === 'circulation' ? 'single' : 'quiet', selectedNodeId, couplingMs, autoStart);
+  startRun(initial && id === 'circulation' ? 'single' : 'default', selectedNodeId, couplingMs, autoStart);
   // After the reset, which may have kept the old world's last run, start the curve afresh.
   liveCurve.clear();
   updateFragment();
@@ -13532,11 +13548,16 @@ $('premature').onclick = () => startRun('premature');
 $('find-echo').onclick = () => startRun('find-echo');
 $('find-arrhythmia').onclick = () => startRun('find-arrhythmia');
 $('reset').onclick = () => startRun();
-$('pacing-cycle').value = String(preferences.pacingCycleMs);
 function changePacingCycle(value) {
-  preferences.pacingCycleMs = transport.setPacingCycle(value);
-  $('pacing-cycle').value = String(preferences.pacingCycleMs);
-  savePreferences(preferences);
+  const cycleMs = transport.setPacingCycle(value);
+  $('pacing-cycle').value = String(cycleMs);
+  if (worldId === 'circulation') {
+    preferences.pacingCycleMs = cycleMs;
+    savePreferences(preferences);
+  } else {
+    firstNodeCycleMs = cycleMs;
+  }
+  return cycleMs;
 }
 $('pacing-cycle').onchange = () => changePacingCycle($('pacing-cycle').value);
 $('pacing-minus').onclick = () => changePacingCycle(Number($('pacing-cycle').value) - 10);
@@ -13544,8 +13565,8 @@ $('pacing-plus').onclick = () => changePacingCycle(Number($('pacing-cycle').valu
 $('pacing-toggle').onclick = () => {
   if (transport.state().pacing) transport.stopPacing();
   else {
-    changePacingCycle($('pacing-cycle').value);
-    transport.startPacing(worldId === 'circulation' ? selectedNodeId : worldId === 'echo' ? 'CSp' : 'A', preferences.pacingCycleMs);
+    const cycleMs = changePacingCycle($('pacing-cycle').value);
+    transport.startPacing(worldId === 'circulation' ? selectedNodeId : world.nodes[0].id, cycleMs);
   }
 };
 $('notes-close').onclick = () => $('notes-sheet').close?.() ?? $('notes-sheet').removeAttribute('open');

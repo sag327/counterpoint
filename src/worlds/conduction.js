@@ -1,4 +1,4 @@
-import { both, link, sinusFocus, site, way, world } from './kit.js';
+import { both, link, site, way, world } from './kit.js';
 import { directedLink, freezePreset } from './feedforward.js';
 
 export function createConductionWorld() {
@@ -29,7 +29,7 @@ export const conductionWorld = freezePreset(createConductionWorld());
 // The fixed-ERP preset above is retained for the contract v1 reference cases.
 export function createRestitutionConduction() {
   return world('conduction', [
-    site('S', 'sinus', 200, { restitution: [40, 90], automaticity: sinusFocus(800), audible: true }),
+    site('S', 'sinus', 200, { restitution: [40, 90], audible: true }),
     site('A', 'atrial', 220, { restitution: [45, 90] }),
     site('N', 'nodal', 310, { restitution: [90, 130], audible: true }),
     site('H', 'hisPurkinje', 180, { restitution: [35, 95] }),

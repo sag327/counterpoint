@@ -27,7 +27,7 @@ const launches = events => events.filter(e => e.type === 'conduction_launched');
 for (const ventricle of ['V1', 'V2']) {
   test(`Conduction: a recovered ${ventricle} conducts through His and the node to the atrium, opposite branch and sinus`, () => {
     const world = createRestitutionConduction();
-    const { events } = run(world, [stimulate(ventricle, 500)]);
+    const { events } = run(world, [stimulate('S', 0, 'drive'), stimulate(ventricle, 500)]);
     const trace = stimulusTrace(events);
     const atrialPath = [ventricle, 'H', 'N', 'A', 'S'];
     assert.deepEqual(captures(trace).filter(e => atrialPath.includes(e.nodeId)).map(e => e.nodeId), atrialPath);
@@ -36,32 +36,29 @@ for (const ventricle of ['V1', 'V2']) {
     assert.deepEqual(launches(trace).filter(e => ['NH', 'AN', 'SA'].includes(e.linkId))
       .map(e => [e.linkId, e.fromNodeId, e.toNodeId]), [['NH', 'H', 'N'], ['AN', 'N', 'A'], ['SA', 'A', 'S']]);
     assert.ok(launches(trace).find(e => e.linkId === 'NH').delayParts.sourceMs > 0, 'recovered His still applies shared decrement to the nodal link');
-    assert.ok(assertLaws(world, events) > 20, 'reverse launches and captures follow the same laws');
+    assert.ok(assertLaws(world, events) >= 15, 'reverse launches and captures follow the same laws');
     const sinus = captures(events).filter(e => e.nodeId === 'S');
-    assert.deepEqual(sinus.map(e => e.source), ['automaticity', 'conduction', 'automaticity']);
-    assert.ok(sinus[2].tMs >= sinus[1].tMs + 800, 'atrial entry resets the sinus clock and applies overdrive suppression');
-    assert.ok(!events.some(e => e.type === 'stimulus_attempted' && e.source === 'automaticity' && e.tMs === 800));
+    assert.deepEqual(sinus.map(e => e.source), ['stimulus', 'conduction']);
   });
 }
 
 test('Echo: a recovered ventricle reaches the atrium through His, LCP and the faster recovered nodal limb', () => {
   const world = createEchoWorld();
-  const { events } = run(world, [stimulate('V', 500)]);
+  const { events } = run(world, [stimulate('S', 0, 'drive'), stimulate('V', 500)]);
   const trace = stimulusTrace(events);
   assert.deepEqual(captures(trace).filter(e => e.nodeId !== 'SP').map(e => e.nodeId), ['V', 'H', 'LCP', 'FP', 'CSp', 'HRA', 'S']);
   assert.deepEqual(launches(trace).filter(e => ['HV', 'LH'].includes(e.linkId)).map(e => [e.fromNodeId, e.toNodeId]), [['V', 'H'], ['H', 'LCP']]);
   assert.ok(events.some(e => e.type === 'conduction_collision' && e.linkId === 'SL'), 'the later slow-limb wave meets the wave from atrial breakthrough');
-  assert.ok(assertLaws(world, events) > 30);
+  assert.ok(assertLaws(world, events) >= 24);
   const sinus = captures(events).filter(e => e.nodeId === 'S');
-  assert.deepEqual(sinus.map(e => e.source), ['automaticity', 'conduction', 'automaticity']);
-  assert.ok(sinus[2].tMs >= sinus[1].tMs + 800);
+  assert.deepEqual(sinus.map(e => e.source), ['stimulus', 'conduction']);
 });
 
 for (const [name, create, ventricle, earlyMs] of [
   ['Conduction', createRestitutionConduction, 'V1', 400], ['Echo', createEchoWorld, 'V', 420],
 ]) {
   test(`${name}: premature ventricular stimulation fails locally without a reverse launch`, () => {
-    const { events } = run(create(), [stimulate(ventricle, earlyMs)], 750);
+    const { events } = run(create(), [stimulate('S', 0, 'drive'), stimulate(ventricle, earlyMs)], 750);
     const trace = stimulusTrace(events);
     assert.equal(captures(trace).length, 0);
     assert.equal(launches(trace).length, 0);
@@ -77,7 +74,7 @@ test('Ventricular capture can block in unrecovered His in both production models
     [createRestitutionConduction, 'V1', [stimulate('H', 350, 'condition-his')]],
     [createEchoWorld, 'V', []],
   ]) {
-    const { events } = run(create(), [...preparation, stimulate(ventricle, 450)], 750);
+    const { events } = run(create(), [stimulate('S', 0, 'drive'), ...preparation, stimulate(ventricle, 450)], 750);
     const trace = stimulusTrace(events);
     assert.deepEqual(captures(trace).map(e => e.nodeId), [ventricle]);
     const blocked = trace.find(e => e.type === 'activation_blocked');
@@ -88,9 +85,11 @@ test('Ventricular capture can block in unrecovered His in both production models
   }
 });
 
-test('Sinus rhythm never immediately reflects on the newly bidirectional links', () => {
+test('First-node pacing never immediately reflects on the newly bidirectional links', () => {
   for (const create of [createRestitutionConduction, createEchoWorld]) {
-    const { events } = run(create(), [], 7999);
+    const drive = { commandId: 'drive', type: 'stimulateTrain', nodeId: 'S',
+      tMs: 0, startMs: 0, cycleMs: 600, count: 10, label: 'S1' };
+    const { events } = run(create(), [drive], 7999);
     for (const node of create().nodes) assert.equal(captures(events).filter(e => e.nodeId === node.id).length, 10, node.id);
     for (const activation of captures(events)) {
       assert.ok(launches(events).filter(e => e.activationId === activation.eventId)
@@ -105,7 +104,7 @@ test('Network passage clocks and Ladder marks follow actual reverse ventricular 
     [createEchoWorld, 'V', ['S', 'HRA', 'CSp', 'FP', 'SP', 'LCP', 'H', 'V']],
   ]) {
     const world = create();
-    const { engine, events } = run(world, [stimulate(ventricle, 500)]);
+    const { engine, events } = run(world, [stimulate('S', 0, 'drive'), stimulate(ventricle, 500)]);
     const trace = stimulusTrace(events);
     const marks = traceMarks(events, tiers);
     const reverse = launches(trace).filter(e => world.links.find(l => l.id === e.linkId).b === e.fromNodeId);
