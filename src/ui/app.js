@@ -501,10 +501,12 @@ function resize() {
   renderer.resize();
   views.resize();
   for (const button of $('sites').children) {
-    const point = renderer.nodePosition(button.dataset.site ?? button.textContent);
+    const id = button.dataset.site ?? button.textContent;
+    const point = renderer.nodePosition(id);
     if (!point) continue;
     button.style.left = `${point.x}px`;
     button.style.top = `${point.y}px`;
+    button.style.width = button.style.height = `${renderer.nodeHitRadius(id) * 2}px`;
   }
 }
 
@@ -518,6 +520,7 @@ function setView(next) {
   $('view-canvas').hidden = network;
   $('sites').hidden = !network;
   stage.classList.toggle('alt-view', !network);
+  stage.classList.toggle('ladder-view', view === 'ladder');
   $('view-canvas').setAttribute('aria-label', view === 'ladder'
     ? 'Ladder: each row is a site, time runs left to right, and each sloping line is a wave travelling between sites.'
     : 'Staves: one channel per audible site with synthetic electrograms. Drag across to place calipers.');

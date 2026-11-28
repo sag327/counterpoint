@@ -7,6 +7,7 @@ import { createStaves } from '../visuals/staves.js';
 import { ladderTiers, staveSpecs } from './studies.js';
 
 const DPR_CAP = 2.5;
+const LADDER_WINDOW_MS = 1500;
 
 export function createViews(canvas, { reducedMotion = false } = {}) {
   const ctx = canvas.getContext('2d', { alpha: false });
@@ -42,7 +43,7 @@ export function createViews(canvas, { reducedMotion = false } = {}) {
     if (view === 'network' || !ladder) return null;
     lastEvents = events;
     const args = { events, presentedMs, width, height, dpr: ratio, reducedMotion: reduced };
-    if (view === 'ladder') return ladder.draw(ctx, args);
+    if (view === 'ladder') return ladder.draw(ctx, { ...args, windowMs: LADDER_WINDOW_MS });
     return staves.draw(ctx, { ...args, showSyntheticLabel: lab });
   }
 

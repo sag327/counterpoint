@@ -13,6 +13,9 @@ const TURN = Math.PI * 2;
 const SAMPLES = 64;
 const GLYPH_LIFETIME = 74;
 const HIT_RADIUS = 22;
+const RESTED_SITE_RADIUS = 5.8;
+const ringOffset = node => RESTED_SITE_RADIUS * ((node.dotScale ?? 1) - 1);
+const siteHitRadius = node => Math.max(HIT_RADIUS, Math.ceil(RESTED_SITE_RADIUS + ringOffset(node)) + 2);
 const CROSSING_EPSILON = 1e-7;
 const clamp = (value) => Math.max(0, Math.min(1, value));
 const mix = (a, b, t) => a + (b - a) * t;
@@ -22,7 +25,7 @@ const ease = (value) => value * value * (3 - 2 * value);
 const SCULPTURES = {
   conduction: {
     nodes: {
-      S: [-0.30, -1.08, ICE], A: [-0.09, -0.59, ICE], N: [0.20, -0.14, ICE, 1.4],
+      S: [-0.30, -1.08, ICE], A: [-0.09, -0.59, ICE], N: [0.20, -0.14, ICE, 4],
       H: [0.02, 0.32, ICE], V1: [-0.60, 1.08, BRASS], V2: [0.76, 0.94, BRASS],
     },
     handles: {
@@ -440,8 +443,8 @@ function drawNode(ctx, node, state) {
     return;
   }
   dot(ctx, x, y, 2.8 * dotScale, GROUND);
-  halo(ctx, x, y, 11.5 * dotScale, color, 0.10 + recovery * 0.30);
-  arc(ctx, x, y, (4.3 + recovery * 1.5) * dotScale, 0, TURN, cssColor(color, edge + recovery * 0.24), 0.72);
+  halo(ctx, x, y, 11.5 + ringOffset(node), color, 0.10 + recovery * 0.30);
+  arc(ctx, x, y, (RESTED_SITE_RADIUS - (1 - recovery) * 1.5) * dotScale, 0, TURN, cssColor(color, edge + recovery * 0.24), 0.72);
   dot(ctx, x, y, (1.27 + recovery * 1.19) * dotScale, cssColor(color, 0.37 + recovery * 0.63));
   if (recovery > 0) dot(ctx, x - 0.42, y - 0.51, 0.72, cssColor(core, recovery * 0.91));
 }
@@ -460,9 +463,10 @@ function drawEvent(ctx, geometry, event, tMs, reducedMotion, fields) {
     const t = age / 54;
     const flash = (1 - t) ** 2.7;
     const color = node.color === BRASS ? FLASH : COOL_FLASH;
-    halo(ctx, node.x, node.y, 17, color, 0.78 * flash);
+    const offset = ringOffset(node);
+    halo(ctx, node.x, node.y, 17 + offset, color, 0.78 * flash);
     dot(ctx, node.x, node.y, 3.1 * (node.dotScale ?? 1), cssColor(color, flash));
-    arc(ctx, node.x, node.y, reducedMotion ? 9 : 7.5 + 11 * ease(t), 0, TURN,
+    arc(ctx, node.x, node.y, offset + (reducedMotion ? 9 : 7.5 + 11 * ease(t)), 0, TURN,
       cssColor(color, 0.85 * (1 - t) ** 1.6), 0.95);
   }
   if (event.type === 'activation_blocked' && node) {
@@ -474,7 +478,7 @@ function drawEvent(ctx, geometry, event, tMs, reducedMotion, fields) {
       return Math.atan2(near.y - y, near.x - x);
     }).filter((direction) => direction !== null);
     if (toward.length === 0) toward.push(angle);
-    const distance = reducedMotion ? 0 : 5 * ease(age / GLYPH_LIFETIME);
+    const distance = ringOffset(node) + (reducedMotion ? 0 : 5 * ease(age / GLYPH_LIFETIME));
     const opacity = (1 - age / GLYPH_LIFETIME) ** 1.6;
     for (const direction of toward) {
       arc(ctx, x, y, 8.2 + distance, direction - 0.53, direction + 0.53, cssColor(COOL_FLASH, 0.92 * opacity), 1.2);
@@ -597,12 +601,16 @@ export function createRenderer(canvas, world, { reducedMotion = false, layout = 
     // The selected site (last touched or inspected) wears a quiet gold halo.
     const chosen = selected ? geometry.nodes.get(selected) : null;
     if (chosen) {
-      arc(ctx, chosen.x, chosen.y, 15, 0, TURN, cssColor('#d6b880', 0.85), 1.2);
-      arc(ctx, chosen.x, chosen.y, 19.5, 0, TURN, cssColor('#d6b880', 0.25), 0.8);
+      const radius = 15 + ringOffset(chosen);
+      arc(ctx, chosen.x, chosen.y, radius, 0, TURN, cssColor('#d6b880', 0.85), 1.2);
+      arc(ctx, chosen.x, chosen.y, radius + 4.5, 0, TURN, cssColor('#d6b880', 0.25), 0.8);
     }
     for (const id of modified.nodes) {
       const node = geometry.nodes.get(id);
-      if (node) drawModified(ctx, node.x + 9, node.y - 9);
+      if (node) {
+        const offset = 9 + ringOffset(node) * Math.SQRT1_2;
+        drawModified(ctx, node.x + offset, node.y - offset);
+      }
     }
     for (const id of modified.links) {
       const link = geometry.links.get(id);
@@ -634,7 +642,7 @@ export function createRenderer(canvas, world, { reducedMotion = false, layout = 
       }
       const node = geometry.nodes.get(gesture.nodeId);
       ctx.setLineDash([1.2, 3.5]);
-      arc(ctx, node.x, node.y, 15, 0, TURN, cssColor(INPUT, 0.74));
+      arc(ctx, node.x, node.y, 15 + ringOffset(node), 0, TURN, cssColor(INPUT, 0.74));
       ctx.setLineDash([]);
     }
     overlay?.(ctx, { tMs, snapshot, events, width, height });
@@ -642,10 +650,10 @@ export function createRenderer(canvas, world, { reducedMotion = false, layout = 
 
   function hitTest(x, y) {
     let closest = null;
-    let limit = HIT_RADIUS;
+    let limit = Infinity;
     for (const [id, node] of geometry.nodes) {
       const distance = Math.hypot(x - node.x, y - node.y);
-      if (distance <= limit) {
+      if (distance <= limit && distance <= siteHitRadius(node)) {
         closest = id;
         limit = distance;
       }
@@ -704,6 +712,7 @@ export function createRenderer(canvas, world, { reducedMotion = false, layout = 
 
   resize();
   return { resize, render, hitTest, hitTestLink, nodePosition, crossedLinks, markGesture, linkPoint,
+    nodeHitRadius: id => siteHitRadius(geometry.nodes.get(id)),
     // Open rings on sites and links that differ from the study default.
     markModified(next) { modified = { nodes: new Set(next?.nodes ?? []), links: new Set(next?.links ?? []) }; },
     setSelected(nodeId) { selected = nodeId ?? null; },
