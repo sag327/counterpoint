@@ -18,13 +18,21 @@
       <button type="button" data-world="circulation" aria-pressed="false">Circulation</button>
       <button type="button" data-world="echo" aria-pressed="false">Echo</button>
     </nav>
-    <nav id="views" aria-label="View">
-      <span class="view-label" aria-hidden="true">View</span>
-      <div class="view-switch">
-        <button type="button" data-view="network" aria-pressed="true">Network</button>
-        <button type="button" data-view="ladder" aria-pressed="false">Ladder</button>
-      </div>
-    </nav>
+    <div class="stage-controls">
+      <nav id="views" aria-label="View">
+        <span class="view-label" aria-hidden="true">View</span>
+        <div class="view-switch">
+          <button type="button" data-view="network" aria-pressed="true">Network</button>
+          <button type="button" data-view="ladder" aria-pressed="false">Ladder</button>
+        </div>
+      </nav>
+      <button id="pause" type="button" aria-label="Pause" title="Pause" disabled>
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true">
+          <path class="pause-icon" d="M8 5h2.5v14H8zm5.5 0H16v14h-2.5z"/>
+          <path class="play-icon" d="m8 5 11 7-11 7z"/>
+        </svg>
+      </button>
+    </div>
     <div id="stage">
       <canvas id="canvas" role="img"></canvas>
       <canvas id="view-canvas" role="img" hidden></canvas>
@@ -52,12 +60,6 @@
         <output id="pacing-readout" aria-live="off"></output>
       </div>
       <div class="settings" role="group" aria-label="Playback controls">
-        <button id="pause" class="icon-button" type="button" aria-label="Pause" title="Pause" disabled>
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
-            <path class="pause-icon" d="M8 5h2.5v14H8zm5.5 0H16v14h-2.5z"/>
-            <path class="play-icon" d="m8 5 11 7-11 7z"/>
-          </svg>
-        </button>
         <button id="sound" class="icon-button" type="button" aria-label="Mute sound" title="Mute sound">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M11 5 6 9H3v6h3l5 4Z"/>

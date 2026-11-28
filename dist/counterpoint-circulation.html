@@ -362,7 +362,32 @@ button.primary:hover{background:#e1c695;color:#11171a}
 .study-subtitle>span[aria-hidden]{color:var(--muted)}
 .text-link{min-height:32px;padding:4px 6px;border:0;background:transparent!important;color:var(--gold);font:inherit;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .chip{min-height:26px;margin-left:8px;padding:2px 10px;border-radius:999px;border-color:#83A9C8;color:#cfe3f3;font:12px system-ui}
-#views{display:flex;justify-content:center;align-items:center;gap:9px;margin:12px 0 3px}
+.stage-controls {
+  display: grid;
+  grid-template-columns: minmax(48px, 1fr) auto minmax(48px, 1fr);
+  align-items: center;
+  width: min(100%, 580px);
+  margin: 10px auto 0;
+  padding: 0 14px;
+}
+#views{grid-column:2;grid-row:1;display:flex;justify-content:center;align-items:center;gap:9px}
+#pause {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #1c262f;
+  color: var(--gold);
+}
+#pause:hover { background: #2b3843; }
+#pause.is-paused { background: var(--gold); color: #141a1f; }
+#pause.is-paused:hover { background: #e6c894; }
 .view-label{color:var(--muted);font:11px system-ui;letter-spacing:.04em}
 .view-switch{display:inline-flex;gap:2px;padding:2px;border:1px solid #34383b;border-radius:999px;background:#10161d}
 .view-switch button{min-height:34px;padding:5px 12px;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--muted);font:12px system-ui}
@@ -470,13 +495,21 @@ dialog#notes-sheet::backdrop{background:#04070acc}
       <button type="button" data-world="circulation" aria-pressed="false">Circulation</button>
       <button type="button" data-world="echo" aria-pressed="false">Echo</button>
     </nav>
-    <nav id="views" aria-label="View">
-      <span class="view-label" aria-hidden="true">View</span>
-      <div class="view-switch">
-        <button type="button" data-view="network" aria-pressed="true">Network</button>
-        <button type="button" data-view="ladder" aria-pressed="false">Ladder</button>
-      </div>
-    </nav>
+    <div class="stage-controls">
+      <nav id="views" aria-label="View">
+        <span class="view-label" aria-hidden="true">View</span>
+        <div class="view-switch">
+          <button type="button" data-view="network" aria-pressed="true">Network</button>
+          <button type="button" data-view="ladder" aria-pressed="false">Ladder</button>
+        </div>
+      </nav>
+      <button id="pause" type="button" aria-label="Pause" title="Pause" disabled>
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true">
+          <path class="pause-icon" d="M8 5h2.5v14H8zm5.5 0H16v14h-2.5z"/>
+          <path class="play-icon" d="m8 5 11 7-11 7z"/>
+        </svg>
+      </button>
+    </div>
     <div id="stage">
       <canvas id="canvas" role="img"></canvas>
       <canvas id="view-canvas" role="img" hidden></canvas>
@@ -504,12 +537,6 @@ dialog#notes-sheet::backdrop{background:#04070acc}
         <output id="pacing-readout" aria-live="off"></output>
       </div>
       <div class="settings" role="group" aria-label="Playback controls">
-        <button id="pause" class="icon-button" type="button" aria-label="Pause" title="Pause" disabled>
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
-            <path class="pause-icon" d="M8 5h2.5v14H8zm5.5 0H16v14h-2.5z"/>
-            <path class="play-icon" d="m8 5 11 7-11 7z"/>
-          </svg>
-        </button>
         <button id="sound" class="icon-button" type="button" aria-label="Mute sound" title="Mute sound">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M11 5 6 9H3v6h3l5 4Z"/>
@@ -6822,13 +6849,12 @@ function drawModified(ctx, x, y) {
   arc(ctx, x, y, 3.1, 0, TURN, cssColor(FLASH, 0.78), 0.9);
 }
 
-function createRenderer(canvas, world, { reducedMotion = false, layout = null, nodeLabels = {} } = {}) {
+function createRenderer(canvas, world, { reducedMotion = false, layout = null } = {}) {
   const ctx = canvas.getContext('2d', { alpha: false });
   if (!ctx) throw new Error('Counterpoint requires Canvas 2D.');
   const backdropCanvas = canvas.ownerDocument.createElement('canvas');
   const backdrop = backdropCanvas.getContext('2d', { alpha: false });
   if (!backdrop) throw new Error('Counterpoint requires a Canvas 2D backdrop.');
-  const labels = Object.entries(nodeLabels);
   const gestures = new Map();
   let geometry;
   let routes;
@@ -6956,18 +6982,6 @@ function createRenderer(canvas, world, { reducedMotion = false, layout = null, n
       ctx.setLineDash([1.2, 3.5]);
       arc(ctx, node.x, node.y, 15, 0, TURN, cssColor(INPUT, 0.74));
       ctx.setLineDash([]);
-    }
-    if (labels.length) {
-      ctx.save();
-      ctx.font = '12px system-ui';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#aaadae';
-      for (const [id, label] of labels) {
-        const node = geometry.nodes.get(id);
-        if (node) ctx.fillText(label, node.x + 24, node.y);
-      }
-      ctx.restore();
     }
     overlay?.(ctx, { tMs, snapshot, events, width, height });
   }
@@ -10816,7 +10830,6 @@ const SCENE_LIST = {
     topology: 'Six sites in a branching pathway from atrium to ventricles.',
     hint: 'Tap a site to stimulate it · Hold a site to inspect it',
     labels: { plain: SITE_NAMES, ep: SITE_NAMES, lab: SITE_NAMES },
-    networkLabels: SITE_NAMES,
   },
   circulation: {
     create: createRestitutionRing,
@@ -13167,7 +13180,7 @@ function chooseWorld(id, initial = false) {
   const settings = WORLDS[id];
   const nextWorld = settings.create();
   const nextRenderer = createRenderer($('canvas'), nextWorld, {
-    reducedMotion: motion.matches, layout: settings.presentation?.layout ?? null, nodeLabels: settings.networkLabels,
+    reducedMotion: motion.matches, layout: settings.presentation?.layout ?? null,
   });
   worldId = id;
   scene = settings;
