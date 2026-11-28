@@ -32,3 +32,16 @@ Classify each development task before execution:
 - Where appropriate, batch related changes into a single implementation and verification cycle.
 - Preserve existing functionality and correctness.
 - If blocked after repeated attempts, report the blocker rather than entering an expensive retry loop.
+
+## Development and deployment policy
+
+Counterpoint is in active pre-release development.
+
+- Commit routine UI, styling, text, and localized configuration changes directly to `main`.
+- Use development branches and pull requests for substantive simulation, architectural, or potentially disruptive changes.
+- Run only the tests warranted by the scope of the change, subject to existing project-specific verification requirements.
+- Rely on GitHub Actions for broader automated regression checks when they cover the relevant revision.
+- Avoid redundant repository inspection and verification.
+- Preserve rollback capability through small, logically organized commits.
+- Report changes, verification results, and unresolved issues concisely.
+- Do not require separate merge approval for routine changes unless explicitly requested or required by existing safety, verification, or branch protection rules.
