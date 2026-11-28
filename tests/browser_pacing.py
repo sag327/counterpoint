@@ -32,18 +32,23 @@ def exercise(browser, *, phone, artifact, model):
     expect(page.locator("#status")).to_have_text("")
     settings = page.get_by_role("group", name="Playback controls")
     expect(settings.get_by_label("Playback", exact=True)).to_be_visible()
-    for label in ("Pause", "Mute sound", "Reset"):
+    for label in ("Mute sound", "Reset"):
         button = settings.get_by_role("button", name=label, exact=True)
         expect(button).to_be_visible()
         expect(button).to_have_css("border-top-width", "0px")
+    pause = page.get_by_role("button", name="Pause", exact=True)
+    expect(pause).to_be_visible()
+    expect(pause).to_have_css("border-top-width", "0px")
+    assert pause.bounding_box()["width"] >= 44
+    assert pause.bounding_box()["y"] < page.locator("#stage").bounding_box()["y"]
     expect(page.locator(".pause-icon")).to_be_visible()
     expect(page.locator(".play-icon")).to_be_hidden()
-    click(settings.get_by_role("button", name="Pause", exact=True))
+    click(pause)
     page.clock.run_for(80)
-    expect(settings.get_by_role("button", name="Play", exact=True)).to_be_visible()
+    expect(page.get_by_role("button", name="Play", exact=True)).to_be_visible()
     expect(page.locator(".pause-icon")).to_be_hidden()
     expect(page.locator(".play-icon")).to_be_visible()
-    click(settings.get_by_role("button", name="Play", exact=True))
+    click(page.get_by_role("button", name="Play", exact=True))
     initial_length = int(field.input_value())
     paced_model = model in ("conduction", "echo")
     if paced_model:
@@ -52,6 +57,10 @@ def exercise(browser, *, phone, artifact, model):
         expect(page.locator("[data-site=H]")).to_have_accessible_name("Pace from site His. Press I to inspect it.")
         if model == "conduction":
             expect(page.locator("[data-site=N]")).to_have_accessible_name("Pace from site AVN. Press I to inspect it.")
+            for node_id, name in (("N", "AVN"), ("H", "His")):
+                page.locator(f"[data-site={node_id}]").press("i")
+                expect(page.locator("#card-layer h3")).to_have_text(f"Site · {name}")
+                page.keyboard.press("Escape")
         expect(page.get_by_role("button", name="Stop pacing", exact=True)).to_be_visible()
         page.clock.run_for(5200)
         startup = live_pulses(page)

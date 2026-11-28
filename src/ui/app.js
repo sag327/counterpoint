@@ -225,7 +225,7 @@ function chooseWorld(id, initial = false) {
   const settings = WORLDS[id];
   const nextWorld = settings.create();
   const nextRenderer = createRenderer($('canvas'), nextWorld, {
-    reducedMotion: motion.matches, layout: settings.presentation?.layout ?? null, nodeLabels: settings.networkLabels,
+    reducedMotion: motion.matches, layout: settings.presentation?.layout ?? null,
   });
   worldId = id;
   scene = settings;

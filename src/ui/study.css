@@ -7,7 +7,32 @@
 .study-subtitle>span[aria-hidden]{color:var(--muted)}
 .text-link{min-height:32px;padding:4px 6px;border:0;background:transparent!important;color:var(--gold);font:inherit;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .chip{min-height:26px;margin-left:8px;padding:2px 10px;border-radius:999px;border-color:#83A9C8;color:#cfe3f3;font:12px system-ui}
-#views{display:flex;justify-content:center;align-items:center;gap:9px;margin:12px 0 3px}
+.stage-controls {
+  display: grid;
+  grid-template-columns: minmax(48px, 1fr) auto minmax(48px, 1fr);
+  align-items: center;
+  width: min(100%, 580px);
+  margin: 10px auto 0;
+  padding: 0 14px;
+}
+#views{grid-column:2;grid-row:1;display:flex;justify-content:center;align-items:center;gap:9px}
+#pause {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #1c262f;
+  color: var(--gold);
+}
+#pause:hover { background: #2b3843; }
+#pause.is-paused { background: var(--gold); color: #141a1f; }
+#pause.is-paused:hover { background: #e6c894; }
 .view-label{color:var(--muted);font:11px system-ui;letter-spacing:.04em}
 .view-switch{display:inline-flex;gap:2px;padding:2px;border:1px solid #34383b;border-radius:999px;background:#10161d}
 .view-switch button{min-height:34px;padding:5px 12px;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--muted);font:12px system-ui}

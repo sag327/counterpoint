@@ -503,13 +503,12 @@ function drawModified(ctx, x, y) {
   arc(ctx, x, y, 3.1, 0, TURN, cssColor(FLASH, 0.78), 0.9);
 }
 
-export function createRenderer(canvas, world, { reducedMotion = false, layout = null, nodeLabels = {} } = {}) {
+export function createRenderer(canvas, world, { reducedMotion = false, layout = null } = {}) {
   const ctx = canvas.getContext('2d', { alpha: false });
   if (!ctx) throw new Error('Counterpoint requires Canvas 2D.');
   const backdropCanvas = canvas.ownerDocument.createElement('canvas');
   const backdrop = backdropCanvas.getContext('2d', { alpha: false });
   if (!backdrop) throw new Error('Counterpoint requires a Canvas 2D backdrop.');
-  const labels = Object.entries(nodeLabels);
   const gestures = new Map();
   let geometry;
   let routes;
@@ -637,18 +636,6 @@ export function createRenderer(canvas, world, { reducedMotion = false, layout = 
       ctx.setLineDash([1.2, 3.5]);
       arc(ctx, node.x, node.y, 15, 0, TURN, cssColor(INPUT, 0.74));
       ctx.setLineDash([]);
-    }
-    if (labels.length) {
-      ctx.save();
-      ctx.font = '12px system-ui';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#aaadae';
-      for (const [id, label] of labels) {
-        const node = geometry.nodes.get(id);
-        if (node) ctx.fillText(label, node.x + 24, node.y);
-      }
-      ctx.restore();
     }
     overlay?.(ctx, { tMs, snapshot, events, width, height });
   }

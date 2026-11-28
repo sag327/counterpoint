@@ -42,7 +42,6 @@ const SCENE_LIST = {
     topology: 'Six sites in a branching pathway from atrium to ventricles.',
     hint: 'Tap a site to stimulate it · Hold a site to inspect it',
     labels: { plain: SITE_NAMES, ep: SITE_NAMES, lab: SITE_NAMES },
-    networkLabels: SITE_NAMES,
   },
   circulation: {
     create: createRestitutionRing,
