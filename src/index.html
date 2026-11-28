@@ -13,13 +13,17 @@
     <button id="lab-toggle" aria-expanded="false" aria-controls="lab" hidden>Laboratory</button>
   </header>
   <main>
-    <nav id="worlds" aria-label="Worlds">
+    <nav id="worlds" aria-label="Models">
       <button type="button" data-world="conduction" aria-pressed="true">Conduction</button>
       <button type="button" data-world="circulation" aria-pressed="false">Circulation</button>
-      <button type="button" data-world="echo" aria-pressed="false" class="study-button">Echo</button>
+      <button type="button" data-world="echo" aria-pressed="false">Echo</button>
     </nav>
     <nav id="views" aria-label="View">
-      <button type="button" data-view="network" aria-pressed="true">Network</button><span aria-hidden="true">·</span><button type="button" data-view="ladder" aria-pressed="false">Ladder</button>
+      <span class="view-label" aria-hidden="true">View</span>
+      <div class="view-switch">
+        <button type="button" data-view="network" aria-pressed="true">Network</button>
+        <button type="button" data-view="ladder" aria-pressed="false">Ladder</button>
+      </div>
     </nav>
     <div id="stage">
       <canvas id="canvas" role="img"></canvas>
@@ -27,12 +31,6 @@
       <div id="sites" role="group" aria-label="Stimulate a site"></div>
       <div id="status" aria-live="polite"></div>
     </div>
-    <section id="intro" aria-label="Begin">
-      <div class="begin-actions">
-        <button id="begin" class="primary">Begin · enable sound</button>
-        <button id="silent">Begin in silence</button>
-      </div>
-    </section>
     <section id="performance" class="controls" aria-label="Performance controls" hidden>
       <p id="protocol-hint" class="instructions" aria-live="off"></p>
       <div class="actions">
@@ -45,6 +43,13 @@
         <button id="reset" disabled>Reset</button>
       </div>
       <div class="settings">
+        <button id="sound" type="button" aria-label="Mute sound" title="Mute sound">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M11 5 6 9H3v6h3l5 4Z"/>
+            <path class="sound-on" d="M15 9a4 4 0 0 1 0 6m3-9a8 8 0 0 1 0 12"/>
+            <path class="sound-off" d="m15 9 6 6m0-6-6 6"/>
+          </svg>
+        </button>
         <label>Playback speed <select id="dilation" aria-describedby="dilation-hint"></select></label><span id="dilation-hint" class="visually-hidden">Fraction of real time. Slower playback spreads the rhythm out.</span>
       </div>
     </section>

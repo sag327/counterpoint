@@ -1,6 +1,6 @@
 const PREFERENCES_KEY = 'counterpoint.preferences.v1';
-// Playback speeds offered in the UI: 1/4 to 1/12 of real time (creator decision 2026-11-27).
-export const DILATIONS = Object.freeze([4, 5, 6, 8, 10, 12]);
+// Playback speeds offered in the UI: real time and three slow playback rates (creator decision 2026-11-27).
+export const DILATIONS = Object.freeze([1, 4, 8, 12]);
 const DEFAULTS = { dilation: 4, volume: 0.3, muted: false };
 
 // Each edition keeps its own preferences (suffix), so a preview never changes the full site's.
@@ -26,5 +26,5 @@ export function savePreferences(preferences) {
 
 // A dilation as the creator asked to see it: a fraction of real time (2026-11-27).
 export function dilationLabel(dilation) {
-  return `1/${dilation}`;
+  return dilation === 1 ? "1" : `1/${dilation}`;
 }
