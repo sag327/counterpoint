@@ -166,7 +166,7 @@ const sandbox = {
 sandbox.window = sandbox;
 runInNewContext(script, sandbox, { filename: "counterpoint.html" });
 const cp = sandbox.counterpoint;
-assert.equal(select("dilation").children.map(option => option.textContent).join(), "1/4,1/5,1/6,1/8,1/10,1/12");
+assert.equal(select("dilation").children.map(option => option.textContent).join(), "1,1/4,1/8,1/12");
 select("dilation").onchange();
 assert.deepEqual(JSON.parse(sandbox.localStorage.value), { dilation: 4, volume: 0.3, muted: false });
 const activations = () => cp.events.filter((event) => event.type === "activation");
@@ -203,20 +203,15 @@ function pointer(type, point, pointerId = 1, isPrimary = true) {
   });
 }
 
-assert.equal(cp.transport.status, "idle");
-assert.equal(cp.events.length, 0);
+assert.equal(cp.transport.status, "running");
 assert.equal(select("sites").children.length, 6);
 assert.equal(select("sites").children[0].textContent, "S");
-assert.ok(select("sites").children.every((node) => node.disabled));
-const opening = select("begin").click();
-document.hidden = true;
-listeners.get("visibilitychange")();
-document.hidden = false;
-listeners.get("visibilitychange")();
-await opening;
-assert.equal(cp.transport.status, "idle", "A hide/show during Web Audio Begin requires explicit resume");
-assert.equal(cp.events.length, 0);
-await select("pause").click();
+assert.ok(select("sites").children.every(node => !node.disabled));
+await new Promise(resolve => setImmediate(resolve));
+await select("sound").click();
+assert.equal(cp.mixer.diagnostics().muted, true);
+await select("sound").click();
+assert.equal(cp.mixer.diagnostics().muted, false);
 runFor(735);
 assert.equal(activations().map(e => e.nodeId).join(), "S,A,N,H,V1,V2");
 assert.equal(cp.mixer.diagnostics().scheduled, 6);

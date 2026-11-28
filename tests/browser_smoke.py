@@ -116,14 +116,12 @@ def desktop_smoke(browser, output):
     page.wait_for_function("window.counterpoint !== undefined")
     screenshot(page, output, "desktop-opening")
     assert page.get_by_role("button", name="Conduction", exact=True).get_attribute("aria-pressed") == "true"
-    assert page.evaluate("counterpoint.events.length") == 0
-    assert page.evaluate("counterpoint.mixer == null")
-    page.get_by_role("button", name="Begin in silence").focus()
-    page.keyboard.press("Enter")
-    page.wait_for_function(f"{ACTIVATIONS}.some(e => e.nodeId === 'V2' && e.tMs === 170)")
-    assert page.evaluate("counterpoint.mixer == null")
+    assert page.locator("#begin, #silent").count() == 0
+    wait_playing(page, f"{ACTIVATIONS}.some(e => e.nodeId === 'V2' && e.tMs === 170)")
+    page.get_by_role("button", name="Mute sound").click()
+    assert page.get_by_role("button", name="Unmute sound").count() == 1
     page.locator("#premature").click()
-    page.wait_for_function(f"{ACTIVATIONS}.some(e => e.nodeId === 'H' && e.tMs === 465)")
+    page.wait_for_function(f"{ACTIVATIONS}.some(e => e.nodeId === 'H' && e.tMs > 275)")
     screenshot(page, output, "conduction-running")
     assert page.get_by_role("button", name="Duality", exact=True).count() == 0
     choose_world(page, "Circulation")
@@ -146,8 +144,8 @@ def desktop_smoke(browser, output):
 
     page.locator("#reset").click()
     page.wait_for_function("(run) => counterpoint.transport.runId !== run && counterpoint.events.length === 0", arg=run_id)
-    page.locator("#dilation").select_option("5")
-    assert page.locator("#dilation option").all_inner_texts() == ["1/4", "1/5", "1/6", "1/8", "1/10", "1/12"]
+    page.locator("#dilation").select_option("8")
+    assert page.locator("#dilation option").all_inner_texts() == ["1", "1/4", "1/8", "1/12"]
     page.get_by_role("button", name="Stimulate site R3").focus()
     page.keyboard.press("Space")
     page.wait_for_function("counterpoint.events.some(e => e.type === 'stimulus_attempted' && e.nodeId === 'R3')")
@@ -198,8 +196,8 @@ def mobile_smoke(browser, url, output):
     assert page.evaluate("matchMedia('(prefers-reduced-motion: reduce)').matches")
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
     choose_world(page, "Circulation")
-    page.locator("#begin").tap()
     page.wait_for_function("counterpoint.mixer != null")
+    page.locator("#single").tap()
     wait_playing(page, f"{ACTIVATIONS}.length >= 8")
     checked_notes = page.evaluate("""() => {
         const notes = counterpoint.mixer.diagnostics();
@@ -257,7 +255,6 @@ def soak(browser, minutes):
     errors, requests = observe(page)
     page.goto(url)
     choose_world(page, "Circulation")
-    page.locator("#begin").click()
     page.wait_for_function("counterpoint.mixer != null")
     await_reentry(page)
     cdp = context.new_cdp_session(page)
@@ -313,7 +310,6 @@ def circulation_edition_smoke(browser, output):
         })""")
         assert state == {"worlds": ["circulation"], "worldsHidden": True, "viewsHidden": True, "view": "network", "sound": True, "lab": True}, state
         assert page.get_by_role("link").count() == 0, "no links to the other models"
-        page.locator("#silent").click()
         wait_playing(page, "counterpoint.transport.status === 'running'")
         page.locator("#single").click()
         wait_playing(page, f"{ACTIVATIONS}.length >= 8")

@@ -42,7 +42,8 @@ let studyLab;
 let views;
 let view = EDITION.views ? EDITION.views[0] : (initialFragment.view ?? 'network');
 let started = false;
-let beginning = false;
+let audioCandidate;
+let audioClockOffset = 0;
 let visibilityChanges = 0;
 let runCounter = 0;
 let allEvents = [];
@@ -84,14 +85,14 @@ function musicOptions() {
 const transport = createTransport({
   engine,
   dilation: preferences.dilation,
-  nowSec: () => context ? context.currentTime : performance.now() / 1000,
+  nowSec: () => context ? context.currentTime + audioClockOffset : performance.now() / 1000,
   onCommit(events) {
     retainEvents(events);
     if (!mixer) return;
     const options = musicOptions();
     for (const event of events) {
       const intent = mapActivation(event, options);
-      if (intent) mixer.schedule(intent, transport.audioSecAt(event.tMs));
+      if (intent) mixer.schedule(intent, transport.audioSecAt(event.tMs) - audioClockOffset);
     }
   },
   onSilence({ reason }) {
@@ -215,9 +216,9 @@ function labOpen() {
   return !$('lab').hidden;
 }
 
-function chooseWorld(id) {
+function chooseWorld(id, initial = false) {
   if (!Object.hasOwn(WORLDS, id) || !editionAllows(EDITION.worlds, id) || (id === worldId && selectedNodeId)) return;
-  const autoStart = transport.status === 'running';
+  const autoStart = initial || transport.status === 'running';
   const settings = WORLDS[id];
   const nextWorld = settings.create();
   const nextRenderer = createRenderer($('canvas'), nextWorld, {
@@ -246,7 +247,7 @@ function chooseWorld(id) {
   if (studyLab) setupStudyLab();
   $('lab-study').hidden = !settings.study;
   resize();
-  startRun('quiet', selectedNodeId, couplingMs, autoStart);
+  startRun(initial && id === 'circulation' ? 'single' : 'quiet', selectedNodeId, couplingMs, autoStart);
   // After the reset, which may have kept the old world's last run, start the curve afresh.
   liveCurve.clear();
   updateFragment();
@@ -351,39 +352,42 @@ function updateButtons() {
   $('pause').disabled = !started || ['pausing', 'faulted'].includes(transport.status);
 }
 
-async function begin(silent) {
-  if (beginning || started) return;
-  beginning = true;
-  const visibilityAtRequest = visibilityChanges;
-  $('begin').disabled = $('silent').disabled = true;
-  let candidate;
+function updateSoundButton() {
+  const button = $('sound');
+  const label = preferences.muted ? 'Unmute sound' : 'Mute sound';
+  button.classList.toggle('is-muted', preferences.muted);
+  button.setAttribute('aria-label', label);
+  button.title = label;
+}
+
+async function enableAudio() {
+  if (preferences.muted || context || document.hidden) return;
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return;
   try {
-    if (!silent) {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      candidate = new AudioContext();
-      await candidate.resume();
-      context = candidate;
-      // No in-app volume or mute: listeners use the device's own controls (creator decision 2026-11-27).
-      mixer = createAudioMixer(context, { volume: preferences.volume });
-      mixer.setMuted(false);
-      context.onstatechange = () => {
-        if (['suspended', 'interrupted'].includes(context.state)) transport.interrupt('audio-interrupted');
-      };
+    audioCandidate ??= new AudioContext();
+    if (audioCandidate.state !== 'running') await audioCandidate.resume();
+    if (context || preferences.muted || document.hidden || audioCandidate.state !== 'running') return;
+    const nextMixer = createAudioMixer(audioCandidate, { volume: preferences.volume });
+    audioClockOffset = performance.now() / 1000 - audioCandidate.currentTime;
+    context = audioCandidate;
+    mixer = nextMixer;
+    if (transport.runId) mixer.beginRun(transport.runId);
+    if (transport.status === 'running') {
+      // The transport already committed a short lookahead while sound was locked.
+      // Schedule only the notes whose playback time has not passed.
+      const audioNow = context.currentTime;
+      const options = musicOptions();
+      for (const event of allEvents) {
+        const at = transport.audioSecAt(event.tMs) - audioClockOffset;
+        if (at >= audioNow) mixer.schedule(mapActivation(event, options), at);
+      }
     }
-    started = true;
-    $('intro').hidden = true;
-    $('performance').hidden = false;
-    const stillVisible = !document.hidden && visibilityAtRequest === visibilityChanges;
-    startRun(worldId === 'circulation' ? 'single' : 'quiet', selectedNodeId, couplingMs, stillVisible);
-    if (!stillVisible) $('status').textContent = 'Paused while away. Resume when ready.';
-    $('pause').focus({ preventScroll: true });
-  } catch (error) {
-    if (candidate) await candidate.close().catch(() => {});
-    context = mixer = undefined;
-    $('status').textContent = `Sound could not start. Begin in silence is available. ${error.message}`;
-  } finally {
-    beginning = false;
-    $('begin').disabled = $('silent').disabled = false;
+    context.onstatechange = () => {
+      if (['suspended', 'interrupted'].includes(context.state)) transport.interrupt('audio-interrupted');
+    };
+  } catch {
+    // Autoplay can be blocked. The simulation keeps running on its own clock.
   }
 }
 
@@ -569,7 +573,7 @@ function updateInspection(frame, now) {
     transport: transport.state(),
     committedMs: transport.committedThroughMs(),
     lookaheadMs: LOOKAHEAD_WALL_MS,
-    audioState: context?.state ?? (started ? 'silent' : 'awaiting Begin'),
+    audioState: context?.state ?? 'silent',
     audioDiagnostics: mixer?.diagnostics(),
     ...sound,
     volume: preferences.volume,
@@ -603,8 +607,16 @@ function openNotes() {
   $('notes-close').focus({ preventScroll: true });
 }
 
-$('begin').onclick = () => begin(false);
-$('silent').onclick = () => begin(true);
+$('sound').onclick = () => {
+  preferences.muted = !preferences.muted;
+  mixer?.setMuted(preferences.muted);
+  savePreferences(preferences);
+  updateSoundButton();
+  if (!preferences.muted) return enableAudio();
+};
+const unlockSound = event => { if (!event.target?.closest?.('#sound')) void enableAudio(); };
+document.addEventListener('click', unlockSound, true);
+document.addEventListener('keydown', unlockSound, true);
 $('pause').onclick = async () => {
   if (transport.status === 'running') {
     transport.pause();
@@ -692,7 +704,11 @@ try {
   views = createViews($('view-canvas'), { reducedMotion: motion.matches });
   const startWorld = worldId;
   worldId = null;
-  chooseWorld(startWorld);
+  started = true;
+  chooseWorld(startWorld, true);
+  $('performance').hidden = false;
+  updateSoundButton();
+  void enableAudio();
   setView(view);
   if (typeof ResizeObserver === 'function') {
     const stageObserver = new ResizeObserver(resize);
@@ -702,7 +718,7 @@ try {
 } catch (error) {
   console.warn(error);
   $('status').textContent = 'The artwork could not start. A browser with Canvas 2D is required.';
-  $('begin').disabled = $('silent').disabled = $('lab-toggle').disabled = true;
+  $('sound').disabled = $('lab-toggle').disabled = true;
   for (const button of $('worlds').children) button.disabled = true;
 }
 
