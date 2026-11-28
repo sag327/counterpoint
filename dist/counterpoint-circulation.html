@@ -12990,7 +12990,9 @@ let view = EDITION.views ? EDITION.views[0] : (initialFragment.view ?? 'network'
 let started = false;
 let audioCandidate;
 let audioClockOffset = 0;
+let audioClockActive = false;
 let visibilityChanges = 0;
+let runToResume = null;
 let runCounter = 0;
 let allEvents = [];
 let lastFrame;
@@ -13032,10 +13034,10 @@ function musicOptions() {
 const transport = createTransport({
   engine,
   dilation: launchDilation,
-  nowSec: () => context ? context.currentTime + audioClockOffset : performance.now() / 1000,
+  nowSec: () => audioClockActive ? context.currentTime + audioClockOffset : performance.now() / 1000,
   onCommit(events) {
     retainEvents(events);
-    if (!mixer) return;
+    if (!audioClockActive) return;
     const options = musicOptions();
     for (const event of events) {
       const intent = mapActivation(event, options);
@@ -13132,9 +13134,9 @@ function startRun(kind = 'default', nodeId = selectedNodeId, interval = coupling
     carryCommands(scene.preset ?? world, card.state).forEach((body, index) => commands.push({ ...body, commandId: `carry-${index + 1}`, tMs: 0 }));
   }
   $('status').textContent = '';
-  transport.reset(world, runId, {
-    commands, fromMs, initialPacing, start: autoStart && !document.hidden && (!context || context.state === 'running'),
-  });
+  const canStart = !document.hidden && (!context || context.state === 'running' ||
+    (transport.status === 'running' && !audioClockActive));
+  transport.reset(world, runId, { commands, fromMs, initialPacing, start: autoStart && canStart });
   updateButtons();
   updateGuidedReadout();
   if (!$('lab').hidden) {
@@ -13330,31 +13332,50 @@ function updateSoundButton() {
   button.title = label;
 }
 
+function pauseWhileAway() {
+  if (transport.status === 'running') runToResume = transport.runId;
+  transport.interrupt('page-hidden');
+}
+
+function attachAudioClock() {
+  if (audioClockActive || document.hidden || context.state !== 'running') return;
+  const audioNow = context.currentTime;
+  audioClockOffset = performance.now() / 1000 - audioNow;
+  audioClockActive = true;
+  if (transport.status !== 'running') return;
+  // The silent clock may already have committed a short lookahead.
+  const options = musicOptions();
+  for (const event of allEvents) {
+    const at = transport.audioSecAt(event.tMs) - audioClockOffset;
+    if (at >= audioNow) mixer.schedule(mapActivation(event, options), at);
+  }
+}
+
 async function enableAudio() {
-  if (preferences.muted || context || document.hidden) return;
-  const AudioContext = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContext) return;
+  if (preferences.muted || document.hidden) return;
   try {
+    if (context) {
+      // Retry after a visibility change or a user gesture while playback is silent.
+      if (transport.status === 'running' && context.state !== 'running') await context.resume();
+      attachAudioClock();
+      return;
+    }
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
     audioCandidate ??= new AudioContext();
     if (audioCandidate.state !== 'running') await audioCandidate.resume();
     if (context || preferences.muted || document.hidden || audioCandidate.state !== 'running') return;
-    const nextMixer = createAudioMixer(audioCandidate, { volume: preferences.volume });
-    audioClockOffset = performance.now() / 1000 - audioCandidate.currentTime;
+    mixer = createAudioMixer(audioCandidate, { volume: preferences.volume });
     context = audioCandidate;
-    mixer = nextMixer;
     if (transport.runId) mixer.beginRun(transport.runId);
-    if (transport.status === 'running') {
-      // The transport already committed a short lookahead while sound was locked.
-      // Schedule only the notes whose playback time has not passed.
-      const audioNow = context.currentTime;
-      const options = musicOptions();
-      for (const event of allEvents) {
-        const at = transport.audioSecAt(event.tMs) - audioClockOffset;
-        if (at >= audioNow) mixer.schedule(mapActivation(event, options), at);
-      }
-    }
+    attachAudioClock();
     context.onstatechange = () => {
-      if (['suspended', 'interrupted'].includes(context.state)) transport.interrupt('audio-interrupted');
+      if (context.state === 'running') attachAudioClock();
+      else if (audioClockActive) {
+        if (document.hidden) pauseWhileAway();
+        else transport.interrupt('audio-interrupted');
+        audioClockActive = false;
+      }
     };
   } catch {
     // Autoplay can be blocked. The simulation keeps running on its own clock.
@@ -13609,6 +13630,7 @@ $('pause').onclick = async () => {
     if (context) await context.resume();
     if (document.hidden || visibilityAtRequest !== visibilityChanges || (context && context.state !== 'running')) return;
     if (runId !== transport.runId || !['paused', 'idle'].includes(transport.status)) return;
+    if (context) attachAudioClock();
     mixer?.beginRun(runId);
     transport.resume();
   } catch (error) {
@@ -13689,10 +13711,20 @@ $('export').onclick = () => {
   download('counterpoint-events.json', JSON.stringify(data, null, 2), 'application/json');
 };
 document.addEventListener('visibilitychange', () => {
+  if (!started) return;
   if (document.hidden) {
     visibilityChanges++;
-    if (started) transport.interrupt('page-hidden');
+    pauseWhileAway();
+    return;
   }
+  const runId = runToResume;
+  runToResume = null;
+  if (runId !== transport.runId || transport.status !== 'paused') return;
+  if (context?.state === 'running') attachAudioClock();
+  else audioClockActive = false;
+  mixer?.beginRun(runId);
+  transport.resume();
+  void enableAudio();
 });
 const applyMotion = event => {
   renderer?.setReducedMotion(event.matches);
