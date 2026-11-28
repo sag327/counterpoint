@@ -254,6 +254,7 @@ def smoke(browser, output, *, phone):
         page.clock.install(time="2026-01-01T00:00:00Z")
         page.clock.pause_at("2026-01-01T00:00:01Z")
     errors, requests = observe(page)
+    page.add_init_script("window.AudioContext = window.webkitAudioContext = undefined")
     url = f"{ARTIFACT.as_uri()}#study=echo"
     screen_prefix = "integrate-01-phone" if phone else "integrate-01"
 
@@ -266,7 +267,6 @@ def smoke(browser, output, *, phone):
         expect(page.get_by_role("button", name="Echo", exact=True)).to_have_attribute("aria-pressed", "true")
         assert page.evaluate("counterpoint.worldId") == "echo"
         assert page.locator("#study-line").count() == 0, "Echo's header matches the other worlds"
-        activate(page.get_by_role("button", name="Begin in silence"), phone=phone)
         assert page.evaluate("counterpoint.mixer") is None
         check_guided_run(page, phone=phone)
         activate(page.get_by_role("button", name="Pause", exact=True), phone=phone)
@@ -278,7 +278,7 @@ def smoke(browser, output, *, phone):
         # is withdrawn; playback speed reads as a fraction of real time.
         assert page.locator("[data-view=staves]").count() == 0
         assert page.locator("[data-world=duality]").count() == 0
-        assert page.locator("#dilation option").all_inner_texts()[0] == "1/4 speed"
+        assert page.locator("#dilation option").all_inner_texts() == ["1", "1/4", "1/8", "1/12"]
         assert page.locator("#mute").count() == 0 and page.locator("#volume").count() == 0
         instructions = page.locator("#protocol-hint")
         expect(instructions).to_be_visible()

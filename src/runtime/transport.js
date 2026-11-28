@@ -292,7 +292,7 @@ export function createTransport({
   }
 
   function pacingPlan(nodeId, cycleMs, firstMs) {
-    return { nodeId, cycleMs: clampPacingCycle(cycleMs), nextMs: firstMs, lastMs: null, fromMs: firstMs };
+    return { nodeId, cycleMs, nextMs: firstMs, lastMs: null, fromMs: firstMs };
   }
 
   // `fromMs` preconditions a run: the engine advances silently through the same
@@ -338,7 +338,7 @@ export function createTransport({
     }
     if (initialPacing) {
       const firstMs = committedTick === null ? 0 : (committedTick + 1) / TICKS_PER_MS;
-      pacing = pacingPlan(initialPacing.nodeId, initialPacing.cycleMs, firstMs);
+      pacing = pacingPlan(initialPacing.nodeId, clampPacingCycle(initialPacing.cycleMs), firstMs);
     }
     if (start) resume();
     else emitState();
@@ -362,7 +362,11 @@ export function createTransport({
     if (status !== 'running') return false;
     refresh(nowSec());
     if (status !== 'running') return false;
-    pacing = pacingPlan(nodeId, cycleMs, earliestInputMs());
+    const cycle = clampPacingCycle(cycleMs);
+    const lastPulse = acceptedCommands.findLast(command => command.nodeId === nodeId && command.commandId.startsWith('pace-'));
+    // Restarting a drive should not deliver a premature beat relative to its last pulse.
+    const nextCycleMs = lastPulse ? (floorTick(lastPulse.tMs) + cycle * TICKS_PER_MS) / TICKS_PER_MS : 0;
+    pacing = pacingPlan(nodeId, cycle, Math.max(earliestInputMs(), nextCycleMs));
     emitState();
     return true;
   }

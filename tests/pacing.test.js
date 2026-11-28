@@ -51,6 +51,17 @@ test('pacing honours simulation time, changes the next interval, and stop remove
   assert.equal(paceCommands(transport).length, commands.length);
 });
 
+test('restarting Echo pacing waits a full drive interval after the previous pulse', () => {
+  const { transport, advance, events } = fixture(createEchoWorld(), 1, { nodeId: 'S', cycleMs: 600 });
+  advance(650);
+  transport.stopPacing();
+  advance(200);
+  transport.startPacing('S', 530);
+  advance(2_000);
+  assert.deepEqual(paceCommands(transport).slice(0, 3).map(command => command.tMs), [0, 600, 1130]);
+  assert.ok(!events.some(event => event.type === 'activation' && event.nodeId === 'CSp' && event.incomingLinkIds.includes('CF')));
+});
+
 test('accepted stimuli replay identically after editing and stopping', () => {
   const { transport, events, advance, world } = fixture();
   transport.startPacing('S', 360); advance(7000);
