@@ -84,3 +84,7 @@ The creator wants to share Circulation before the other models are ready. A buil
 ## Shared recovery dynamics for playable models
 
 Conduction, Circulation and Echo use the same contract 1.1 engine. New playable sites should start with diastolic-interval-dependent ERP restitution, and new conducting links should start with recovery-dependent conduction delay. Use the shared builders in `src/worlds/kit.js` and tune the topology and parameters to the physiology each model illustrates. Reserve fixed-law presets for reference fixtures or intentional controls.
+
+## Adjustable pacing and AV nodal Wenckebach
+
+Conduction introduces AV nodal Wenckebach during incremental atrial pacing. Meter retains the more detailed study of grouped beating and infranodal Mobitz II. All three playable models share a cycle length control and explicit pacing start and stop. Pacing and playback have independent controls.

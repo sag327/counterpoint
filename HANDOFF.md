@@ -1,5 +1,7 @@
 # Handoff · Study No. 2 simplification pass
 
+**Current handoff** · [Adjustable pacing and AV nodal Wenckebach](docs/runs/pacing-wenckebach.md).
+
 **Latest routing pass:** [continuous strand routing](docs/runs/organic-routing.md) on `organic-routing`; implementation and automated checks complete, browser acceptance is recorded separately by the delivery pass.
 
 **Restart here.** This file is the rolling handoff for work that may stop at a usage limit. Each milestone updates it before its commit is pushed.

@@ -1,7 +1,8 @@
 const PREFERENCES_KEY = 'counterpoint.preferences.v1';
 // Playback speeds offered in the UI: real time and three slow playback rates (creator decision 2026-11-27).
 export const DILATIONS = Object.freeze([1, 4, 8, 12]);
-const DEFAULTS = { dilation: 4, volume: 0.3, muted: false };
+import { clampPacingCycle } from '../runtime/transport.js';
+const DEFAULTS = { dilation: 4, volume: 0.3, muted: false, pacingCycleMs: 600 };
 
 // Each edition keeps its own preferences (suffix), so a preview never changes the full site's.
 let storageKey = PREFERENCES_KEY;
@@ -16,6 +17,7 @@ export function readPreferences(suffix = '') {
     dilation: DILATIONS.includes(stored.dilation) ? stored.dilation : DEFAULTS.dilation,
     volume: Number.isFinite(stored.volume) && stored.volume >= 0 && stored.volume <= 0.7 ? stored.volume : DEFAULTS.volume,
     muted: typeof stored.muted === 'boolean' ? stored.muted : DEFAULTS.muted,
+    pacingCycleMs: stored.pacingCycleMs === undefined ? DEFAULTS.pacingCycleMs : clampPacingCycle(stored.pacingCycleMs),
   };
 }
 

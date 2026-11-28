@@ -168,7 +168,7 @@ runInNewContext(script, sandbox, { filename: "counterpoint.html" });
 const cp = sandbox.counterpoint;
 assert.equal(select("dilation").children.map(option => option.textContent).join(), "1,1/4,1/8,1/12");
 select("dilation").onchange();
-assert.deepEqual(JSON.parse(sandbox.localStorage.value), { dilation: 4, volume: 0.3, muted: false });
+assert.deepEqual(JSON.parse(sandbox.localStorage.value), { dilation: 4, volume: 0.3, muted: false, pacingCycleMs: 600 });
 const activations = () => cp.events.filter((event) => event.type === "activation");
 
 function runFor(duration, framePeriod = 16) {
@@ -217,17 +217,17 @@ assert.equal(activations().map(e => e.nodeId).join(), "S,A,N,H,V1,V2");
 assert.equal(cp.mixer.diagnostics().scheduled, 6);
 
 select("premature").click();
-runFor(2200);
+runFor(2700);
 const captures = activations();
 assert.deepEqual(Array.from(captures, event => event.nodeId), [
   "S", "A", "N", "H", "V1", "V2",
   "A", "S", "N", "H", "V1", "V2",
 ]);
 const [baselineNode, prematureNode] = captures.filter(event => event.nodeId === "N");
-const [baselineHis, prematureHis] = captures.filter(event => event.nodeId === "H");
+const [baselineAtrium, prematureAtrium] = captures.filter(event => event.nodeId === "A");
 assert.ok(
-  prematureHis.tMs - prematureNode.tMs > baselineHis.tMs - baselineNode.tMs,
-  "the premature beat should take longer to conduct from N to H"
+  prematureNode.tMs - prematureAtrium.tMs > baselineNode.tMs - baselineAtrium.tMs,
+  "the premature beat should take longer to conduct from A to N"
 );
 
 // Duality left the menu (creator decision 2026-11-27). The switch to Circulation
@@ -312,6 +312,34 @@ runFor(100);
 assert.equal(cp.transport.commandLog().length, commandCount, "a drag submits no command");
 assert.equal(select("cuts").children.length, 0);
 
+// Pacing shares the live run, persists length, and never starts just by editing.
+select('reset').click();
+assert.equal(cp.selectedSite, 'R0');
+select('pacing-cycle').value = '360';
+select('pacing-cycle').onchange();
+assert.equal(cp.transport.state().pacing, null);
+assert.equal(JSON.parse(sandbox.localStorage.value).pacingCycleMs, 360);
+select('sites').children[3].onfocus();
+select('pacing-toggle').click();
+assert.equal(cp.transport.state().pacing.nodeId, 'R3');
+assert.equal(select('pacing-toggle').textContent, 'Stop pacing');
+const pacedRunId = cp.transport.runId;
+runFor(3000);
+select('pacing-minus').click();
+assert.equal(cp.transport.state().pacing.cycleMs, 350);
+assert.equal(cp.transport.runId, pacedRunId);
+select('pacing-toggle').click();
+const pacedCount = cp.transport.commandLog().length;
+runFor(2000);
+assert.equal(cp.transport.commandLog().length, pacedCount);
+chooseWorld('conduction');
+assert.equal(cp.selectedSite, 'A');
+assert.equal(cp.transport.state().pacing, null);
+select('pacing-toggle').click();
+assert.equal(cp.transport.state().pacing.nodeId, 'A');
+select('premature').click();
+assert.equal(cp.transport.state().pacing, null, 'demonstrations cancel pacing');
+chooseWorld('circulation');
 select("guide").click();
 const samples = [];
 for (let elapsed = 60_000; elapsed <= 1_200_000; elapsed += 60_000) {

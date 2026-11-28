@@ -36,3 +36,42 @@ button.primary:hover{background:#e1c695;color:#11171a}
 /* Instructions: short, legible, directly under the stage (creator decision 2026-11-27). */
 .instructions{text-align:center;font:16px/1.5 Georgia,serif;color:var(--ink);margin:4px auto 14px;max-width:60ch}
 .instructions kbd,.instructions b{font:inherit;color:var(--gold);font-weight:normal}
+.pacing-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  margin: 18px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.pacing-input, .cycle-stepper { display: inline-flex; align-items: center; }
+.pacing-input { gap: 10px; }
+.cycle-stepper {
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: #11171c;
+  font-variant-numeric: tabular-nums;
+}
+.cycle-stepper button, .cycle-stepper input {
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 24px;
+  background: transparent;
+  color: var(--ink);
+}
+.cycle-stepper button { font-size: 17px; color: var(--muted); }
+.cycle-stepper button:hover { color: var(--gold); background: #20272c; }
+.cycle-stepper input { width: 44px; text-align: center; font-size: 16px; appearance: textfield; }
+.cycle-stepper input::-webkit-inner-spin-button { appearance: none; }
+#pacing-unit { margin-right: 4px; font-size: 11px; }
+#pacing-toggle { min-width: 92px; border-radius: 24px; }
+#pacing-toggle[aria-pressed=true] { border-color: var(--gold); color: var(--gold); }
+#pacing-readout { flex-basis: 100%; text-align: center; font-variant-numeric: tabular-nums; }
+#pacing-readout:empty { display: none; }
+@media (max-width: 600px) {
+  .pacing-controls > label { flex-basis: 100%; text-align: center; }
+}

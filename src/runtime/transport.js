@@ -5,6 +5,9 @@ export const WAKE_WALL_MS = 25;
 export const LOOKAHEAD_WALL_MS = 60;
 export const INPUT_MARGIN_WALL_MS = 5;
 export const COMMAND_LOG_LIMIT = 4096;
+export const PACING_MIN_CYCLE = 150;
+export const PACING_MAX_CYCLE = 2000;
+export const clampPacingCycle = value => Math.min(PACING_MAX_CYCLE, Math.max(PACING_MIN_CYCLE, Number.isFinite(Number(value)) && value !== '' ? Math.round(Number(value)) : 600));
 
 const TICKS_PER_MS = 1_000;
 const clockTolerance = (sec) => 8 * Number.EPSILON * Math.max(1, Math.abs(sec));
@@ -46,6 +49,8 @@ export function createTransport({
   let reason = null;
   let error = null;
   let lastInterruption = null;
+  let pacing = null;
+  let pacingOrdinal = 0;
 
   function committedThroughMs() {
     return committedTick === null ? null : committedTick / TICKS_PER_MS;
@@ -57,7 +62,7 @@ export function createTransport({
   }
 
   function state() {
-    return { status, runId, dilation, pendingDilation: pendingDilation(), reason, error };
+    return { status, runId, dilation, pendingDilation: pendingDilation(), reason, error, pacing: pacing ? { ...pacing } : null };
   }
 
   function emitState() {
@@ -179,6 +184,7 @@ export function createTransport({
     status = 'faulted';
     reason = 'fault';
     error = failure;
+    pacing = null;
     pendingEvents = [];
     cancelWake();
     silence(reason);
@@ -191,6 +197,15 @@ export function createTransport({
     const horizonTick = floorTick(projectMs(horizonSec), horizonSec);
     if (committedTick !== null && horizonTick <= committedTick) return;
     try {
+      // Only submit through this commit's horizon. Future beats remain a plan,
+      // so editing/stopping never needs to retract an accepted engine command.
+      while (pacing && pacing.nextMs <= horizonTick / TICKS_PER_MS) {
+        const tMs = pacing.nextMs;
+        rememberCommand({ type: 'stimulate', nodeId: pacing.nodeId, tMs,
+          commandId: `pace-${++pacingOrdinal}`, runId });
+        pacing.lastMs = tMs;
+        pacing.nextMs = Math.round((tMs + pacing.cycleMs) * TICKS_PER_MS) / TICKS_PER_MS;
+      }
       const events = engine.advanceTo(horizonTick / TICKS_PER_MS);
       committedTick = horizonTick;
       if (events.length > 0) {
@@ -301,6 +316,8 @@ export function createTransport({
     commandIds = new Set();
     nextCommandOrdinal = 1;
     lastInterruption = null;
+    pacing = null;
+    pacingOrdinal = 0;
     onReset(restedSnapshot);
     try {
       for (const command of commands) rememberCommand({ ...command, runId });
@@ -332,6 +349,33 @@ export function createTransport({
     return rememberCommand({ ...fields, commandId, runId, tMs: earliestAt(presentedAt(audioSec)) });
   }
 
+  function startPacing(nodeId, cycleMs) {
+    if (status !== 'running') return false;
+    refresh(nowSec());
+    if (status !== 'running') return false;
+    pacing = { nodeId, cycleMs: clampPacingCycle(cycleMs), nextMs: earliestInputMs(), lastMs: null,
+      fromMs: earliestInputMs() };
+    emitState();
+    return true;
+  }
+
+  function setPacingCycle(cycleMs) {
+    const value = clampPacingCycle(cycleMs);
+    if (pacing) {
+      pacing.cycleMs = value;
+      if (pacing.lastMs !== null) pacing.nextMs = Math.max(earliestInputMs(), Math.round((pacing.lastMs + value) * TICKS_PER_MS) / TICKS_PER_MS);
+      emitState();
+    }
+    return value;
+  }
+
+  function stopPacing() {
+    if (!pacing) return false;
+    pacing = null;
+    emitState();
+    return true;
+  }
+
   function frame() {
     const audioSec = isPlaying() ? nowSec() : 0;
     refresh(audioSec);
@@ -357,6 +401,9 @@ export function createTransport({
     pause,
     interrupt,
     setDilation,
+    startPacing,
+    setPacingCycle,
+    stopPacing,
     submit,
     wake,
     frame,
