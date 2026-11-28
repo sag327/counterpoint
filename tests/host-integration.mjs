@@ -221,7 +221,7 @@ runFor(2200);
 const captures = activations();
 assert.deepEqual(Array.from(captures, event => event.nodeId), [
   "S", "A", "N", "H", "V1", "V2",
-  "A", "N", "H", "V1", "V2",
+  "A", "S", "N", "H", "V1", "V2",
 ]);
 const [baselineNode, prematureNode] = captures.filter(event => event.nodeId === "N");
 const [baselineHis, prematureHis] = captures.filter(event => event.nodeId === "H");

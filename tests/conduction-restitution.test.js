@@ -12,7 +12,7 @@ test('Conduction retains its resting sequence and slows the premature beat throu
   const events = engine.advanceTo(600);
   const captures = events.filter(event => event.type === 'activation');
   assert.deepEqual(captures.slice(0, 6).map(event => event.nodeId), ['S', 'A', 'N', 'H', 'V1', 'V2']);
-  assert.deepEqual(captures.slice(6).map(event => event.nodeId), ['A', 'N', 'H', 'V1', 'V2']);
+  assert.deepEqual(captures.slice(6).map(event => event.nodeId), ['A', 'S', 'N', 'H', 'V1', 'V2']);
   const [restedA, earlyA] = captures.filter(event => event.nodeId === 'A');
   assert.ok(earlyA.erpMs < restedA.erpMs);
   const [rested, premature] = events.filter(event => event.type === 'conduction_launched' && event.linkId === 'NH');

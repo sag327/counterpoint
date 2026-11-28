@@ -68,7 +68,7 @@ const SCENE_LIST = {
       labels: study.id === 'echo' ? ECHO_LABELS : null,
       topology: 'Two routes through the junction between upper and lower chambers. Silent sites are open rings.',
       hint: 'Tap a site to stimulate it · Hold a site to inspect it',
-      status: 'Steady rhythm: atrium, then ventricle.',
+      status: 'Sinus impulses travel from atrium to ventricle.',
     }];
   })),
 };

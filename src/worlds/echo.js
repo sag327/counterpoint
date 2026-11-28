@@ -1,7 +1,7 @@
 // II. Echo — dual AV-nodal pathways (design/study-2-spec.md, "II. Echo").
 // A fast pathway with a long ERP and a slow pathway with a short ERP join at a
 // silent lower common pathway. Everything below is topology and tissue law.
-import { PITCH, both, deepFreeze, link, music, pace, sinusFocus, site, stim, way, world } from './kit.js';
+import { PITCH, both, deepFreeze, music, pace, sinusFocus, site, stim, world } from './kit.js';
 
 export const ECHO_PARAMETERS = Object.freeze({
   drive: { site: 'CSp', cycleMs: 600, count: 8 },
@@ -26,8 +26,8 @@ export function createEchoWorld() {
     both('FL', 'FP', 'LCP', 30, { decrement: [30, 100], entry: [20, 60] }),
     both('CS', 'CSp', 'SP', 50, { entry: [20, 60] }),
     both('SL', 'SP', 'LCP', 100, { decrement: [60, 120], entry: [30, 80] }),
-    link('LH', 'LCP', 'H', way(55, { entry: [10, 40] })),
-    link('HV', 'H', 'V', way(35, { entry: [10, 40] })),
+    both('LH', 'LCP', 'H', 55, { entry: [10, 40] }),
+    both('HV', 'H', 'V', 35, { entry: [10, 40] }),
   ];
   return world('echo', nodes, links);
 }

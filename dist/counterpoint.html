@@ -9883,7 +9883,7 @@ function freezePreset(value) {
 return {directedLink,freezePreset};
 })();
 __modules["src/worlds/conduction.js"] = (()=>{
-const { link, sinusFocus, site, way, world } = __modules["src/worlds/kit.js"];
+const { both, sinusFocus, site, world } = __modules["src/worlds/kit.js"];
 const { directedLink, freezePreset } = __modules["src/worlds/feedforward.js"];
 
 function createConductionWorld() {
@@ -9910,6 +9910,7 @@ function createConductionWorld() {
 const conductionWorld = freezePreset(createConductionWorld());
 
 // The interactive tree uses the same recovery laws as Echo and Circulation.
+// Each physical pathway has symmetric travel laws; local recovery determines capture.
 // The fixed-ERP preset above is retained for the contract v1 reference cases.
 function createRestitutionConduction() {
   return world('conduction', [
@@ -9920,11 +9921,11 @@ function createRestitutionConduction() {
     site('V1', 'ventricular', 260, { restitution: [60, 80] }),
     site('V2', 'ventricular', 260, { restitution: [60, 80] }),
   ], [
-    link('SA', 'S', 'A', way(25, { decrement: [10, 85], entry: [12, 60] })),
-    link('AN', 'A', 'N', way(35, { decrement: [12, 85], entry: [18, 65] })),
-    link('NH', 'N', 'H', way(65, { decrement: [90, 120], entry: [12, 60] })),
-    link('HV1', 'H', 'V1', way(25, { decrement: [10, 85], entry: [10, 60] })),
-    link('HV2', 'H', 'V2', way(45, { decrement: [10, 85], entry: [10, 60] })),
+    both('SA', 'S', 'A', 25, { decrement: [10, 85], entry: [12, 60] }),
+    both('AN', 'A', 'N', 35, { decrement: [12, 85], entry: [18, 65] }),
+    both('NH', 'N', 'H', 65, { decrement: [90, 120], entry: [12, 60] }),
+    both('HV1', 'H', 'V1', 25, { decrement: [10, 85], entry: [10, 60] }),
+    both('HV2', 'H', 'V2', 45, { decrement: [10, 85], entry: [10, 60] }),
   ]);
 }
 
@@ -9961,7 +9962,7 @@ __modules["src/worlds/echo.js"] = (()=>{
 // II. Echo — dual AV-nodal pathways (design/study-2-spec.md, "II. Echo").
 // A fast pathway with a long ERP and a slow pathway with a short ERP join at a
 // silent lower common pathway. Everything below is topology and tissue law.
-const { PITCH, both, deepFreeze, link, music, pace, sinusFocus, site, stim, way, world } = __modules["src/worlds/kit.js"];
+const { PITCH, both, deepFreeze, music, pace, sinusFocus, site, stim, world } = __modules["src/worlds/kit.js"];
 
 const ECHO_PARAMETERS = Object.freeze({
   drive: { site: 'CSp', cycleMs: 600, count: 8 },
@@ -9986,8 +9987,8 @@ function createEchoWorld() {
     both('FL', 'FP', 'LCP', 30, { decrement: [30, 100], entry: [20, 60] }),
     both('CS', 'CSp', 'SP', 50, { entry: [20, 60] }),
     both('SL', 'SP', 'LCP', 100, { decrement: [60, 120], entry: [30, 80] }),
-    link('LH', 'LCP', 'H', way(55, { entry: [10, 40] })),
-    link('HV', 'H', 'V', way(35, { entry: [10, 40] })),
+    both('LH', 'LCP', 'H', 55, { entry: [10, 40] }),
+    both('HV', 'H', 'V', 35, { entry: [10, 40] }),
   ];
   return world('echo', nodes, links);
 }
@@ -10669,7 +10670,7 @@ const SCENE_LIST = {
       labels: study.id === 'echo' ? ECHO_LABELS : null,
       topology: 'Two routes through the junction between upper and lower chambers. Silent sites are open rings.',
       hint: 'Tap a site to stimulate it · Hold a site to inspect it',
-      status: 'Steady rhythm: atrium, then ventricle.',
+      status: 'Sinus impulses travel from atrium to ventricle.',
     }];
   })),
 };
