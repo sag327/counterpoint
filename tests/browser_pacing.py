@@ -31,10 +31,27 @@ def exercise(browser, *, phone, artifact, model):
     paced_model = model in ("conduction", "echo")
     if paced_model:
         assert initial_length == 600
+        expect(page.locator("#dilation")).to_have_value("8")
         expect(page.get_by_role("button", name="Stop pacing", exact=True)).to_be_visible()
-        page.clock.run_for(2600)
+        page.clock.run_for(5200)
         startup = live_pulses(page)
         assert [(pulse["nodeId"], pulse["tMs"]) for pulse in startup] == [("S", 0), ("S", 600)]
+        target = "V1" if model == "conduction" else "V"
+        click(page.locator(f"[data-site={target}]"))
+        assert page.evaluate("counterpoint.transport.state().pacing.nodeId") == target
+        assert live_pulses(page) == startup
+        page.clock.run_for(4800)
+        assert [(pulse["nodeId"], pulse["tMs"]) for pulse in live_pulses(page)[2:]] == [(target, 1200)]
+        expect(page.locator("#pacing-readout")).to_have_text(f"{target} · 600 ms")
+        click(page.get_by_role("button", name="Stop pacing", exact=True))
+        page.locator("[data-site=S]").press("Enter")
+        one_shot = live_pulses(page)[-1]
+        assert one_shot["nodeId"] == "S" and one_shot["commandId"].startswith("live-")
+        page.clock.run_for(5000)
+        assert live_pulses(page)[-1] == one_shot
+        click(page.get_by_role("button", name="Reset", exact=True))
+        page.locator("#dilation").select_option("4")
+        page.clock.run_for(100)
         click(page.get_by_role("button", name="Stop pacing", exact=True))
     minus, plus = page.locator("#pacing-minus"), page.locator("#pacing-plus")
     click(minus)
@@ -75,6 +92,8 @@ def exercise(browser, *, phone, artifact, model):
             && e.tMs >= counterpoint.transport.presentedMs() - 500))""")
     page.reload()
     expect(field).to_have_value("600" if paced_model else "470")
+    if paced_model:
+        expect(page.locator("#dilation")).to_have_value("8")
     expect(page.get_by_role("button", name="Stop pacing" if paced_model else "Pace", exact=True)).to_be_visible()
     assert not errors, errors
     print(f"PASS {model}, {artifact.name}, {'touch' if phone else 'desktop'}", flush=True)

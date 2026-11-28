@@ -2,16 +2,19 @@ import { conductionPattern, descendantsOf, firstDescendant } from '../lab/measur
 
 // Only presented, causally linked beats contribute. A failed stimulus is not an
 // atrial activation, and the most recent unfinished traversal is not a block.
-export function pacingReadout(events, { worldId, presentedMs, fromMs = 0 } = {}) {
-  if (worldId !== 'conduction') return null;
+export function pacingReadout(events, { worldId, presentedMs, fromMs = 0, pacingNodeId = 'S' } = {}) {
+  if (worldId !== 'conduction' || !['S', 'A'].includes(pacingNodeId)) return null;
   const inputId = 'A';
   const visible = events.filter(event => event.tMs <= presentedMs);
-  const inputs = visible.filter(event => event.type === 'activation' && event.nodeId === inputId && event.tMs >= fromMs).slice(-32);
+  const pulses = visible.filter(event => event.type === 'stimulus_attempted' && event.nodeId === pacingNodeId
+    && event.tMs >= fromMs && event.triggerId?.startsWith('pace-'));
+  const pacedEvents = descendantsOf(visible, pulses.map(event => event.eventId));
+  const inputs = visible.filter(event => event.type === 'activation' && event.nodeId === inputId && pacedEvents.has(event.eventId)).slice(-32);
   const beats = [];
   for (const input of inputs) {
     const descendants = descendantsOf(visible, [input.eventId]);
     const output = firstDescendant(visible, descendants, 'H', ['activation']);
-    const blocked = worldId === 'conduction' && firstDescendant(visible, descendants, 'N', ['activation_blocked']);
+    const blocked = firstDescendant(visible, descendants, 'N', ['activation_blocked']);
     if (!output && !blocked && presentedMs - input.tMs < 1200) break;
     beats.push({ conducted: Boolean(output), intervalMs: output ? output.tMs - input.tMs : null });
   }

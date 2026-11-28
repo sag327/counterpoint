@@ -51,6 +51,21 @@ test('pacing honours simulation time, changes the next interval, and stop remove
   assert.equal(paceCommands(transport).length, commands.length);
 });
 
+test('changing the pacing site preserves the next beat, cadence, and run', () => {
+  const { transport, advance, events } = fixture(undefined, 1, { nodeId: 'S', cycleMs: 600 });
+  advance(750);
+  const runId = transport.runId;
+  assert.equal(transport.setPacingSite('V1'), true);
+  assert.equal(transport.state().pacing.fromMs, 1200);
+  advance(1120);
+  assert.equal(transport.runId, runId);
+  assert.deepEqual(paceCommands(transport).map(pulse => [pulse.nodeId, pulse.tMs]),
+    [['S', 0], ['S', 600], ['V1', 1200], ['V1', 1800]]);
+  assert.equal(pacingReadout(events, { worldId: 'conduction', pacingNodeId: 'V1', presentedMs: 1850 }), null);
+  transport.stopPacing();
+  assert.equal(transport.setPacingSite('A'), false);
+});
+
 test('restarting Echo pacing waits a full drive interval after the previous pulse', () => {
   const { transport, advance, events } = fixture(createEchoWorld(), 1, { nodeId: 'S', cycleMs: 600 });
   advance(650);

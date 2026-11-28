@@ -371,6 +371,17 @@ export function createTransport({
     return true;
   }
 
+  function setPacingSite(nodeId) {
+    if (status !== 'running' || !pacing || pacing.nodeId === nodeId) return false;
+    refresh(nowSec());
+    if (status !== 'running') return false;
+    // Change the destination of the next uncommitted pulse and keep the cadence.
+    pacing.nodeId = nodeId;
+    pacing.fromMs = pacing.nextMs;
+    emitState();
+    return true;
+  }
+
   function setPacingCycle(cycleMs) {
     const value = clampPacingCycle(cycleMs);
     if (pacing) {
@@ -417,6 +428,7 @@ export function createTransport({
     interrupt,
     setDilation,
     startPacing,
+    setPacingSite,
     setPacingCycle,
     stopPacing,
     submit,
