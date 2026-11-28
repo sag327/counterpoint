@@ -41,6 +41,7 @@ test('pacing honours simulation time, changes the next interval, and stop remove
   const runId = transport.runId;
   transport.setPacingCycle(350);
   assert.equal(transport.state().pacing.nextMs, commands.at(-1).tMs + 350);
+  assert.equal(transport.state().pacing.fromMs, transport.state().pacing.nextMs, 'rate change starts a new measurement window');
   advance(350);
   commands = paceCommands(transport);
   assert.equal(commands.at(-1).tMs - commands.at(-2).tMs, 350);
@@ -100,6 +101,10 @@ test('live pacing in the window has progressive nodal delays, nodal block and ho
   const delays = events.filter(event => event.type === 'conduction_launched' && event.linkId === 'AN' && event.fromNodeId === 'A').map(event => event.arrivalMs - event.departureMs);
   assert.ok(delays.some((value, i) => i >= 2 && value > delays[i - 1] + 1 && delays[i - 1] > delays[i - 2] + 1));
   assert.ok(events.some(event => event.type === 'activation_blocked' && event.nodeId === 'N'));
+  const drop = events.find(event => event.type === 'activation_blocked' && event.nodeId === 'N');
+  const atDrop = pacingReadout(events, { worldId: 'conduction', presentedMs: drop.tMs, fromMs: transport.state().pacing.fromMs });
+  assert.equal(atDrop.lastBlocked, true);
+  assert.equal(atDrop.lastAhMs, null, 'a dropped beat must not keep the preceding AH');
   assert.equal(pacingReadout(events, { worldId: 'circulation', presentedMs: 14000 }), null);
   assert.deepEqual(pacingReadout(events, { worldId: 'conduction', presentedMs: 0 }), { ratio: null, kind: null, lastAhMs: null, lastBlocked: false, beats: 0 });
 });

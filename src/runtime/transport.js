@@ -353,8 +353,8 @@ export function createTransport({
     if (status !== 'running') return false;
     refresh(nowSec());
     if (status !== 'running') return false;
-    pacing = { nodeId, cycleMs: clampPacingCycle(cycleMs), nextMs: earliestInputMs(), lastMs: null,
-      fromMs: earliestInputMs() };
+    const firstMs = earliestInputMs();
+    pacing = { nodeId, cycleMs: clampPacingCycle(cycleMs), nextMs: firstMs, lastMs: null, fromMs: firstMs };
     emitState();
     return true;
   }
@@ -362,8 +362,11 @@ export function createTransport({
   function setPacingCycle(cycleMs) {
     const value = clampPacingCycle(cycleMs);
     if (pacing) {
+      const changed = value !== pacing.cycleMs;
       pacing.cycleMs = value;
       if (pacing.lastMs !== null) pacing.nextMs = Math.max(earliestInputMs(), Math.round((pacing.lastMs + value) * TICKS_PER_MS) / TICKS_PER_MS);
+      // A ratio at the new drive must be measured from beats at that drive.
+      if (changed) pacing.fromMs = pacing.nextMs;
       emitState();
     }
     return value;
