@@ -18,7 +18,26 @@
 button.primary:hover{background:#e1c695;color:#11171a}
 .hint{text-align:center;font-size:12px;line-height:1.5;color:var(--muted);margin:10px 0 21px}
 .controls{margin-top:8px}
-.settings select{max-width:144px}
+.settings {
+  gap: 2px;
+  align-items: center;
+}
+.settings button, .settings select {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+.settings button:hover, .settings select:hover { color: var(--ink); }
+.settings .icon-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  padding: 0;
+}
+.settings label { margin-left: 8px; }
+.settings select, #reset { padding: 0 8px; font-size: 12px; }
+.settings select { color: var(--ink); font-variant-numeric: tabular-nums; }
+.settings select option { background: #151b20; }
 #lab{margin-inline:auto;width:min(94%,900px)}
 #export{margin-top:13px}
 @media(max-width:600px){
@@ -72,6 +91,3 @@ button.primary:hover{background:#e1c695;color:#11171a}
 #pacing-toggle[aria-pressed=true] { border-color: var(--gold); color: var(--gold); }
 #pacing-readout { flex-basis: 100%; text-align: center; font-variant-numeric: tabular-nums; }
 #pacing-readout:empty { display: none; }
-@media (max-width: 600px) {
-  .pacing-controls > label { flex-basis: 100%; text-align: center; }
-}

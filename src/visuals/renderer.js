@@ -22,7 +22,7 @@ const ease = (value) => value * value * (3 - 2 * value);
 const SCULPTURES = {
   conduction: {
     nodes: {
-      S: [-0.30, -1.08, ICE], A: [-0.09, -0.59, ICE], N: [0.20, -0.14, ICE],
+      S: [-0.30, -1.08, ICE], A: [-0.09, -0.59, ICE], N: [0.20, -0.14, ICE, 1.4],
       H: [0.02, 0.32, ICE], V1: [-0.60, 1.08, BRASS], V2: [0.76, 0.94, BRASS],
     },
     handles: {
@@ -205,8 +205,8 @@ export function makeGeometry(world, width, height, layout = null) {
   const nodes = new Map(world.nodes.map(({ id }, index) => {
     const placement = sculpture?.nodes[id];
     if (Array.isArray(placement)) {
-      const [x, y, color] = placement;
-      return [id, { ...stagePoint(x, y), angle: Math.atan2(y, x), color, silent: world.nodes[index].audible === false }];
+      const [x, y, color, dotScale = 1] = placement;
+      return [id, { ...stagePoint(x, y), angle: Math.atan2(y, x), color, dotScale, silent: world.nodes[index].audible === false }];
     }
     const angle = (isRing ? Number(id.slice(1)) : index) * TURN / world.nodes.length - Math.PI / 2;
     return [id, { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius,
@@ -427,7 +427,7 @@ function drawTransit(ctx, link, transit, tMs, reducedMotion) {
 }
 
 function drawNode(ctx, node, state) {
-  const { x, y, color } = node;
+  const { x, y, color, dotScale = 1 } = node;
   const recovery = ease(clamp(state?.recovery ?? 1));
   const excitable = state?.excitable ?? true;
   const edge = excitable ? 0.23 : 0.13;
@@ -439,10 +439,10 @@ function drawNode(ctx, node, state) {
     arc(ctx, x, y, 3.4 + recovery * 0.9, 0, TURN, cssColor(color, 0.3 + recovery * 0.34), 0.8);
     return;
   }
-  dot(ctx, x, y, 2.8, GROUND);
-  halo(ctx, x, y, 11.5, color, 0.10 + recovery * 0.30);
-  arc(ctx, x, y, 4.3 + recovery * 1.5, 0, TURN, cssColor(color, edge + recovery * 0.24), 0.72);
-  dot(ctx, x, y, 1.27 + recovery * 1.19, cssColor(color, 0.37 + recovery * 0.63));
+  dot(ctx, x, y, 2.8 * dotScale, GROUND);
+  halo(ctx, x, y, 11.5 * dotScale, color, 0.10 + recovery * 0.30);
+  arc(ctx, x, y, (4.3 + recovery * 1.5) * dotScale, 0, TURN, cssColor(color, edge + recovery * 0.24), 0.72);
+  dot(ctx, x, y, (1.27 + recovery * 1.19) * dotScale, cssColor(color, 0.37 + recovery * 0.63));
   if (recovery > 0) dot(ctx, x - 0.42, y - 0.51, 0.72, cssColor(core, recovery * 0.91));
 }
 
@@ -461,7 +461,7 @@ function drawEvent(ctx, geometry, event, tMs, reducedMotion, fields) {
     const flash = (1 - t) ** 2.7;
     const color = node.color === BRASS ? FLASH : COOL_FLASH;
     halo(ctx, node.x, node.y, 17, color, 0.78 * flash);
-    dot(ctx, node.x, node.y, 3.1, cssColor(color, flash));
+    dot(ctx, node.x, node.y, 3.1 * (node.dotScale ?? 1), cssColor(color, flash));
     arc(ctx, node.x, node.y, reducedMotion ? 9 : 7.5 + 11 * ease(t), 0, TURN,
       cssColor(color, 0.85 * (1 - t) ** 1.6), 0.95);
   }
@@ -503,12 +503,13 @@ function drawModified(ctx, x, y) {
   arc(ctx, x, y, 3.1, 0, TURN, cssColor(FLASH, 0.78), 0.9);
 }
 
-export function createRenderer(canvas, world, { reducedMotion = false, layout = null } = {}) {
+export function createRenderer(canvas, world, { reducedMotion = false, layout = null, nodeLabels = {} } = {}) {
   const ctx = canvas.getContext('2d', { alpha: false });
   if (!ctx) throw new Error('Counterpoint requires Canvas 2D.');
   const backdropCanvas = canvas.ownerDocument.createElement('canvas');
   const backdrop = backdropCanvas.getContext('2d', { alpha: false });
   if (!backdrop) throw new Error('Counterpoint requires a Canvas 2D backdrop.');
+  const labels = Object.entries(nodeLabels);
   const gestures = new Map();
   let geometry;
   let routes;
@@ -636,6 +637,18 @@ export function createRenderer(canvas, world, { reducedMotion = false, layout = 
       ctx.setLineDash([1.2, 3.5]);
       arc(ctx, node.x, node.y, 15, 0, TURN, cssColor(INPUT, 0.74));
       ctx.setLineDash([]);
+    }
+    if (labels.length) {
+      ctx.save();
+      ctx.font = '12px system-ui';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#aaadae';
+      for (const [id, label] of labels) {
+        const node = geometry.nodes.get(id);
+        if (node) ctx.fillText(label, node.x + 24, node.y);
+      }
+      ctx.restore();
     }
     overlay?.(ctx, { tMs, snapshot, events, width, height });
   }

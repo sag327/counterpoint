@@ -25,7 +25,26 @@
 button.primary:hover{background:#e1c695;color:#11171a}
 .hint{text-align:center;font-size:12px;line-height:1.5;color:var(--muted);margin:10px 0 21px}
 .controls{margin-top:8px}
-.settings select{max-width:144px}
+.settings {
+  gap: 2px;
+  align-items: center;
+}
+.settings button, .settings select {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+.settings button:hover, .settings select:hover { color: var(--ink); }
+.settings .icon-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  padding: 0;
+}
+.settings label { margin-left: 8px; }
+.settings select, #reset { padding: 0 8px; font-size: 12px; }
+.settings select { color: var(--ink); font-variant-numeric: tabular-nums; }
+.settings select option { background: #151b20; }
 #lab{margin-inline:auto;width:min(94%,900px)}
 #export{margin-top:13px}
 @media(max-width:600px){
@@ -79,9 +98,6 @@ button.primary:hover{background:#e1c695;color:#11171a}
 #pacing-toggle[aria-pressed=true] { border-color: var(--gold); color: var(--gold); }
 #pacing-readout { flex-basis: 100%; text-align: center; font-variant-numeric: tabular-nums; }
 #pacing-readout:empty { display: none; }
-@media (max-width: 600px) {
-  .pacing-controls > label { flex-basis: 100%; text-align: center; }
-}
 
 .counterpoint-inspector {
   --inspector-line: #3b464c;
@@ -352,7 +368,8 @@ button.primary:hover{background:#e1c695;color:#11171a}
 .view-switch button{min-height:34px;padding:5px 12px;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--muted);font:12px system-ui}
 .view-switch button:hover{color:var(--ink)}
 .view-switch button[aria-pressed=true]{background:#26323d;border-color:#3b4a58;color:#f1f5f7}
-#sound{display:grid;place-items:center;width:44px;padding:0}
+#pause .play-icon,#pause.is-paused .pause-icon{display:none}
+#pause.is-paused .play-icon{display:inline}
 #sound .sound-off,#sound.is-muted .sound-on{display:none}
 #sound.is-muted .sound-off{display:inline}
 #view-canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
@@ -425,7 +442,8 @@ dialog#notes-sheet::backdrop{background:#04070acc}
 #stage.alt-view #status{top:6px;bottom:auto}
 @media(max-width:600px){
   #stage.alt-view{display:grid;grid-template-rows:auto minmax(0,1fr)}
-  #stage.alt-view #status{position:static;grid-row:1;padding:6px 12% 0}
+  #stage.alt-view #status{position:static;grid-row:1}
+  #stage.alt-view #status:not(:empty){padding:6px 12% 0}
   #stage.alt-view #view-canvas{position:static;grid-row:2;min-height:0}
 }
 
@@ -468,20 +486,16 @@ dialog#notes-sheet::backdrop{background:#04070acc}
     <section id="performance" class="controls" aria-label="Performance controls" hidden>
       <p id="protocol-hint" class="instructions" aria-live="off"></p>
       <div class="actions">
-        <button id="pause" disabled>Pause</button>
-        <button id="single" disabled hidden>One impulse</button>
         <button id="guide" disabled hidden>Find a rhythm</button>
         <button id="premature" disabled hidden>Premature impulse</button>
         <button id="find-echo" disabled hidden aria-label="Find the echo: the model at nominal settings, paced at 600 ms, then one early beat that gives a single AV-nodal echo.">Find the echo</button>
         <button id="find-arrhythmia" disabled hidden aria-label="Find the arrhythmia: the model at nominal settings, paced at 600 ms, then one early beat that starts sustained AV-nodal reentry.">Find the arrhythmia</button>
-        <button id="reset" disabled>Reset</button>
       </div>
-      <div id="pacing-controls" class="pacing-controls" role="group" aria-labelledby="pacing-label">
-        <label id="pacing-label" for="pacing-cycle">Pacing cycle length</label>
+      <div id="pacing-controls" class="pacing-controls" role="group" aria-label="Pacing">
         <div class="pacing-input">
           <div class="cycle-stepper">
             <button id="pacing-minus" type="button" aria-label="Decrease cycle length by 10 ms">−</button>
-            <input id="pacing-cycle" type="number" min="150" max="2000" step="10" value="600" inputmode="numeric" aria-describedby="pacing-unit">
+            <input id="pacing-cycle" type="number" min="150" max="2000" step="10" value="600" inputmode="numeric" aria-label="Pacing cycle length" aria-describedby="pacing-unit">
             <span id="pacing-unit">ms</span>
             <button id="pacing-plus" type="button" aria-label="Increase cycle length by 10 ms">+</button>
           </div>
@@ -489,15 +503,24 @@ dialog#notes-sheet::backdrop{background:#04070acc}
         </div>
         <output id="pacing-readout" aria-live="off"></output>
       </div>
-      <div class="settings">
-        <button id="sound" type="button" aria-label="Mute sound" title="Mute sound">
+      <div class="settings" role="group" aria-label="Playback controls">
+        <button id="pause" class="icon-button" type="button" aria-label="Pause" title="Pause" disabled>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+            <path class="pause-icon" d="M8 5h2.5v14H8zm5.5 0H16v14h-2.5z"/>
+            <path class="play-icon" d="m8 5 11 7-11 7z"/>
+          </svg>
+        </button>
+        <button id="sound" class="icon-button" type="button" aria-label="Mute sound" title="Mute sound">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M11 5 6 9H3v6h3l5 4Z"/>
             <path class="sound-on" d="M15 9a4 4 0 0 1 0 6m3-9a8 8 0 0 1 0 12"/>
             <path class="sound-off" d="m15 9 6 6m0-6-6 6"/>
           </svg>
         </button>
-        <label>Playback speed <select id="dilation" aria-describedby="dilation-hint"></select></label><span id="dilation-hint" class="visually-hidden">Fraction of real time. Slower playback spreads the rhythm out.</span>
+        <label for="dilation">Playback</label>
+        <select id="dilation" aria-describedby="dilation-hint"></select>
+        <span id="dilation-hint" class="visually-hidden">Fraction of real time.</span>
+        <button id="reset" type="button" disabled>Reset</button>
       </div>
     </section>
     <div id="card-layer" aria-live="off"></div>
@@ -6318,7 +6341,7 @@ const ease = (value) => value * value * (3 - 2 * value);
 const SCULPTURES = {
   conduction: {
     nodes: {
-      S: [-0.30, -1.08, ICE], A: [-0.09, -0.59, ICE], N: [0.20, -0.14, ICE],
+      S: [-0.30, -1.08, ICE], A: [-0.09, -0.59, ICE], N: [0.20, -0.14, ICE, 1.4],
       H: [0.02, 0.32, ICE], V1: [-0.60, 1.08, BRASS], V2: [0.76, 0.94, BRASS],
     },
     handles: {
@@ -6501,8 +6524,8 @@ function makeGeometry(world, width, height, layout = null) {
   const nodes = new Map(world.nodes.map(({ id }, index) => {
     const placement = sculpture?.nodes[id];
     if (Array.isArray(placement)) {
-      const [x, y, color] = placement;
-      return [id, { ...stagePoint(x, y), angle: Math.atan2(y, x), color, silent: world.nodes[index].audible === false }];
+      const [x, y, color, dotScale = 1] = placement;
+      return [id, { ...stagePoint(x, y), angle: Math.atan2(y, x), color, dotScale, silent: world.nodes[index].audible === false }];
     }
     const angle = (isRing ? Number(id.slice(1)) : index) * TURN / world.nodes.length - Math.PI / 2;
     return [id, { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius,
@@ -6723,7 +6746,7 @@ function drawTransit(ctx, link, transit, tMs, reducedMotion) {
 }
 
 function drawNode(ctx, node, state) {
-  const { x, y, color } = node;
+  const { x, y, color, dotScale = 1 } = node;
   const recovery = ease(clamp(state?.recovery ?? 1));
   const excitable = state?.excitable ?? true;
   const edge = excitable ? 0.23 : 0.13;
@@ -6735,10 +6758,10 @@ function drawNode(ctx, node, state) {
     arc(ctx, x, y, 3.4 + recovery * 0.9, 0, TURN, cssColor(color, 0.3 + recovery * 0.34), 0.8);
     return;
   }
-  dot(ctx, x, y, 2.8, GROUND);
-  halo(ctx, x, y, 11.5, color, 0.10 + recovery * 0.30);
-  arc(ctx, x, y, 4.3 + recovery * 1.5, 0, TURN, cssColor(color, edge + recovery * 0.24), 0.72);
-  dot(ctx, x, y, 1.27 + recovery * 1.19, cssColor(color, 0.37 + recovery * 0.63));
+  dot(ctx, x, y, 2.8 * dotScale, GROUND);
+  halo(ctx, x, y, 11.5 * dotScale, color, 0.10 + recovery * 0.30);
+  arc(ctx, x, y, (4.3 + recovery * 1.5) * dotScale, 0, TURN, cssColor(color, edge + recovery * 0.24), 0.72);
+  dot(ctx, x, y, (1.27 + recovery * 1.19) * dotScale, cssColor(color, 0.37 + recovery * 0.63));
   if (recovery > 0) dot(ctx, x - 0.42, y - 0.51, 0.72, cssColor(core, recovery * 0.91));
 }
 
@@ -6757,7 +6780,7 @@ function drawEvent(ctx, geometry, event, tMs, reducedMotion, fields) {
     const flash = (1 - t) ** 2.7;
     const color = node.color === BRASS ? FLASH : COOL_FLASH;
     halo(ctx, node.x, node.y, 17, color, 0.78 * flash);
-    dot(ctx, node.x, node.y, 3.1, cssColor(color, flash));
+    dot(ctx, node.x, node.y, 3.1 * (node.dotScale ?? 1), cssColor(color, flash));
     arc(ctx, node.x, node.y, reducedMotion ? 9 : 7.5 + 11 * ease(t), 0, TURN,
       cssColor(color, 0.85 * (1 - t) ** 1.6), 0.95);
   }
@@ -6799,12 +6822,13 @@ function drawModified(ctx, x, y) {
   arc(ctx, x, y, 3.1, 0, TURN, cssColor(FLASH, 0.78), 0.9);
 }
 
-function createRenderer(canvas, world, { reducedMotion = false, layout = null } = {}) {
+function createRenderer(canvas, world, { reducedMotion = false, layout = null, nodeLabels = {} } = {}) {
   const ctx = canvas.getContext('2d', { alpha: false });
   if (!ctx) throw new Error('Counterpoint requires Canvas 2D.');
   const backdropCanvas = canvas.ownerDocument.createElement('canvas');
   const backdrop = backdropCanvas.getContext('2d', { alpha: false });
   if (!backdrop) throw new Error('Counterpoint requires a Canvas 2D backdrop.');
+  const labels = Object.entries(nodeLabels);
   const gestures = new Map();
   let geometry;
   let routes;
@@ -6932,6 +6956,18 @@ function createRenderer(canvas, world, { reducedMotion = false, layout = null } 
       ctx.setLineDash([1.2, 3.5]);
       arc(ctx, node.x, node.y, 15, 0, TURN, cssColor(INPUT, 0.74));
       ctx.setLineDash([]);
+    }
+    if (labels.length) {
+      ctx.save();
+      ctx.font = '12px system-ui';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#aaadae';
+      for (const [id, label] of labels) {
+        const node = geometry.nodes.get(id);
+        if (node) ctx.fillText(label, node.x + 24, node.y);
+      }
+      ctx.restore();
     }
     overlay?.(ctx, { tMs, snapshot, events, width, height });
   }
@@ -7531,7 +7567,15 @@ const { createAudioMixer } = __modules["src/music/mixer.js"];
 
 return {mapActivation,describeNodeMusic,musicTableFor,CHAMBER_VOICINGS,PALETTES,createAudioMixer};
 })();
+__modules["src/ui/site-names.js"] = (()=>{
+const SITE_NAMES = Object.freeze({ N: 'AVN', H: 'His' });
+const siteName = id => SITE_NAMES[id] ?? id;
+
+return {SITE_NAMES,siteName};
+})();
 __modules["src/ui/inspector.js"] = (()=>{
+const { siteName } = __modules["src/ui/site-names.js"];
+
 const RASTER_WINDOW_MS = 2400;
 const MAX_LOG_ROWS = 80;
 const COUPLING_MIN_MS = 1;
@@ -7565,8 +7609,8 @@ function logGroup(event) {
 }
 
 function target(event) {
-  if (event.fromNodeId) return `${event.linkId} · ${event.fromNodeId} → ${event.toNodeId}`;
-  return [event.nodeId, event.linkId].filter(Boolean).join(' · ') || MISSING;
+  if (event.fromNodeId) return `${event.linkId} · ${siteName(event.fromNodeId)} → ${siteName(event.toNodeId)}`;
+  return [siteName(event.nodeId), event.linkId].filter(Boolean).join(' · ') || MISSING;
 }
 
 function source(event) {
@@ -7640,7 +7684,7 @@ function drawRaster(svg, nodeIds, events, latest, nodeId, presentedMs) {
     const selected = id === nodeId;
     if (selected) draw('rect', { x: 0, y: y - 10, width, height: 20, class: 'raster-selected' });
     draw('line', { x1: left, x2: right, y1: y, y2: y, class: 'raster-guide' });
-    draw('text', { x: 3, y: y + 4, class: 'raster-site' }, id);
+    draw('text', { x: 3, y: y + 4, class: 'raster-site' }, siteName(id));
     const interval = latest.get(id)?.intervalMs;
     if (interval != null) draw('text', { x: left - 8, y: y + 4, 'text-anchor': 'end' }, ms(interval));
   }
@@ -7732,7 +7776,6 @@ function createInspector(container, callbacks = {}) {
         <p>Selected site <strong data-read="protocol-site"></strong></p>
         <div class="inspector-actions">
           <button type="button" data-control="stimulate">Stimulate selected site</button>
-          <button type="button" data-control="single">Reset and deliver one impulse</button>
         </div>
         <div data-control="ring-protocol">
           <p>The reference S1/S2 protocol starts a fresh Circulation run and applies both impulses at R0.</p>
@@ -7745,7 +7788,7 @@ function createInspector(container, callbacks = {}) {
           <p class="inspector-error" id="inspector-coupling-error" aria-live="polite" hidden></p>
         </div>
         <div data-control="conduction-protocol" hidden>
-          <p>The Conduction protocol starts a fresh run and stimulates A at 275 simulated ms.</p>
+          <p>The Conduction protocol delivers two stimuli from the first site, 250 ms apart.</p>
           <button type="button" data-control="premature">Reset and apply premature stimulus</button>
         </div>
       </section>
@@ -7819,7 +7862,6 @@ function createInspector(container, callbacks = {}) {
   function updateActionAvailability() {
     controls.reset.disabled = !canRun;
     controls.stimulate.disabled = !canEdit || !selectedNodeId;
-    controls.single.disabled = !canRun || !selectedNodeId;
     controls.guide.disabled = !canRun || !couplingValid;
     controls.premature.disabled = !canRun;
   }
@@ -7888,8 +7930,8 @@ function createInspector(container, callbacks = {}) {
 
     if (layoutChanged) {
       layoutWorldId = snapshot.worldId;
-      optionList(doc, controls.node, Object.keys(snapshot.nodes).map(id => [id, id]));
-      optionList(doc, controls.link, Object.entries(snapshot.links).map(([id, { a, b }]) => [id, `${id} · ${a}–${b}`]));
+      optionList(doc, controls.node, Object.keys(snapshot.nodes).map(id => [id, siteName(id)]));
+      optionList(doc, controls.link, Object.entries(snapshot.links).map(([id, { a, b }]) => [id, `${id} · ${siteName(a)}–${siteName(b)}`]));
       controls['ring-protocol'].hidden = layoutWorldId !== 'circulation';
       controls['conduction-protocol'].hidden = layoutWorldId !== 'conduction';
     }
@@ -7942,14 +7984,14 @@ function createInspector(container, callbacks = {}) {
     const hideNote = context.nodeMusic === undefined;
     noteRow.hidden = hideNote;
     if (noteRow.previousElementSibling) noteRow.previousElementSibling.hidden = hideNote;
-    read('protocol-site', selectedNodeId);
+    read('protocol-site', siteName(selectedNodeId));
     read('link-state', link ? (link.enabled ? 'Enabled' : 'Cut') : MISSING);
-    read('ab-label', link ? `${link.a} → ${link.b}` : 'Forward');
+    read('ab-label', link ? `${siteName(link.a)} → ${siteName(link.b)}` : 'Forward');
     read('ab', link ? directionText(link.ab) : MISSING);
-    read('ba-label', link ? `${link.b} → ${link.a}` : 'Reverse');
+    read('ba-label', link ? `${siteName(link.b)} → ${siteName(link.a)}` : 'Reverse');
     read('ba', link ? directionText(link.ba) : MISSING);
     read('transits', transits.length
-      ? transits.map(transit => `${transit.fromNodeId} → ${transit.toNodeId} (${ms(transit.departureMs)} → ${ms(transit.arrivalMs)})`).join(' · ')
+      ? transits.map(transit => `${siteName(transit.fromNodeId)} → ${siteName(transit.toNodeId)} (${ms(transit.departureMs)} → ${ms(transit.arrivalMs)})`).join(' · ')
       : 'None');
     read('palette', context.palette);
     read('music-note', note);
@@ -7967,7 +8009,6 @@ function createInspector(container, callbacks = {}) {
   controls.node.onchange = () => callbacks.onSelectNode?.(controls.node.value);
   controls.link.onchange = () => callbacks.onSelectLink?.(controls.link.value);
   controls.stimulate.onclick = () => callbacks.onStimulus?.(controls.node.value);
-  controls.single.onclick = () => callbacks.onRunProtocol?.('single', controls.node.value);
   controls.coupling.oninput = () => updateCouplingValidation(false);
   controls.coupling.onchange = commitCoupling;
   controls.coupling.onkeydown = event => {
@@ -7979,7 +8020,7 @@ function createInspector(container, callbacks = {}) {
   controls.guide.onclick = () => {
     if (commitCoupling()) callbacks.onRunProtocol?.('guide', 'R0', couplingMs);
   };
-  controls.premature.onclick = () => callbacks.onRunProtocol?.('premature', 'A', 275);
+  controls.premature.onclick = () => callbacks.onRunProtocol?.('premature');
   for (const filter of filters) filter.onchange = () => render(currentFrame, currentContext);
 
   return { render, dispose: () => container.replaceChildren() };
@@ -10738,6 +10779,7 @@ const { createRestitutionRing } = __modules["src/worlds/circulation.js"];
 const { createRestitutionConduction } = __modules["src/worlds/conduction.js"];
 const { createDualityWorld } = __modules["src/worlds/duality.js"];
 const { STUDIES } = __modules["src/worlds/studies.js"];
+const { SITE_NAMES, siteName } = __modules["src/ui/site-names.js"];
 const { createParameterState, defaultCommands, modifiedElements } = __modules["src/lab/inspector-card.js"];
 const STUDY_COPY = __modules["src/content/studies.json"].default;
 const GLOSSARY = __modules["src/content/glossary.json"].default;
@@ -10759,12 +10801,12 @@ const PLAIN_SUBTITLES = Object.freeze({
 
 // Plain labels for the main canvas, EP labels for the Lab (spec, audience rule).
 const ECHO_LABELS = Object.freeze({
-  plain: { S: 'sinus', HRA: 'high atrium', CSp: 'septal atrium', FP: 'fast path', SP: 'slow path', LCP: 'junction', H: 'bundle', V: 'ventricle' },
+  plain: { S: 'sinus', HRA: 'high atrium', CSp: 'septal atrium', FP: 'fast path', SP: 'slow path', LCP: 'junction', H: 'His', V: 'ventricle' },
   ep: { S: 'sinus node', HRA: 'HRA', CSp: 'CS proximal', FP: 'AVN fast pathway', SP: 'AVN slow pathway', LCP: 'lower common pathway', H: 'His', V: 'V' },
   // Lab and runner labels (full EP nomenclature).
   lab: { S: 'sinus node', HRA: 'high right atrium', CSp: 'atrial', FP: 'fast pathway', SP: 'slow pathway', LCP: 'lower common pathway', H: 'His', V: 'ventricle',
     HC: 'HRA–CS proximal', CF: 'atrium–fast pathway', FL: 'fast pathway', CS: 'atrium–slow pathway', SL: 'slow pathway', LH: 'lower common pathway–His', HV: 'His–ventricle', SH: 'sinus exit' },
-  tiers: { plain: ['atrium', 'fast path', 'slow path', 'junction', 'bundle', 'ventricle'], ep: ['A', 'AVN fast', 'AVN slow', 'LCP', 'His', 'V'] },
+  tiers: { plain: ['atrium', 'fast path', 'slow path', 'junction', 'His', 'ventricle'], ep: ['A', 'AVN fast', 'AVN slow', 'LCP', 'His', 'V'] },
 });
 
 const SCENE_LIST = {
@@ -10773,14 +10815,14 @@ const SCENE_LIST = {
     name: 'Conduction',
     topology: 'Six sites in a branching pathway from atrium to ventricles.',
     hint: 'Tap a site to stimulate it · Hold a site to inspect it',
-    status: 'Impulses travel from atrium to ventricles.',
+    labels: { plain: SITE_NAMES, ep: SITE_NAMES, lab: SITE_NAMES },
+    networkLabels: SITE_NAMES,
   },
   circulation: {
     create: createRestitutionRing,
     name: 'Circulation',
     topology: 'Eight excitable sites joined in a bidirectional ring.',
     hint: 'Tap a site to stimulate it · Hold a site to inspect it',
-    status: 'The ring rests until a site is stimulated.',
   },
   ...Object.fromEntries(STUDIES.map(study => {
     const copy = STUDY_COPY.find(entry => entry.id === study.id);
@@ -10801,7 +10843,6 @@ const SCENE_LIST = {
       labels: study.id === 'echo' ? ECHO_LABELS : null,
       topology: 'Two routes through the junction between upper and lower chambers. Silent sites are open rings.',
       hint: 'Tap a site to stimulate it · Hold a site to inspect it',
-      status: 'Impulses travel from atrium to ventricle.',
     }];
   })),
 };
@@ -10816,7 +10857,9 @@ const glossaryFor = scene => (scene.glossaryIds ?? []).map(id => GLOSSARY.find(e
 // Tiers for the Ladder: the presentation's tiers with plain or EP labels.
 function ladderTiers(scene, world, { lab = false } = {}) {
   const declared = scene.presentation?.tiers;
-  if (!declared) return world.nodes.map(node => node.id);
+  if (!declared) return world.nodes.map(({ id }) => (
+    siteName(id) === id ? id : { id, label: siteName(id), sites: [id] }
+  ));
   const names = scene.labels?.tiers?.[lab ? 'ep' : 'plain'] ?? [];
   return declared.map((sites, index) => ({
     id: sites[0],
@@ -12903,6 +12946,7 @@ const { createTransport, DEFAULT_PACING_CYCLE, LOOKAHEAD_WALL_MS } = __modules["
 const { createRenderer } = __modules["src/visuals/renderer.js"];
 const { mapActivation, createAudioMixer, describeNodeMusic, musicTableFor } = __modules["src/music/index.js"];
 const { createInspector } = __modules["src/ui/inspector.js"];
+const { siteName } = __modules["src/ui/site-names.js"];
 const { createInspectorCard } = __modules["src/lab/inspector-card.js"];
 const { DILATIONS, dilationLabel, readPreferences, savePreferences } = __modules["src/ui/preferences.js"];
 const { EDITION, editionAllows } = __modules["src/ui/edition.js"];
@@ -13028,8 +13072,8 @@ const transport = createTransport({
   },
   onStateChange(state) {
     updateButtons();
-    if (state.status === 'running' && $('status').textContent.includes('Resume when ready.')) {
-      $('status').textContent = WORLDS[worldId].status;
+    if (state.status === 'running' && $('status').textContent.includes('Press Play to continue.')) {
+      $('status').textContent = '';
     }
     if (state.reason && state.reason !== 'pause' && state.status === 'paused') {
       const explanation = {
@@ -13037,7 +13081,7 @@ const transport = createTransport({
         'audio-interrupted': 'Sound was interrupted.',
         'late-wake': 'The playback clock was interrupted.',
       }[state.reason] ?? 'Playback was interrupted.';
-      $('status').textContent = `${explanation} Resume when ready.`;
+      $('status').textContent = `${explanation} Press Play to continue.`;
     }
     if (state.status === 'faulted') {
       $('status').textContent = `The circuit stopped at ${state.error?.tMs ?? '?'} ms. Reset to begin a fresh run.`;
@@ -13068,25 +13112,18 @@ function startRun(kind = 'default', nodeId = selectedNodeId, interval = coupling
     : null;
   if (initialPacing) selectNode(initialPacing.nodeId);
   const stimulus = (commandId, nodeId, tMs) => ({ commandId, type: 'stimulate', nodeId, tMs });
-  let status = WORLDS[worldId].status;
   let fromMs = 0;
   if (kind === 'single') {
     commands.push(stimulus('protocol-s1', nodeId, 0));
-    status = 'One impulse travels through the circuit.';
   } else if (kind === 'guide' && worldId === 'circulation') {
     commands.push(stimulus('protocol-s1', nodeId, 0), stimulus('protocol-s2', nodeId, interval));
-    status = 'Two impulses. A chance to keep going.';
   } else if (kind === 'premature' && worldId === 'conduction') {
     const firstNode = world.nodes[0].id;
     commands.push(stimulus('protocol-s1', firstNode, 0), stimulus('protocol-premature', firstNode, 250));
-    status = 'An early impulse takes the slower path.';
   } else if (GUIDED.includes(kind)) {
     const protocol = guidedProtocol(kind);
     commands.push(...protocol.commands());
     fromMs = protocol.presentFromMs;
-    status = kind === 'find-echo'
-      ? `Nominal model, paced at 600 ms. Next: an early beat at ${protocol.s2} ms gives one echo.`
-      : `Nominal model, paced at 600 ms. Next: an early beat at ${protocol.s2} ms starts reentry.`;
   }
   if (!GUIDED.includes(kind)) guidedLast = null;
   // The player's model edits carry into the new run as logged commands at t = 0;
@@ -13094,7 +13131,7 @@ function startRun(kind = 'default', nodeId = selectedNodeId, interval = coupling
   if (card && !GUIDED.includes(kind)) {
     carryCommands(scene.preset ?? world, card.state).forEach((body, index) => commands.push({ ...body, commandId: `carry-${index + 1}`, tMs: 0 }));
   }
-  $('status').textContent = started ? status : WORLDS[worldId].topology;
+  $('status').textContent = '';
   transport.reset(world, runId, {
     commands, fromMs, initialPacing, start: autoStart && !document.hidden && (!context || context.state === 'running'),
   });
@@ -13128,7 +13165,7 @@ function chooseWorld(id, initial = false) {
   const settings = WORLDS[id];
   const nextWorld = settings.create();
   const nextRenderer = createRenderer($('canvas'), nextWorld, {
-    reducedMotion: motion.matches, layout: settings.presentation?.layout ?? null,
+    reducedMotion: motion.matches, layout: settings.presentation?.layout ?? null, nodeLabels: settings.networkLabels,
   });
   worldId = id;
   scene = settings;
@@ -13144,7 +13181,7 @@ function chooseWorld(id, initial = false) {
     button.setAttribute('aria-pressed', String(button.dataset.world === worldId));
   }
   $('canvas').setAttribute('aria-label', settings.topology + ' Use the site buttons to interact.');
-  $('single').hidden = $('guide').hidden = id !== 'circulation';
+  $('guide').hidden = id !== 'circulation';
   $('premature').hidden = id !== 'conduction';
   $('find-echo').hidden = $('find-arrhythmia').hidden = id !== 'echo';
   setupCard();
@@ -13258,9 +13295,14 @@ function updateButtons() {
     button.setAttribute('aria-label', `${pacing ? 'Pace from' : 'Stimulate'} site ${siteLabel(button.dataset.site)}. Press I to inspect it.`);
   }
   $('protocol-hint').textContent = pacing ? 'Tap a site to pace from it · Hold a site to inspect it' : scene.hint;
-  for (const id of ['single', 'guide', 'premature', 'find-echo', 'find-arrhythmia', 'reset']) $(id).disabled = !started;
-  $('pause').textContent = transport.status === 'pausing' ? 'Pausing…' : running ? 'Pause' : 'Resume';
-  $('pause').disabled = !started || ['pausing', 'faulted'].includes(transport.status);
+  for (const id of ['guide', 'premature', 'find-echo', 'find-arrhythmia', 'reset']) $(id).disabled = !started;
+  const pausing = transport.status === 'pausing';
+  const pause = $('pause');
+  const playbackLabel = pausing ? 'Pausing' : running ? 'Pause' : 'Play';
+  pause.classList.toggle('is-paused', !running && !pausing);
+  pause.setAttribute('aria-label', playbackLabel);
+  pause.title = playbackLabel;
+  pause.disabled = !started || pausing || transport.status === 'faulted';
   $('pacing-toggle').textContent = pacing ? 'Stop pacing' : 'Pace';
   $('pacing-toggle').setAttribute('aria-pressed', String(Boolean(pacing)));
   $('pacing-toggle').disabled = !pacing && !running;
@@ -13273,7 +13315,7 @@ function updatePacingReadout(frame, now) {
   const pacing = transport.state().pacing;
   if (!pacing) { $('pacing-readout').textContent = ''; return; }
   const result = pacingReadout(allEvents, { worldId, presentedMs: frame.presentedMs, fromMs: pacing.fromMs, pacingNodeId: pacing.nodeId });
-  const prefix = `${pacing.nodeId} · ${pacing.cycleMs} ms`;
+  const prefix = `${siteName(pacing.nodeId)} · ${pacing.cycleMs} ms`;
   if (!result) { $('pacing-readout').textContent = prefix; return; }
   const ratio = result.ratio ? `A:H ${result.ratio}${result.kind === 'wenckebach' ? ' · Wenckebach' : ''}` : 'A:H measuring…';
   const ah = result.lastBlocked ? 'last beat blocked' : result.lastAhMs === null ? 'A–H —' : `A–H ${Math.round(result.lastAhMs)} ms`;
@@ -13350,6 +13392,8 @@ function activateSite(nodeId) {
 }
 
 function siteLabel(id) {
+  const name = siteName(id);
+  if (name !== id) return name;
   return scene.labels?.plain?.[id] ? `${scene.labels.plain[id]} (${id})` : id;
 }
 
@@ -13571,7 +13615,6 @@ $('pause').onclick = async () => {
     $('status').textContent = `Sound could not resume. ${error.message}`;
   }
 };
-$('single').onclick = () => startRun('single', 'R0');
 $('guide').onclick = () => startRun('guide', 'R0', CIRCULATION_S2_MS);
 $('premature').onclick = () => startRun('premature');
 $('find-echo').onclick = () => startRun('find-echo');

@@ -1,3 +1,5 @@
+import { siteName } from './site-names.js';
+
 const RASTER_WINDOW_MS = 2400;
 const MAX_LOG_ROWS = 80;
 const COUPLING_MIN_MS = 1;
@@ -31,8 +33,8 @@ function logGroup(event) {
 }
 
 function target(event) {
-  if (event.fromNodeId) return `${event.linkId} · ${event.fromNodeId} → ${event.toNodeId}`;
-  return [event.nodeId, event.linkId].filter(Boolean).join(' · ') || MISSING;
+  if (event.fromNodeId) return `${event.linkId} · ${siteName(event.fromNodeId)} → ${siteName(event.toNodeId)}`;
+  return [siteName(event.nodeId), event.linkId].filter(Boolean).join(' · ') || MISSING;
 }
 
 function source(event) {
@@ -106,7 +108,7 @@ function drawRaster(svg, nodeIds, events, latest, nodeId, presentedMs) {
     const selected = id === nodeId;
     if (selected) draw('rect', { x: 0, y: y - 10, width, height: 20, class: 'raster-selected' });
     draw('line', { x1: left, x2: right, y1: y, y2: y, class: 'raster-guide' });
-    draw('text', { x: 3, y: y + 4, class: 'raster-site' }, id);
+    draw('text', { x: 3, y: y + 4, class: 'raster-site' }, siteName(id));
     const interval = latest.get(id)?.intervalMs;
     if (interval != null) draw('text', { x: left - 8, y: y + 4, 'text-anchor': 'end' }, ms(interval));
   }
@@ -198,7 +200,6 @@ export function createInspector(container, callbacks = {}) {
         <p>Selected site <strong data-read="protocol-site"></strong></p>
         <div class="inspector-actions">
           <button type="button" data-control="stimulate">Stimulate selected site</button>
-          <button type="button" data-control="single">Reset and deliver one impulse</button>
         </div>
         <div data-control="ring-protocol">
           <p>The reference S1/S2 protocol starts a fresh Circulation run and applies both impulses at R0.</p>
@@ -211,7 +212,7 @@ export function createInspector(container, callbacks = {}) {
           <p class="inspector-error" id="inspector-coupling-error" aria-live="polite" hidden></p>
         </div>
         <div data-control="conduction-protocol" hidden>
-          <p>The Conduction protocol starts a fresh run and stimulates A at 275 simulated ms.</p>
+          <p>The Conduction protocol delivers two stimuli from the first site, 250 ms apart.</p>
           <button type="button" data-control="premature">Reset and apply premature stimulus</button>
         </div>
       </section>
@@ -285,7 +286,6 @@ export function createInspector(container, callbacks = {}) {
   function updateActionAvailability() {
     controls.reset.disabled = !canRun;
     controls.stimulate.disabled = !canEdit || !selectedNodeId;
-    controls.single.disabled = !canRun || !selectedNodeId;
     controls.guide.disabled = !canRun || !couplingValid;
     controls.premature.disabled = !canRun;
   }
@@ -354,8 +354,8 @@ export function createInspector(container, callbacks = {}) {
 
     if (layoutChanged) {
       layoutWorldId = snapshot.worldId;
-      optionList(doc, controls.node, Object.keys(snapshot.nodes).map(id => [id, id]));
-      optionList(doc, controls.link, Object.entries(snapshot.links).map(([id, { a, b }]) => [id, `${id} · ${a}–${b}`]));
+      optionList(doc, controls.node, Object.keys(snapshot.nodes).map(id => [id, siteName(id)]));
+      optionList(doc, controls.link, Object.entries(snapshot.links).map(([id, { a, b }]) => [id, `${id} · ${siteName(a)}–${siteName(b)}`]));
       controls['ring-protocol'].hidden = layoutWorldId !== 'circulation';
       controls['conduction-protocol'].hidden = layoutWorldId !== 'conduction';
     }
@@ -408,14 +408,14 @@ export function createInspector(container, callbacks = {}) {
     const hideNote = context.nodeMusic === undefined;
     noteRow.hidden = hideNote;
     if (noteRow.previousElementSibling) noteRow.previousElementSibling.hidden = hideNote;
-    read('protocol-site', selectedNodeId);
+    read('protocol-site', siteName(selectedNodeId));
     read('link-state', link ? (link.enabled ? 'Enabled' : 'Cut') : MISSING);
-    read('ab-label', link ? `${link.a} → ${link.b}` : 'Forward');
+    read('ab-label', link ? `${siteName(link.a)} → ${siteName(link.b)}` : 'Forward');
     read('ab', link ? directionText(link.ab) : MISSING);
-    read('ba-label', link ? `${link.b} → ${link.a}` : 'Reverse');
+    read('ba-label', link ? `${siteName(link.b)} → ${siteName(link.a)}` : 'Reverse');
     read('ba', link ? directionText(link.ba) : MISSING);
     read('transits', transits.length
-      ? transits.map(transit => `${transit.fromNodeId} → ${transit.toNodeId} (${ms(transit.departureMs)} → ${ms(transit.arrivalMs)})`).join(' · ')
+      ? transits.map(transit => `${siteName(transit.fromNodeId)} → ${siteName(transit.toNodeId)} (${ms(transit.departureMs)} → ${ms(transit.arrivalMs)})`).join(' · ')
       : 'None');
     read('palette', context.palette);
     read('music-note', note);
@@ -433,7 +433,6 @@ export function createInspector(container, callbacks = {}) {
   controls.node.onchange = () => callbacks.onSelectNode?.(controls.node.value);
   controls.link.onchange = () => callbacks.onSelectLink?.(controls.link.value);
   controls.stimulate.onclick = () => callbacks.onStimulus?.(controls.node.value);
-  controls.single.onclick = () => callbacks.onRunProtocol?.('single', controls.node.value);
   controls.coupling.oninput = () => updateCouplingValidation(false);
   controls.coupling.onchange = commitCoupling;
   controls.coupling.onkeydown = event => {
@@ -445,7 +444,7 @@ export function createInspector(container, callbacks = {}) {
   controls.guide.onclick = () => {
     if (commitCoupling()) callbacks.onRunProtocol?.('guide', 'R0', couplingMs);
   };
-  controls.premature.onclick = () => callbacks.onRunProtocol?.('premature', 'A', 275);
+  controls.premature.onclick = () => callbacks.onRunProtocol?.('premature');
   for (const filter of filters) filter.onchange = () => render(currentFrame, currentContext);
 
   return { render, dispose: () => container.replaceChildren() };

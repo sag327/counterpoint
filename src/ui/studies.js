@@ -5,6 +5,7 @@ import { createRestitutionRing } from '../worlds/circulation.js';
 import { createRestitutionConduction } from '../worlds/conduction.js';
 import { createDualityWorld } from '../worlds/duality.js';
 import { STUDIES } from '../worlds/studies.js';
+import { SITE_NAMES, siteName } from './site-names.js';
 import { createParameterState, defaultCommands, modifiedElements } from '../lab/inspector-card.js';
 import STUDY_COPY from '../content/studies.json' with { type: 'json' };
 import GLOSSARY from '../content/glossary.json' with { type: 'json' };
@@ -26,12 +27,12 @@ const PLAIN_SUBTITLES = Object.freeze({
 
 // Plain labels for the main canvas, EP labels for the Lab (spec, audience rule).
 const ECHO_LABELS = Object.freeze({
-  plain: { S: 'sinus', HRA: 'high atrium', CSp: 'septal atrium', FP: 'fast path', SP: 'slow path', LCP: 'junction', H: 'bundle', V: 'ventricle' },
+  plain: { S: 'sinus', HRA: 'high atrium', CSp: 'septal atrium', FP: 'fast path', SP: 'slow path', LCP: 'junction', H: 'His', V: 'ventricle' },
   ep: { S: 'sinus node', HRA: 'HRA', CSp: 'CS proximal', FP: 'AVN fast pathway', SP: 'AVN slow pathway', LCP: 'lower common pathway', H: 'His', V: 'V' },
   // Lab and runner labels (full EP nomenclature).
   lab: { S: 'sinus node', HRA: 'high right atrium', CSp: 'atrial', FP: 'fast pathway', SP: 'slow pathway', LCP: 'lower common pathway', H: 'His', V: 'ventricle',
     HC: 'HRA–CS proximal', CF: 'atrium–fast pathway', FL: 'fast pathway', CS: 'atrium–slow pathway', SL: 'slow pathway', LH: 'lower common pathway–His', HV: 'His–ventricle', SH: 'sinus exit' },
-  tiers: { plain: ['atrium', 'fast path', 'slow path', 'junction', 'bundle', 'ventricle'], ep: ['A', 'AVN fast', 'AVN slow', 'LCP', 'His', 'V'] },
+  tiers: { plain: ['atrium', 'fast path', 'slow path', 'junction', 'His', 'ventricle'], ep: ['A', 'AVN fast', 'AVN slow', 'LCP', 'His', 'V'] },
 });
 
 const SCENE_LIST = {
@@ -40,14 +41,14 @@ const SCENE_LIST = {
     name: 'Conduction',
     topology: 'Six sites in a branching pathway from atrium to ventricles.',
     hint: 'Tap a site to stimulate it · Hold a site to inspect it',
-    status: 'Impulses travel from atrium to ventricles.',
+    labels: { plain: SITE_NAMES, ep: SITE_NAMES, lab: SITE_NAMES },
+    networkLabels: SITE_NAMES,
   },
   circulation: {
     create: createRestitutionRing,
     name: 'Circulation',
     topology: 'Eight excitable sites joined in a bidirectional ring.',
     hint: 'Tap a site to stimulate it · Hold a site to inspect it',
-    status: 'The ring rests until a site is stimulated.',
   },
   ...Object.fromEntries(STUDIES.map(study => {
     const copy = STUDY_COPY.find(entry => entry.id === study.id);
@@ -68,7 +69,6 @@ const SCENE_LIST = {
       labels: study.id === 'echo' ? ECHO_LABELS : null,
       topology: 'Two routes through the junction between upper and lower chambers. Silent sites are open rings.',
       hint: 'Tap a site to stimulate it · Hold a site to inspect it',
-      status: 'Impulses travel from atrium to ventricle.',
     }];
   })),
 };
@@ -83,7 +83,9 @@ export const glossaryFor = scene => (scene.glossaryIds ?? []).map(id => GLOSSARY
 // Tiers for the Ladder: the presentation's tiers with plain or EP labels.
 export function ladderTiers(scene, world, { lab = false } = {}) {
   const declared = scene.presentation?.tiers;
-  if (!declared) return world.nodes.map(node => node.id);
+  if (!declared) return world.nodes.map(({ id }) => (
+    siteName(id) === id ? id : { id, label: siteName(id), sites: [id] }
+  ));
   const names = scene.labels?.tiers?.[lab ? 'ep' : 'plain'] ?? [];
   return declared.map((sites, index) => ({
     id: sites[0],

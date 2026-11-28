@@ -289,7 +289,7 @@ def smoke(browser, output, *, phone):
             capture(view)
 
         select_view(page, "network", phone=phone)
-        activate(page.get_by_role("button", name="Resume", exact=True), phone=phone)
+        activate(page.get_by_role("button", name="Play", exact=True), phone=phone)
         page.wait_for_function("counterpoint.transport.status === 'running'")
         check_inspector(page, cdp, capture)
         assert page.locator("#stillness").count() == 0, "Stillness is removed (2026-11-27)"
