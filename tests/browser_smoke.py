@@ -125,7 +125,7 @@ def desktop_smoke(browser, output):
     screenshot(page, output, "conduction-running")
     assert page.get_by_role("button", name="Duality", exact=True).count() == 0
     choose_world(page, "Circulation")
-    page.locator("#single").click()
+    page.locator("[data-site=R0]").click()
     page.wait_for_function(f"{ACTIVATIONS}.length === 8")
     screenshot(page, output, "circulation-running")
     await_reentry(page)
@@ -135,7 +135,7 @@ def desktop_smoke(browser, output):
     run_id = page.evaluate("counterpoint.transport.runId")
     time.sleep(0.4)
     assert page.evaluate("counterpoint.events.length") == count
-    page.get_by_role("button", name="Resume", exact=True).click()
+    page.get_by_role("button", name="Play", exact=True).click()
     page.wait_for_function("(count) => counterpoint.events.length > count", arg=count)
     assert page.evaluate("counterpoint.transport.runId") == run_id
 
@@ -197,7 +197,7 @@ def mobile_smoke(browser, url, output):
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
     choose_world(page, "Circulation")
     page.wait_for_function("counterpoint.mixer != null")
-    page.locator("#single").tap()
+    page.locator("[data-site=R0]").tap()
     wait_playing(page, f"{ACTIVATIONS}.length >= 8")
     checked_notes = page.evaluate("""() => {
         const notes = counterpoint.mixer.diagnostics();
@@ -311,7 +311,6 @@ def circulation_edition_smoke(browser, output):
         assert state == {"worlds": ["circulation"], "worldsHidden": True, "viewsHidden": True, "view": "network", "sound": True, "lab": True}, state
         assert page.get_by_role("link").count() == 0, "no links to the other models"
         wait_playing(page, "counterpoint.transport.status === 'running'")
-        page.locator("#single").click()
         wait_playing(page, f"{ACTIVATIONS}.length >= 8")
         assert page.evaluate("counterpoint.events.every(e => e.worldId === 'circulation')")
         page.get_by_role("button", name="Stimulate site R3").press("i")

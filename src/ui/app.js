@@ -4,6 +4,7 @@ import { createTransport, DEFAULT_PACING_CYCLE, LOOKAHEAD_WALL_MS } from '../run
 import { createRenderer } from '../visuals/renderer.js';
 import { mapActivation, createAudioMixer, describeNodeMusic, musicTableFor } from '../music/index.js';
 import { createInspector } from './inspector.js';
+import { siteName } from './site-names.js';
 import { createInspectorCard } from '../lab/inspector-card.js';
 import { DILATIONS, dilationLabel, readPreferences, savePreferences } from './preferences.js';
 import { EDITION, editionAllows } from './edition.js';
@@ -129,8 +130,8 @@ const transport = createTransport({
   },
   onStateChange(state) {
     updateButtons();
-    if (state.status === 'running' && $('status').textContent.includes('Resume when ready.')) {
-      $('status').textContent = WORLDS[worldId].status;
+    if (state.status === 'running' && $('status').textContent.includes('Press Play to continue.')) {
+      $('status').textContent = '';
     }
     if (state.reason && state.reason !== 'pause' && state.status === 'paused') {
       const explanation = {
@@ -138,7 +139,7 @@ const transport = createTransport({
         'audio-interrupted': 'Sound was interrupted.',
         'late-wake': 'The playback clock was interrupted.',
       }[state.reason] ?? 'Playback was interrupted.';
-      $('status').textContent = `${explanation} Resume when ready.`;
+      $('status').textContent = `${explanation} Press Play to continue.`;
     }
     if (state.status === 'faulted') {
       $('status').textContent = `The circuit stopped at ${state.error?.tMs ?? '?'} ms. Reset to begin a fresh run.`;
@@ -169,25 +170,18 @@ function startRun(kind = 'default', nodeId = selectedNodeId, interval = coupling
     : null;
   if (initialPacing) selectNode(initialPacing.nodeId);
   const stimulus = (commandId, nodeId, tMs) => ({ commandId, type: 'stimulate', nodeId, tMs });
-  let status = WORLDS[worldId].status;
   let fromMs = 0;
   if (kind === 'single') {
     commands.push(stimulus('protocol-s1', nodeId, 0));
-    status = 'One impulse travels through the circuit.';
   } else if (kind === 'guide' && worldId === 'circulation') {
     commands.push(stimulus('protocol-s1', nodeId, 0), stimulus('protocol-s2', nodeId, interval));
-    status = 'Two impulses. A chance to keep going.';
   } else if (kind === 'premature' && worldId === 'conduction') {
     const firstNode = world.nodes[0].id;
     commands.push(stimulus('protocol-s1', firstNode, 0), stimulus('protocol-premature', firstNode, 250));
-    status = 'An early impulse takes the slower path.';
   } else if (GUIDED.includes(kind)) {
     const protocol = guidedProtocol(kind);
     commands.push(...protocol.commands());
     fromMs = protocol.presentFromMs;
-    status = kind === 'find-echo'
-      ? `Nominal model, paced at 600 ms. Next: an early beat at ${protocol.s2} ms gives one echo.`
-      : `Nominal model, paced at 600 ms. Next: an early beat at ${protocol.s2} ms starts reentry.`;
   }
   if (!GUIDED.includes(kind)) guidedLast = null;
   // The player's model edits carry into the new run as logged commands at t = 0;
@@ -195,7 +189,7 @@ function startRun(kind = 'default', nodeId = selectedNodeId, interval = coupling
   if (card && !GUIDED.includes(kind)) {
     carryCommands(scene.preset ?? world, card.state).forEach((body, index) => commands.push({ ...body, commandId: `carry-${index + 1}`, tMs: 0 }));
   }
-  $('status').textContent = started ? status : WORLDS[worldId].topology;
+  $('status').textContent = '';
   transport.reset(world, runId, {
     commands, fromMs, initialPacing, start: autoStart && !document.hidden && (!context || context.state === 'running'),
   });
@@ -229,7 +223,7 @@ function chooseWorld(id, initial = false) {
   const settings = WORLDS[id];
   const nextWorld = settings.create();
   const nextRenderer = createRenderer($('canvas'), nextWorld, {
-    reducedMotion: motion.matches, layout: settings.presentation?.layout ?? null,
+    reducedMotion: motion.matches, layout: settings.presentation?.layout ?? null, nodeLabels: settings.networkLabels,
   });
   worldId = id;
   scene = settings;
@@ -245,7 +239,7 @@ function chooseWorld(id, initial = false) {
     button.setAttribute('aria-pressed', String(button.dataset.world === worldId));
   }
   $('canvas').setAttribute('aria-label', settings.topology + ' Use the site buttons to interact.');
-  $('single').hidden = $('guide').hidden = id !== 'circulation';
+  $('guide').hidden = id !== 'circulation';
   $('premature').hidden = id !== 'conduction';
   $('find-echo').hidden = $('find-arrhythmia').hidden = id !== 'echo';
   setupCard();
@@ -359,9 +353,14 @@ function updateButtons() {
     button.setAttribute('aria-label', `${pacing ? 'Pace from' : 'Stimulate'} site ${siteLabel(button.dataset.site)}. Press I to inspect it.`);
   }
   $('protocol-hint').textContent = pacing ? 'Tap a site to pace from it · Hold a site to inspect it' : scene.hint;
-  for (const id of ['single', 'guide', 'premature', 'find-echo', 'find-arrhythmia', 'reset']) $(id).disabled = !started;
-  $('pause').textContent = transport.status === 'pausing' ? 'Pausing…' : running ? 'Pause' : 'Resume';
-  $('pause').disabled = !started || ['pausing', 'faulted'].includes(transport.status);
+  for (const id of ['guide', 'premature', 'find-echo', 'find-arrhythmia', 'reset']) $(id).disabled = !started;
+  const pausing = transport.status === 'pausing';
+  const pause = $('pause');
+  const playbackLabel = pausing ? 'Pausing' : running ? 'Pause' : 'Play';
+  pause.classList.toggle('is-paused', !running && !pausing);
+  pause.setAttribute('aria-label', playbackLabel);
+  pause.title = playbackLabel;
+  pause.disabled = !started || pausing || transport.status === 'faulted';
   $('pacing-toggle').textContent = pacing ? 'Stop pacing' : 'Pace';
   $('pacing-toggle').setAttribute('aria-pressed', String(Boolean(pacing)));
   $('pacing-toggle').disabled = !pacing && !running;
@@ -374,7 +373,7 @@ function updatePacingReadout(frame, now) {
   const pacing = transport.state().pacing;
   if (!pacing) { $('pacing-readout').textContent = ''; return; }
   const result = pacingReadout(allEvents, { worldId, presentedMs: frame.presentedMs, fromMs: pacing.fromMs, pacingNodeId: pacing.nodeId });
-  const prefix = `${pacing.nodeId} · ${pacing.cycleMs} ms`;
+  const prefix = `${siteName(pacing.nodeId)} · ${pacing.cycleMs} ms`;
   if (!result) { $('pacing-readout').textContent = prefix; return; }
   const ratio = result.ratio ? `A:H ${result.ratio}${result.kind === 'wenckebach' ? ' · Wenckebach' : ''}` : 'A:H measuring…';
   const ah = result.lastBlocked ? 'last beat blocked' : result.lastAhMs === null ? 'A–H —' : `A–H ${Math.round(result.lastAhMs)} ms`;
@@ -451,6 +450,8 @@ function activateSite(nodeId) {
 }
 
 function siteLabel(id) {
+  const name = siteName(id);
+  if (name !== id) return name;
   return scene.labels?.plain?.[id] ? `${scene.labels.plain[id]} (${id})` : id;
 }
 
@@ -672,7 +673,6 @@ $('pause').onclick = async () => {
     $('status').textContent = `Sound could not resume. ${error.message}`;
   }
 };
-$('single').onclick = () => startRun('single', 'R0');
 $('guide').onclick = () => startRun('guide', 'R0', CIRCULATION_S2_MS);
 $('premature').onclick = () => startRun('premature');
 $('find-echo').onclick = () => startRun('find-echo');

@@ -34,20 +34,16 @@
     <section id="performance" class="controls" aria-label="Performance controls" hidden>
       <p id="protocol-hint" class="instructions" aria-live="off"></p>
       <div class="actions">
-        <button id="pause" disabled>Pause</button>
-        <button id="single" disabled hidden>One impulse</button>
         <button id="guide" disabled hidden>Find a rhythm</button>
         <button id="premature" disabled hidden>Premature impulse</button>
         <button id="find-echo" disabled hidden aria-label="Find the echo: the model at nominal settings, paced at 600 ms, then one early beat that gives a single AV-nodal echo.">Find the echo</button>
         <button id="find-arrhythmia" disabled hidden aria-label="Find the arrhythmia: the model at nominal settings, paced at 600 ms, then one early beat that starts sustained AV-nodal reentry.">Find the arrhythmia</button>
-        <button id="reset" disabled>Reset</button>
       </div>
-      <div id="pacing-controls" class="pacing-controls" role="group" aria-labelledby="pacing-label">
-        <label id="pacing-label" for="pacing-cycle">Pacing cycle length</label>
+      <div id="pacing-controls" class="pacing-controls" role="group" aria-label="Pacing">
         <div class="pacing-input">
           <div class="cycle-stepper">
             <button id="pacing-minus" type="button" aria-label="Decrease cycle length by 10 ms">−</button>
-            <input id="pacing-cycle" type="number" min="150" max="2000" step="10" value="600" inputmode="numeric" aria-describedby="pacing-unit">
+            <input id="pacing-cycle" type="number" min="150" max="2000" step="10" value="600" inputmode="numeric" aria-label="Pacing cycle length" aria-describedby="pacing-unit">
             <span id="pacing-unit">ms</span>
             <button id="pacing-plus" type="button" aria-label="Increase cycle length by 10 ms">+</button>
           </div>
@@ -55,15 +51,24 @@
         </div>
         <output id="pacing-readout" aria-live="off"></output>
       </div>
-      <div class="settings">
-        <button id="sound" type="button" aria-label="Mute sound" title="Mute sound">
+      <div class="settings" role="group" aria-label="Playback controls">
+        <button id="pause" class="icon-button" type="button" aria-label="Pause" title="Pause" disabled>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+            <path class="pause-icon" d="M8 5h2.5v14H8zm5.5 0H16v14h-2.5z"/>
+            <path class="play-icon" d="m8 5 11 7-11 7z"/>
+          </svg>
+        </button>
+        <button id="sound" class="icon-button" type="button" aria-label="Mute sound" title="Mute sound">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M11 5 6 9H3v6h3l5 4Z"/>
             <path class="sound-on" d="M15 9a4 4 0 0 1 0 6m3-9a8 8 0 0 1 0 12"/>
             <path class="sound-off" d="m15 9 6 6m0-6-6 6"/>
           </svg>
         </button>
-        <label>Playback speed <select id="dilation" aria-describedby="dilation-hint"></select></label><span id="dilation-hint" class="visually-hidden">Fraction of real time. Slower playback spreads the rhythm out.</span>
+        <label for="dilation">Playback</label>
+        <select id="dilation" aria-describedby="dilation-hint"></select>
+        <span id="dilation-hint" class="visually-hidden">Fraction of real time.</span>
+        <button id="reset" type="button" disabled>Reset</button>
       </div>
     </section>
     <div id="card-layer" aria-live="off"></div>

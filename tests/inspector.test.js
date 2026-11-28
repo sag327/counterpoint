@@ -107,7 +107,7 @@ test('Laboratory renders actual state at the presentation boundary and routes va
   control('link').value = 'L2';
   control('link').onchange();
   control('stimulate').onclick();
-  control('single').onclick();
+  assert.equal(control('single'), undefined);
   control('reset').onclick();
 
   control('coupling').value = '0.5';
@@ -123,7 +123,7 @@ test('Laboratory renders actual state at the presentation boundary and routes va
   control('guide').onclick();
   assert.deepEqual(callbackCalls, [
     ['site', 'R4'], ['link', 'L2'], ['stimulus', 'R4'],
-    ['protocol', 'single', 'R4'], ['reset'], ['coupling', 222], ['protocol', 'guide', 'R0', 222],
+    ['reset'], ['coupling', 222], ['protocol', 'guide', 'R0', 222],
   ]);
 
   const branch = createConductionWorld();
@@ -142,6 +142,6 @@ test('Laboratory renders actual state at the presentation boundary and routes va
   inspector.render({ runId: 'branch', snapshot: engine.readAt(50), presentedMs: 50 }, contextual);
   assert.equal(reading('automatic-cycle'), '900 ms');
   control('premature').onclick();
-  assert.deepEqual(callbackCalls.at(-1), ['protocol', 'premature', 'A', 275]);
+  assert.deepEqual(callbackCalls.at(-1), ['protocol', 'premature']);
   assert.equal(log().length, 0);
 });

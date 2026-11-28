@@ -31,10 +31,10 @@ test('Scenes: Conduction, Circulation and Echo; Duality withdrawn; musical label
   assert.equal(echo.musicalSubtitle, 'An arpeggio folds into a chord', 'the musical copy is kept for its return');
   assert.equal(echo.layer2Term, null);
   assert.deepEqual(glossaryFor(echo), []);
-  for (const text of [echo.subtitle, echo.status]) assert.doesNotMatch(text, /arpeggio|chord|voice|melody/i, text);
+  for (const text of [echo.subtitle, echo.hint]) assert.doesNotMatch(text, /arpeggio|chord|voice|melody/i, text);
   assert.deepEqual(echo.create(), structuredClone(echoWorld));
   // Plain words on the main canvas: no EP abbreviations, no digits.
-  for (const text of [echo.subtitle, echo.status, echo.hint, ...Object.values(echo.labels.plain), ...echo.labels.tiers.plain]) {
+  for (const text of [echo.subtitle, echo.hint, ...Object.values(echo.labels.plain), ...echo.labels.tiers.plain]) {
     assert.doesNotMatch(text, /\b(HRA|CSp|AVN|ERP|LCP|AH|HV)\b|\d/, text);
   }
 });
@@ -61,6 +61,10 @@ test('Ladder tiers cover each Echo site once; Staves are the audible sites in ch
     assert.ok(staves.every(stave => stave.pitch === undefined), 'pitch names hidden with the music labels');
   }
   // v1.0 worlds fall back to one tier and one stave per site.
+  assert.equal(ladderTiers(echo, echoWorld).find(tier => tier.id === 'H').label, 'His');
+  const conduction = SCENES.conduction;
+  assert.deepEqual(ladderTiers(conduction, conduction.create()).filter(tier => typeof tier === 'object')
+    .map(({ id, label }) => [id, label]), [['N', 'AVN'], ['H', 'His']]);
   const world = SCENES.circulation.create();
   assert.deepEqual(ladderTiers(SCENES.circulation, world), world.nodes.map(node => node.id));
   assert.equal(staveSpecs(SCENES.circulation, world).length, 8);
