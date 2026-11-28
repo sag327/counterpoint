@@ -13,6 +13,7 @@ import { createStudyLab, protocolWorkerUrl } from './lab-panel.js';
 import { isDraft, renderNotes } from './notes.js';
 import { createLiveCurve } from '../lab/live-curve.js';
 import { controlTargets } from '../lab/model-controls.js';
+import { pacingReadout } from './pacing-readout.js';
 import ECHO_NOTES from '../content/notes/echo.md' with { type: 'text' };
 
 const $ = id => document.getElementById(id);
@@ -63,6 +64,7 @@ let inspectionDirty = true;
 let lastCardUpdate = -Infinity;
 let guidedLast = null;
 let workerUrl;
+let lastPacingReadout = -Infinity;
 // Live S1–S2 curve: premature beats of this session, kept across runs, cleared on a world switch.
 const liveCurve = createLiveCurve();
 
@@ -229,7 +231,7 @@ function chooseWorld(id, initial = false) {
   world = nextWorld;
   renderer = nextRenderer;
   musicTable = musicTableFor(world, settings.presentation);
-  selectedNodeId = world.nodes.find(node => node.audible !== false)?.id ?? world.nodes[0].id;
+  selectedNodeId = ({ conduction: 'A', echo: 'CSp', circulation: 'R0' })[id] ?? world.nodes[0].id;
   renderer.setSelected(selectedNodeId);
   selectedLinkId = world.links[0].id;
   guidedLast = null;
@@ -350,6 +352,24 @@ function updateButtons() {
   for (const id of ['single', 'guide', 'premature', 'find-echo', 'find-arrhythmia', 'reset']) $(id).disabled = !started;
   $('pause').textContent = transport.status === 'pausing' ? 'Pausing…' : running ? 'Pause' : 'Resume';
   $('pause').disabled = !started || ['pausing', 'faulted'].includes(transport.status);
+  const pacing = transport.state().pacing;
+  $('pacing-toggle').textContent = pacing ? 'Stop pacing' : 'Pace';
+  $('pacing-toggle').setAttribute('aria-pressed', String(Boolean(pacing)));
+  $('pacing-toggle').disabled = !pacing && !running;
+  lastPacingReadout = -Infinity;
+}
+
+function updatePacingReadout(frame, now) {
+  if (now - lastPacingReadout < 150) return;
+  lastPacingReadout = now;
+  const pacing = transport.state().pacing;
+  if (!pacing) { $('pacing-readout').textContent = ''; return; }
+  const result = pacingReadout(allEvents, { worldId, presentedMs: frame.presentedMs, fromMs: pacing.fromMs });
+  const prefix = `${pacing.nodeId} · ${pacing.cycleMs} ms`;
+  if (!result) { $('pacing-readout').textContent = prefix; return; }
+  const ratio = result.ratio ? `A:H ${result.ratio}${result.kind === 'wenckebach' ? ' · Wenckebach' : ''}` : 'A:H measuring…';
+  const ah = result.lastBlocked ? 'last beat blocked' : result.lastAhMs === null ? 'A–H —' : `A–H ${Math.round(result.lastAhMs)} ms`;
+  $('pacing-readout').textContent = `${prefix} · ${ratio} · ${ah}`;
 }
 
 function updateSoundButton() {
@@ -640,6 +660,22 @@ $('premature').onclick = () => startRun('premature');
 $('find-echo').onclick = () => startRun('find-echo');
 $('find-arrhythmia').onclick = () => startRun('find-arrhythmia');
 $('reset').onclick = () => startRun();
+$('pacing-cycle').value = String(preferences.pacingCycleMs);
+function changePacingCycle(value) {
+  preferences.pacingCycleMs = transport.setPacingCycle(value);
+  $('pacing-cycle').value = String(preferences.pacingCycleMs);
+  savePreferences(preferences);
+}
+$('pacing-cycle').onchange = () => changePacingCycle($('pacing-cycle').value);
+$('pacing-minus').onclick = () => changePacingCycle(Number($('pacing-cycle').value) - 10);
+$('pacing-plus').onclick = () => changePacingCycle(Number($('pacing-cycle').value) + 10);
+$('pacing-toggle').onclick = () => {
+  if (transport.state().pacing) transport.stopPacing();
+  else {
+    changePacingCycle($('pacing-cycle').value);
+    transport.startPacing(worldId === 'circulation' ? selectedNodeId : worldId === 'echo' ? 'CSp' : 'A', preferences.pacingCycleMs);
+  }
+};
 $('notes-close').onclick = () => $('notes-sheet').close?.() ?? $('notes-sheet').removeAttribute('open');
 $('notes-sheet').addEventListener('click', event => { if (event.target === $('notes-sheet')) $('notes-sheet').close(); });
 // An edition shows only its worlds and views; with one of either, the menu goes too.
@@ -742,6 +778,7 @@ function draw(now) {
       updateCard(frame, now);
     }
     updateInspection(frame, now);
+    updatePacingReadout(frame, now);
   } catch (error) {
     $('status').textContent = error.message;
     console.error(error);

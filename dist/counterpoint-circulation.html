@@ -43,6 +43,45 @@ button.primary:hover{background:#e1c695;color:#11171a}
 /* Instructions: short, legible, directly under the stage (creator decision 2026-11-27). */
 .instructions{text-align:center;font:16px/1.5 Georgia,serif;color:var(--ink);margin:4px auto 14px;max-width:60ch}
 .instructions kbd,.instructions b{font:inherit;color:var(--gold);font-weight:normal}
+.pacing-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  margin: 18px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.pacing-input, .cycle-stepper { display: inline-flex; align-items: center; }
+.pacing-input { gap: 10px; }
+.cycle-stepper {
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: #11171c;
+  font-variant-numeric: tabular-nums;
+}
+.cycle-stepper button, .cycle-stepper input {
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 24px;
+  background: transparent;
+  color: var(--ink);
+}
+.cycle-stepper button { font-size: 17px; color: var(--muted); }
+.cycle-stepper button:hover { color: var(--gold); background: #20272c; }
+.cycle-stepper input { width: 44px; text-align: center; font-size: 16px; appearance: textfield; }
+.cycle-stepper input::-webkit-inner-spin-button { appearance: none; }
+#pacing-unit { margin-right: 4px; font-size: 11px; }
+#pacing-toggle { min-width: 92px; border-radius: 24px; }
+#pacing-toggle[aria-pressed=true] { border-color: var(--gold); color: var(--gold); }
+#pacing-readout { flex-basis: 100%; text-align: center; font-variant-numeric: tabular-nums; }
+#pacing-readout:empty { display: none; }
+@media (max-width: 600px) {
+  .pacing-controls > label { flex-basis: 100%; text-align: center; }
+}
 
 .counterpoint-inspector {
   --inspector-line: #3b464c;
@@ -436,6 +475,19 @@ dialog#notes-sheet::backdrop{background:#04070acc}
         <button id="find-echo" disabled hidden aria-label="Find the echo: the model at nominal settings, paced at 600 ms, then one early beat that gives a single AV-nodal echo.">Find the echo</button>
         <button id="find-arrhythmia" disabled hidden aria-label="Find the arrhythmia: the model at nominal settings, paced at 600 ms, then one early beat that starts sustained AV-nodal reentry.">Find the arrhythmia</button>
         <button id="reset" disabled>Reset</button>
+      </div>
+      <div id="pacing-controls" class="pacing-controls" role="group" aria-labelledby="pacing-label">
+        <label id="pacing-label" for="pacing-cycle">Pacing cycle length</label>
+        <div class="pacing-input">
+          <div class="cycle-stepper">
+            <button id="pacing-minus" type="button" aria-label="Decrease cycle length by 10 ms">−</button>
+            <input id="pacing-cycle" type="number" min="150" max="2000" step="10" value="600" inputmode="numeric" aria-describedby="pacing-unit">
+            <span id="pacing-unit">ms</span>
+            <button id="pacing-plus" type="button" aria-label="Increase cycle length by 10 ms">+</button>
+          </div>
+          <button id="pacing-toggle" type="button" aria-pressed="false">Pace</button>
+        </div>
+        <output id="pacing-readout" aria-live="off"></output>
       </div>
       <div class="settings">
         <button id="sound" type="button" aria-label="Mute sound" title="Mute sound">
@@ -4996,6 +5048,9 @@ const WAKE_WALL_MS = 25;
 const LOOKAHEAD_WALL_MS = 60;
 const INPUT_MARGIN_WALL_MS = 5;
 const COMMAND_LOG_LIMIT = 4096;
+const PACING_MIN_CYCLE = 150;
+const PACING_MAX_CYCLE = 2000;
+const clampPacingCycle = value => Math.min(PACING_MAX_CYCLE, Math.max(PACING_MIN_CYCLE, Number.isFinite(Number(value)) && value !== '' ? Math.round(Number(value)) : 600));
 
 const TICKS_PER_MS = 1_000;
 const clockTolerance = (sec) => 8 * Number.EPSILON * Math.max(1, Math.abs(sec));
@@ -5037,6 +5092,8 @@ function createTransport({
   let reason = null;
   let error = null;
   let lastInterruption = null;
+  let pacing = null;
+  let pacingOrdinal = 0;
 
   function committedThroughMs() {
     return committedTick === null ? null : committedTick / TICKS_PER_MS;
@@ -5048,7 +5105,7 @@ function createTransport({
   }
 
   function state() {
-    return { status, runId, dilation, pendingDilation: pendingDilation(), reason, error };
+    return { status, runId, dilation, pendingDilation: pendingDilation(), reason, error, pacing: pacing ? { ...pacing } : null };
   }
 
   function emitState() {
@@ -5170,6 +5227,7 @@ function createTransport({
     status = 'faulted';
     reason = 'fault';
     error = failure;
+    pacing = null;
     pendingEvents = [];
     cancelWake();
     silence(reason);
@@ -5182,6 +5240,15 @@ function createTransport({
     const horizonTick = floorTick(projectMs(horizonSec), horizonSec);
     if (committedTick !== null && horizonTick <= committedTick) return;
     try {
+      // Only submit through this commit's horizon. Future beats remain a plan,
+      // so editing/stopping never needs to retract an accepted engine command.
+      while (pacing && pacing.nextMs <= horizonTick / TICKS_PER_MS) {
+        const tMs = pacing.nextMs;
+        rememberCommand({ type: 'stimulate', nodeId: pacing.nodeId, tMs,
+          commandId: `pace-${++pacingOrdinal}`, runId });
+        pacing.lastMs = tMs;
+        pacing.nextMs = Math.round((tMs + pacing.cycleMs) * TICKS_PER_MS) / TICKS_PER_MS;
+      }
       const events = engine.advanceTo(horizonTick / TICKS_PER_MS);
       committedTick = horizonTick;
       if (events.length > 0) {
@@ -5292,6 +5359,8 @@ function createTransport({
     commandIds = new Set();
     nextCommandOrdinal = 1;
     lastInterruption = null;
+    pacing = null;
+    pacingOrdinal = 0;
     onReset(restedSnapshot);
     try {
       for (const command of commands) rememberCommand({ ...command, runId });
@@ -5323,6 +5392,36 @@ function createTransport({
     return rememberCommand({ ...fields, commandId, runId, tMs: earliestAt(presentedAt(audioSec)) });
   }
 
+  function startPacing(nodeId, cycleMs) {
+    if (status !== 'running') return false;
+    refresh(nowSec());
+    if (status !== 'running') return false;
+    const firstMs = earliestInputMs();
+    pacing = { nodeId, cycleMs: clampPacingCycle(cycleMs), nextMs: firstMs, lastMs: null, fromMs: firstMs };
+    emitState();
+    return true;
+  }
+
+  function setPacingCycle(cycleMs) {
+    const value = clampPacingCycle(cycleMs);
+    if (pacing) {
+      const changed = value !== pacing.cycleMs;
+      pacing.cycleMs = value;
+      if (pacing.lastMs !== null) pacing.nextMs = Math.max(earliestInputMs(), Math.round((pacing.lastMs + value) * TICKS_PER_MS) / TICKS_PER_MS);
+      // A ratio at the new drive must be measured from beats at that drive.
+      if (changed) pacing.fromMs = pacing.nextMs;
+      emitState();
+    }
+    return value;
+  }
+
+  function stopPacing() {
+    if (!pacing) return false;
+    pacing = null;
+    emitState();
+    return true;
+  }
+
   function frame() {
     const audioSec = isPlaying() ? nowSec() : 0;
     refresh(audioSec);
@@ -5348,6 +5447,9 @@ function createTransport({
     pause,
     interrupt,
     setDilation,
+    startPacing,
+    setPacingCycle,
+    stopPacing,
     submit,
     wake,
     frame,
@@ -5359,7 +5461,7 @@ function createTransport({
   };
 }
 
-return {DEFAULT_DILATION,MAX_DILATION,WAKE_WALL_MS,LOOKAHEAD_WALL_MS,INPUT_MARGIN_WALL_MS,COMMAND_LOG_LIMIT,createTransport};
+return {DEFAULT_DILATION,MAX_DILATION,WAKE_WALL_MS,LOOKAHEAD_WALL_MS,INPUT_MARGIN_WALL_MS,COMMAND_LOG_LIMIT,PACING_MIN_CYCLE,PACING_MAX_CYCLE,clampPacingCycle,createTransport};
 })();
 __modules["src/visuals/common.js"] = (()=>{
 // Shared helpers for the Study No. 2 view modules (Ladder, Staves, Map, Network marks).
@@ -9806,7 +9908,8 @@ __modules["src/ui/preferences.js"] = (()=>{
 const PREFERENCES_KEY = 'counterpoint.preferences.v1';
 // Playback speeds offered in the UI: real time and three slow playback rates (creator decision 2026-11-27).
 const DILATIONS = Object.freeze([1, 4, 8, 12]);
-const DEFAULTS = { dilation: 4, volume: 0.3, muted: false };
+const { clampPacingCycle } = __modules["src/runtime/transport.js"];
+const DEFAULTS = { dilation: 4, volume: 0.3, muted: false, pacingCycleMs: 600 };
 
 // Each edition keeps its own preferences (suffix), so a preview never changes the full site's.
 let storageKey = PREFERENCES_KEY;
@@ -9821,6 +9924,7 @@ function readPreferences(suffix = '') {
     dilation: DILATIONS.includes(stored.dilation) ? stored.dilation : DEFAULTS.dilation,
     volume: Number.isFinite(stored.volume) && stored.volume >= 0 && stored.volume <= 0.7 ? stored.volume : DEFAULTS.volume,
     muted: typeof stored.muted === 'boolean' ? stored.muted : DEFAULTS.muted,
+    pacingCycleMs: stored.pacingCycleMs === undefined ? DEFAULTS.pacingCycleMs : clampPacingCycle(stored.pacingCycleMs),
   };
 }
 
@@ -9883,7 +9987,7 @@ function freezePreset(value) {
 return {directedLink,freezePreset};
 })();
 __modules["src/worlds/conduction.js"] = (()=>{
-const { both, sinusFocus, site, world } = __modules["src/worlds/kit.js"];
+const { both, link, sinusFocus, site, way, world } = __modules["src/worlds/kit.js"];
 const { directedLink, freezePreset } = __modules["src/worlds/feedforward.js"];
 
 function createConductionWorld() {
@@ -9910,20 +10014,24 @@ function createConductionWorld() {
 const conductionWorld = freezePreset(createConductionWorld());
 
 // The interactive tree uses the same recovery laws as Echo and Circulation.
-// Each physical pathway has symmetric travel laws; local recovery determines capture.
+// Antegrade slowing builds as the wave enters the recovering AV node.
 // The fixed-ERP preset above is retained for the contract v1 reference cases.
 function createRestitutionConduction() {
   return world('conduction', [
     site('S', 'sinus', 200, { restitution: [40, 90], automaticity: sinusFocus(800), audible: true }),
     site('A', 'atrial', 220, { restitution: [45, 90] }),
-    site('N', 'nodal', 250, { restitution: [45, 110], audible: true }),
+    site('N', 'nodal', 310, { restitution: [90, 130], audible: true }),
     site('H', 'hisPurkinje', 180, { restitution: [35, 95] }),
     site('V1', 'ventricular', 260, { restitution: [60, 80] }),
     site('V2', 'ventricular', 260, { restitution: [60, 80] }),
   ], [
     both('SA', 'S', 'A', 25, { decrement: [10, 85], entry: [12, 60] }),
-    both('AN', 'A', 'N', 35, { decrement: [12, 85], entry: [18, 65] }),
-    both('NH', 'N', 'H', 65, { decrement: [90, 120], entry: [12, 60] }),
+    link('AN', 'A', 'N',
+      way(35, { decrement: [100, 150], entry: [110, 150] }),
+      way(35, { decrement: [12, 85], entry: [18, 65] })),
+    link('NH', 'N', 'H',
+      way(65, { decrement: [10, 120], entry: [12, 60] }),
+      way(65, { decrement: [90, 120], entry: [12, 60] })),
     both('HV1', 'H', 'V1', 25, { decrement: [10, 85], entry: [10, 60] }),
     both('HV2', 'H', 'V2', 45, { decrement: [10, 85], entry: [10, 60] }),
   ]);
@@ -12732,6 +12840,32 @@ const isDraft = markdown => /DRAFT/.test(String(markdown));
 
 return {renderNotes,isDraft};
 })();
+__modules["src/ui/pacing-readout.js"] = (()=>{
+const { conductionPattern, descendantsOf, firstDescendant } = __modules["src/lab/measure.js"];
+
+// Only presented, causally linked beats contribute. A failed stimulus is not an
+// atrial activation, and the most recent unfinished traversal is not a block.
+function pacingReadout(events, { worldId, presentedMs, fromMs = 0 } = {}) {
+  if (worldId !== 'conduction') return null;
+  const inputId = 'A';
+  const visible = events.filter(event => event.tMs <= presentedMs);
+  const inputs = visible.filter(event => event.type === 'activation' && event.nodeId === inputId && event.tMs >= fromMs).slice(-32);
+  const beats = [];
+  for (const input of inputs) {
+    const descendants = descendantsOf(visible, [input.eventId]);
+    const output = firstDescendant(visible, descendants, 'H', ['activation']);
+    const blocked = worldId === 'conduction' && firstDescendant(visible, descendants, 'N', ['activation_blocked']);
+    if (!output && !blocked && presentedMs - input.tMs < 1200) break;
+    beats.push({ conducted: Boolean(output), intervalMs: output ? output.tMs - input.tMs : null });
+  }
+  const last = beats.at(-1);
+  const pattern = beats.length >= 8 ? conductionPattern(beats) : null;
+  return { ratio: pattern?.ratio ?? null, kind: pattern?.kind ?? null,
+    lastAhMs: last?.intervalMs ?? null, lastBlocked: last ? !last.conducted : false, beats: beats.length };
+}
+
+return {pacingReadout};
+})();
 __modules["src/content/notes/echo.md"] = (()=>{
 return { default: "<!-- DRAFT — creator writes final text -->\n**DRAFT — creator writes final text**\n\n> References must be verified against their sources before publication. They were compiled from memory in the design spec.\n\n# Echo\n\n## The musical idea\n\nNotes that first follow one another then gather almost into a single sound. A small extra note sometimes returns afterwards, like a call answered.\n\n## What the tissue is doing\n\nTwo routes run through the junction between atria and ventricles. A premature beat can find one route closed and travel slowly down the other, then return by the first.\n\n## How the model makes it\n\nIn this lumped-element model, silent nodal sites form fast and slow pathways with their own refractory curves and decrement. The node is a short chain, not a continuum.\n\n## A note from history\n\nDenes and colleagues (1973) demonstrated dual AV-nodal pathways in patients with paroxysmal supraventricular tachycardia.\n\n## Try this\n\nTap one early beat and listen for the sound that comes back.\n\n## Further reading\n\n- Denes P, Wu D, Dhingra RC, et al. Circulation 1973;48:549-555.\n- Josephson ME. Josephson's Clinical Cardiac Electrophysiology. Wolters Kluwer (current edition).\n" };
 })();
@@ -12751,6 +12885,7 @@ const { createStudyLab, protocolWorkerUrl } = __modules["src/ui/lab-panel.js"];
 const { isDraft, renderNotes } = __modules["src/ui/notes.js"];
 const { createLiveCurve } = __modules["src/lab/live-curve.js"];
 const { controlTargets } = __modules["src/lab/model-controls.js"];
+const { pacingReadout } = __modules["src/ui/pacing-readout.js"];
 const ECHO_NOTES = __modules["src/content/notes/echo.md"].default;
 
 const $ = id => document.getElementById(id);
@@ -12801,6 +12936,7 @@ let inspectionDirty = true;
 let lastCardUpdate = -Infinity;
 let guidedLast = null;
 let workerUrl;
+let lastPacingReadout = -Infinity;
 // Live S1–S2 curve: premature beats of this session, kept across runs, cleared on a world switch.
 const liveCurve = createLiveCurve();
 
@@ -12967,7 +13103,7 @@ function chooseWorld(id, initial = false) {
   world = nextWorld;
   renderer = nextRenderer;
   musicTable = musicTableFor(world, settings.presentation);
-  selectedNodeId = world.nodes.find(node => node.audible !== false)?.id ?? world.nodes[0].id;
+  selectedNodeId = ({ conduction: 'A', echo: 'CSp', circulation: 'R0' })[id] ?? world.nodes[0].id;
   renderer.setSelected(selectedNodeId);
   selectedLinkId = world.links[0].id;
   guidedLast = null;
@@ -13088,6 +13224,24 @@ function updateButtons() {
   for (const id of ['single', 'guide', 'premature', 'find-echo', 'find-arrhythmia', 'reset']) $(id).disabled = !started;
   $('pause').textContent = transport.status === 'pausing' ? 'Pausing…' : running ? 'Pause' : 'Resume';
   $('pause').disabled = !started || ['pausing', 'faulted'].includes(transport.status);
+  const pacing = transport.state().pacing;
+  $('pacing-toggle').textContent = pacing ? 'Stop pacing' : 'Pace';
+  $('pacing-toggle').setAttribute('aria-pressed', String(Boolean(pacing)));
+  $('pacing-toggle').disabled = !pacing && !running;
+  lastPacingReadout = -Infinity;
+}
+
+function updatePacingReadout(frame, now) {
+  if (now - lastPacingReadout < 150) return;
+  lastPacingReadout = now;
+  const pacing = transport.state().pacing;
+  if (!pacing) { $('pacing-readout').textContent = ''; return; }
+  const result = pacingReadout(allEvents, { worldId, presentedMs: frame.presentedMs, fromMs: pacing.fromMs });
+  const prefix = `${pacing.nodeId} · ${pacing.cycleMs} ms`;
+  if (!result) { $('pacing-readout').textContent = prefix; return; }
+  const ratio = result.ratio ? `A:H ${result.ratio}${result.kind === 'wenckebach' ? ' · Wenckebach' : ''}` : 'A:H measuring…';
+  const ah = result.lastBlocked ? 'last beat blocked' : result.lastAhMs === null ? 'A–H —' : `A–H ${Math.round(result.lastAhMs)} ms`;
+  $('pacing-readout').textContent = `${prefix} · ${ratio} · ${ah}`;
 }
 
 function updateSoundButton() {
@@ -13378,6 +13532,22 @@ $('premature').onclick = () => startRun('premature');
 $('find-echo').onclick = () => startRun('find-echo');
 $('find-arrhythmia').onclick = () => startRun('find-arrhythmia');
 $('reset').onclick = () => startRun();
+$('pacing-cycle').value = String(preferences.pacingCycleMs);
+function changePacingCycle(value) {
+  preferences.pacingCycleMs = transport.setPacingCycle(value);
+  $('pacing-cycle').value = String(preferences.pacingCycleMs);
+  savePreferences(preferences);
+}
+$('pacing-cycle').onchange = () => changePacingCycle($('pacing-cycle').value);
+$('pacing-minus').onclick = () => changePacingCycle(Number($('pacing-cycle').value) - 10);
+$('pacing-plus').onclick = () => changePacingCycle(Number($('pacing-cycle').value) + 10);
+$('pacing-toggle').onclick = () => {
+  if (transport.state().pacing) transport.stopPacing();
+  else {
+    changePacingCycle($('pacing-cycle').value);
+    transport.startPacing(worldId === 'circulation' ? selectedNodeId : worldId === 'echo' ? 'CSp' : 'A', preferences.pacingCycleMs);
+  }
+};
 $('notes-close').onclick = () => $('notes-sheet').close?.() ?? $('notes-sheet').removeAttribute('open');
 $('notes-sheet').addEventListener('click', event => { if (event.target === $('notes-sheet')) $('notes-sheet').close(); });
 // An edition shows only its worlds and views; with one of either, the menu goes too.
@@ -13480,6 +13650,7 @@ function draw(now) {
       updateCard(frame, now);
     }
     updateInspection(frame, now);
+    updatePacingReadout(frame, now);
   } catch (error) {
     $('status').textContent = error.message;
     console.error(error);

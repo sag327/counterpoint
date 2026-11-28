@@ -1,5 +1,7 @@
 # Counterpoint progress
 
+**Current handoff** · [Adjustable pacing and AV nodal Wenckebach](docs/runs/pacing-wenckebach.md).
+
 **Restart here: [HANDOFF.md](HANDOFF.md).** `main` holds v0.2 Echo with the M1–M2 revisions. Branch `study-2-simplify` carries the creator's second 2026-11-27 review ([simplify-01](docs/runs/simplify-01.md)). The earlier [browser review](docs/runs/integrate-02.md) lists the remaining release checks.
 
 **v0.1 candidate · 2026-11-26.** The single-file build opens in Conduction and includes Circulation, Duality, swipe-to-cut, accessible connection controls, three palettes, preferences and the Laboratory. Contract v1.0.0.
