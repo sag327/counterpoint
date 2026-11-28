@@ -32,6 +32,7 @@ const DRAG_THRESHOLD = 10;
 const HOLD_SITE_MS = 500;
 const initialFragment = parseFragment(location.hash);
 let worldId = EDITION.worlds ? EDITION.worlds[0] : (initialFragment.study ?? 'conduction');
+const launchDilation = worldId === 'circulation' ? preferences.dilation : 8;
 let scene = WORLDS[worldId];
 let world;
 let renderer;
@@ -87,7 +88,7 @@ function musicOptions() {
 
 const transport = createTransport({
   engine,
-  dilation: preferences.dilation,
+  dilation: launchDilation,
   nowSec: () => context ? context.currentTime + audioClockOffset : performance.now() / 1000,
   onCommit(events) {
     retainEvents(events);
@@ -166,6 +167,7 @@ function startRun(kind = 'default', nodeId = selectedNodeId, interval = coupling
   const initialPacing = kind === 'default' && worldId !== 'circulation'
     ? { nodeId: world.nodes[0].id, cycleMs: firstNodeCycleMs }
     : null;
+  if (initialPacing) selectNode(initialPacing.nodeId);
   const stimulus = (commandId, nodeId, tMs) => ({ commandId, type: 'stimulate', nodeId, tMs });
   let status = WORLDS[worldId].status;
   let fromMs = 0;
@@ -242,11 +244,10 @@ function chooseWorld(id, initial = false) {
   for (const button of $('worlds').children) {
     button.setAttribute('aria-pressed', String(button.dataset.world === worldId));
   }
-  $('canvas').setAttribute('aria-label', settings.topology + ' Use the site buttons to stimulate.');
+  $('canvas').setAttribute('aria-label', settings.topology + ' Use the site buttons to interact.');
   $('single').hidden = $('guide').hidden = id !== 'circulation';
   $('premature').hidden = id !== 'conduction';
   $('find-echo').hidden = $('find-arrhythmia').hidden = id !== 'echo';
-  $('protocol-hint').textContent = settings.hint;
   setupCard();
   views.configure(settings, world, { lab: labOpen() });
   buildSiteButtons();
@@ -352,11 +353,15 @@ function ensureStudyLab() {
 function updateButtons() {
   const running = transport.status === 'running';
   if (!running) cancelGesture();
-  for (const button of $('sites').children) button.disabled = !running;
+  const pacing = transport.state().pacing;
+  for (const button of $('sites').children) {
+    button.disabled = !running;
+    button.setAttribute('aria-label', `${pacing ? 'Pace from' : 'Stimulate'} site ${siteLabel(button.dataset.site)}. Press I to inspect it.`);
+  }
+  $('protocol-hint').textContent = pacing ? 'Tap a site to pace from it · Hold a site to inspect it' : scene.hint;
   for (const id of ['single', 'guide', 'premature', 'find-echo', 'find-arrhythmia', 'reset']) $(id).disabled = !started;
   $('pause').textContent = transport.status === 'pausing' ? 'Pausing…' : running ? 'Pause' : 'Resume';
   $('pause').disabled = !started || ['pausing', 'faulted'].includes(transport.status);
-  const pacing = transport.state().pacing;
   $('pacing-toggle').textContent = pacing ? 'Stop pacing' : 'Pace';
   $('pacing-toggle').setAttribute('aria-pressed', String(Boolean(pacing)));
   $('pacing-toggle').disabled = !pacing && !running;
@@ -368,7 +373,7 @@ function updatePacingReadout(frame, now) {
   lastPacingReadout = now;
   const pacing = transport.state().pacing;
   if (!pacing) { $('pacing-readout').textContent = ''; return; }
-  const result = pacingReadout(allEvents, { worldId, presentedMs: frame.presentedMs, fromMs: pacing.fromMs });
+  const result = pacingReadout(allEvents, { worldId, presentedMs: frame.presentedMs, fromMs: pacing.fromMs, pacingNodeId: pacing.nodeId });
   const prefix = `${pacing.nodeId} · ${pacing.cycleMs} ms`;
   if (!result) { $('pacing-readout').textContent = prefix; return; }
   const ratio = result.ratio ? `A:H ${result.ratio}${result.kind === 'wenckebach' ? ' · Wenckebach' : ''}` : 'A:H measuring…';
@@ -435,6 +440,16 @@ function stimulate(nodeId) {
   if (command) renderer.markGesture(nodeId, command.commandId, command.tMs, command.runId);
 }
 
+function activateSite(nodeId) {
+  if (!transport.state().pacing) {
+    stimulate(nodeId);
+    return;
+  }
+  if (transport.status !== 'running') return;
+  selectNode(nodeId);
+  transport.setPacingSite(nodeId);
+}
+
 function siteLabel(id) {
   return scene.labels?.plain?.[id] ? `${scene.labels.plain[id]} (${id})` : id;
 }
@@ -447,9 +462,8 @@ function buildSiteButtons() {
     button.disabled = true;
     button.textContent = id;
     button.dataset.site = id;
-    button.setAttribute('aria-label', `Stimulate site ${siteLabel(id)}. Press I to inspect it.`);
     // Pointer activation is handled on the stage so a stroke can start on a site.
-    button.onclick = event => { if (!event.detail) stimulate(id); };
+    button.onclick = event => { if (!event.detail) activateSite(id); };
     button.onfocus = () => selectNode(id);
     button.onkeydown = event => {
       if ((event.key === 'i' || event.key === 'I') && !event.metaKey && !event.ctrlKey && !event.altKey) {
@@ -558,7 +572,7 @@ stage.addEventListener('pointerup', event => {
   if (!gesture) return;
   const { site, dragged, held } = gesture;
   cancelGesture();
-  if (site && !dragged && !held) stimulate(site);
+  if (site && !dragged && !held) activateSite(site);
 });
 for (const type of ['pointercancel', 'lostpointercapture']) {
   stage.addEventListener(type, event => {
@@ -682,7 +696,7 @@ $('pacing-toggle').onclick = () => {
   if (transport.state().pacing) transport.stopPacing();
   else {
     const cycleMs = changePacingCycle($('pacing-cycle').value);
-    transport.startPacing(worldId === 'circulation' ? selectedNodeId : world.nodes[0].id, cycleMs);
+    transport.startPacing(selectedNodeId, cycleMs);
   }
 };
 $('notes-close').onclick = () => $('notes-sheet').close?.() ?? $('notes-sheet').removeAttribute('open');
@@ -701,7 +715,7 @@ $('dilation').replaceChildren(...DILATIONS.map(value => {
   option.textContent = dilationLabel(value);
   return option;
 }));
-$('dilation').value = String(preferences.dilation);
+$('dilation').value = String(launchDilation);
 $('dilation').onchange = () => {
   preferences.dilation = Number($('dilation').value);
   transport.setDilation(preferences.dilation);
