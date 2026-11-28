@@ -196,6 +196,11 @@ function runFor(duration, framePeriod = 16) {
   audio?.drain();
 }
 
+function showPage(visible) {
+  document.hidden = !visible;
+  listeners.get("visibilitychange")();
+}
+
 function chooseWorld(world) {
   select("worlds").children.find((button) => button.dataset.world === world).click();
 }
@@ -220,6 +225,20 @@ assert.equal(cp.mixer.diagnostics().muted, false);
 runFor(735);
 assert.equal(activations().map(e => e.nodeId).join(), "S,A,N,H,V1,V2");
 assert.equal(cp.mixer.diagnostics().scheduled, 6);
+
+// Preserve the selected pacing site, cycle and run across a hidden interval.
+select("sites").children[1].click();
+select("pacing-minus").click();
+const pacedBeforeAway = cp.transport.state();
+showPage(false);
+runFor(1000);
+showPage(true);
+const pacedAfterAway = cp.transport.state();
+assert.equal(pacedAfterAway.status, "running");
+assert.equal(pacedAfterAway.runId, pacedBeforeAway.runId);
+assert.equal(pacedAfterAway.dilation, pacedBeforeAway.dilation);
+assert.equal(pacedAfterAway.pacing.nodeId, "A");
+assert.equal(pacedAfterAway.pacing.cycleMs, 590);
 
 select("premature").click();
 runFor(2700);
@@ -275,7 +294,7 @@ await select("pause").click();
 runFor(250);
 assert.equal(cp.transport.status, "running");
 assert.equal(cp.transport.runId, run);
-assert.doesNotMatch(select("status").textContent, /resume when ready/i);
+assert.equal(select("status").textContent, "");
 
 // A guide reset while Web Audio is suspended queues the guide until explicit resume.
 await audio.suspend();
@@ -288,17 +307,54 @@ runFor(250);
 assert.equal(cp.transport.status, "running");
 assert.ok(activations().length > 0);
 
-document.hidden = true;
-listeners.get("visibilitychange")();
+const beforeAway = cp.transport.runId;
+showPage(false);
 assert.equal(cp.transport.status, "paused");
-document.hidden = false;
+const hiddenAtMs = cp.transport.presentedMs();
+const hiddenCount = cp.events.length;
+runFor(5000);
+assert.equal(cp.transport.presentedMs(), hiddenAtMs);
+assert.equal(cp.events.length, hiddenCount);
+showPage(true);
+assert.equal(cp.transport.status, "running");
+assert.equal(cp.transport.runId, beforeAway);
+runFor(250);
+assert.ok(cp.events.length > hiddenCount);
+
+select("pause").click();
+showPage(false);
+showPage(true);
+assert.equal(cp.transport.status, "paused", "an explicit pause survives leaving and returning");
+await select("pause").click();
+
+showPage(false);
+await audio.suspend();
+const resumeAudio = audio.resume.bind(audio);
+audio.resume = () => new Promise(() => {});
+showPage(true);
+assert.equal(cp.transport.status, "running", "sound cannot block automatic model playback");
+const silentAtMs = cp.transport.presentedMs();
+const scheduled = cp.mixer.diagnostics().scheduled;
+runFor(250);
+assert.ok(cp.transport.presentedMs() > silentAtMs);
+assert.equal(cp.mixer.diagnostics().scheduled, scheduled);
+audio.resume = resumeAudio;
+await audio.resume();
+runFor(250);
+assert.ok(cp.mixer.diagnostics().scheduled > scheduled);
+assert.equal(cp.transport.runId, beforeAway);
+
+select("pause").click();
+runFor(100);
+let finishResume;
+audio.resume = () => new Promise(resolve => { finishResume = resolve; });
 const firstResume = select("pause").click();
-document.hidden = true;
-listeners.get("visibilitychange")();
-document.hidden = false;
-listeners.get("visibilitychange")();
+showPage(false);
+showPage(true);
+finishResume();
 await firstResume;
-assert.equal(cp.transport.status, "paused", "A hide/show during Web Audio Resume must keep the run paused");
+assert.equal(cp.transport.status, "paused", "a delayed explicit Play must respect a subsequent departure");
+audio.resume = resumeAudio;
 await select("pause").click();
 runFor(250);
 // Connections can no longer be cut (creator decision 2026-11-27): a drag across
